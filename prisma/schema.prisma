@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String?   @unique
+  password  String
+  role      Role      @default(CUSTOMER)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  appointments Appointment[]
+  barberProfile Barber?
+
+  @@map("users")
+}
+
+model Barber {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique @map("user_id")
+  specialization  String?
+  experienceYears Int?      @map("experience_years")
+  rating          Float?    @default(0)
+  bio             String?   @db.Text
+  profileImage    String?   @map("profile_image")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@map("barbers")
+}
+
+model Appointment {
+  id              Int           @id @default(autoincrement())
+  userId          Int           @map("user_id")
+  barberId        Int           @map("barber_id")
+  appointmentDate DateTime      @map("appointment_date")
+  status          AppointmentStatus @default(PENDING)
+  serviceType     String?       @map("service_type")
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@map("appointments")
+}
+
+enum Role {
+  CUSTOMER
+  BARBER
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
