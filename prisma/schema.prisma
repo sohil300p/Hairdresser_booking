@@ -15,45 +15,47 @@ model User {
   firstName    String?   @map("first_name")
   lastName     String?   @map("last_name")
   phone        String    @unique
-  password     String
+  otp          String?
+  otpExpiresAt DateTime? @map("otp_expires_at")
   profileImage String?   @map("profile_image")
   role         Role      @default(CUSTOMER)
+  lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  appointments Appointment[]
+  appointments  Appointment[]
   barberProfile Barber?
 
   @@map("users")
 }
 
 model Barber {
-  id              Int       @id @default(autoincrement())
-  userId          Int       @unique @map("user_id")
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique @map("user_id")
   specialization  String?
-  experienceYears Int?      @map("experience_years")
-  rating          Float?    @default(0)
-  bio             String?   @db.Text
-  profileImage    String?   @map("profile_image")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  experienceYears Int?     @map("experience_years")
+  rating          Float?   @default(0)
+  bio             String?  @db.Text
+  profileImage    String?  @map("profile_image")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
   @@map("barbers")
 }
 
 model Appointment {
-  id              Int              @id @default(autoincrement())
-  userId          Int              @map("user_id")
-  barberId        Int              @map("barber_id")
-  appointmentDate DateTime         @map("appointment_date")
+  id              Int               @id @default(autoincrement())
+  userId          Int               @map("user_id")
+  barberId        Int               @map("barber_id")
+  appointmentDate DateTime          @map("appointment_date")
   status          AppointmentStatus @default(PENDING)
-  serviceType     String?          @map("service_type")
-  notes           String?          @db.Text
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  serviceType     String?           @map("service_type")
+  notes           String?           @db.Text
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
