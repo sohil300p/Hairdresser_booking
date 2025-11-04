@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
-import { HealthCheckResponse } from '../types';
+import { HealthCheckResponse } from './helth.type';
 
 export const healthCheck = async (req: Request, res: Response): Promise<void> => {
   try {

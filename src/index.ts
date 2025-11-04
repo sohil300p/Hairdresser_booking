@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import prisma from './config/prisma';
 import { getRedisClient, isRedisConnected } from './config/redis';
+import { ensureMinioInitialized, testMinioConnection } from './config/minio';
 import routes from './routes/routes';
 
 const redisClient = getRedisClient();
@@ -55,6 +56,20 @@ async function startServer() {
       console.warn('⚠️ Redis not connected. OTP features may not work properly.');
       console.warn('To start Redis: docker compose up -d redis');
       console.warn('Or manually: docker run -d -p 6379:6379 redis:7-alpine');
+    }
+
+    // Initialize MinIO (non-blocking)
+    try {
+      const minioConnected = await testMinioConnection();
+      if (minioConnected) {
+        await ensureMinioInitialized();
+        console.log('✅ MinIO connected and initialized successfully');
+      } else {
+        console.warn('⚠️ MinIO not connected. File upload features may not work.');
+        console.warn('To start MinIO: docker compose up -d minio');
+      }
+    } catch (minioError) {
+      console.warn('⚠️ MinIO initialization failed:', minioError);
     }
 
     // Start listening

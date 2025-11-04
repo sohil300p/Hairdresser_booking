@@ -2,6 +2,14 @@ import { Router } from 'express';
 import { healthCheck } from '../Helth/healthController';
 import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../auth/auth.controller';
+import {
+  uploadFileController,
+  downloadFileController,
+  getFileMetadataController,
+  deleteFileController,
+  listFilesController,
+  upload,
+} from '../files_minIO/files.controller';
 
 const router = Router();
 
@@ -16,5 +24,12 @@ router.post('/otp/verify', verifyOtpController);
 router.post('/auth/refresh-token', refreshTokenController);
 router.post('/auth/verify-token', verifyTokenController);
 router.post('/auth/logout', logoutController);
+
+// File Routes
+router.post('/files/upload', upload.single('file'), uploadFileController);
+router.get('/files/download/:fileName', downloadFileController);
+router.get('/files/metadata/:fileName', getFileMetadataController);
+router.delete('/files/:fileName', deleteFileController);
+router.get('/files/list', listFilesController);
 
 export default router;

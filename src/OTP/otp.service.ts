@@ -2,7 +2,7 @@ import { safeRedisOperation, isRedisConnected } from '../config/redis';
 import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
-
+// Regex phone number is not checked for Iran
 const OTP_EXPIRY_SECONDS = 60; // 60 seconds
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
 

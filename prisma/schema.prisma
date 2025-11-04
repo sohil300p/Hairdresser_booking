@@ -25,6 +25,7 @@ model User {
 
   appointments  Appointment[]
   barberProfile Barber?
+  files         File[]
 
   @@map("users")
 }
@@ -63,6 +64,20 @@ model Appointment {
   @@map("appointments")
 }
 
+model File {
+  id        Int      @id @default(autoincrement())
+  fileUrl   String   @map("file_url") @db.Text
+  fileName  String   @map("file_name")
+  bucket    String
+  type      FileType
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
 enum Role {
   CUSTOMER
   BARBER
@@ -74,4 +89,10 @@ enum AppointmentStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum FileType {
+  PROFILE
+  PORTFOLIO
+  OTHER
 }
