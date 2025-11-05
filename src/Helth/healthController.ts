@@ -10,11 +10,11 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
 
     const response: HealthCheckResponse = {
       status: 'OK',
-      message: 'Server is running and database is connected',
+      message: 'سرور در حال اجراست و به دیتابیس متصل است',
       timestamp: new Date().toISOString(),
       database: {
         connected: true,
-        status: 'connected',
+        status: 'متصل',
       },
     };
 
@@ -22,11 +22,11 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
   } catch (error) {
     const response: HealthCheckResponse = {
       status: 'ERROR',
-      message: 'Database connection failed',
+      message: 'اتصال به دیتابیس با خطا مواجه شد',
       timestamp: new Date().toISOString(),
       database: {
         connected: false,
-        status: error instanceof Error ? error.message : 'Unknown error',
+        status: error instanceof Error ? error.message : 'خطای نامشخص',
       },
     };
 

@@ -20,7 +20,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
   if (!token) {
     res.status(401).json({
       success: false,
-      message: 'Access token is required',
+      message: 'Access token الزامی است',
     });
     return;
   }
@@ -30,7 +30,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
   if (!payload) {
     res.status(401).json({
       success: false,
-      message: 'Invalid or expired token',
+      message: 'Token نامعتبر یا منقضی شده است',
     });
     return;
   }

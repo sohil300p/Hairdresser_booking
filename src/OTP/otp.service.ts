@@ -1,8 +1,9 @@
 import { safeRedisOperation, isRedisConnected } from '../config/redis';
 import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { validateIranianPhoneNumber, normalizePhoneNumber } from '../utils/validator';
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
-// Regex phone number is not checked for Iran
+
 const OTP_EXPIRY_SECONDS = 60; // 60 seconds
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
 
@@ -80,13 +81,17 @@ async function incrementOtpAttempts(phone: string): Promise<void> {
  * Send OTP service
  */
 export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpResponse> {
-  const { phone } = data;
+  let { phone } = data;
 
-  // Validate phone format
-  if (!phone || phone.length < 10) {
+  // Normalize phone number (remove spaces, dashes, etc.)
+  phone = normalizePhoneNumber(phone);
+
+  // Validate Iranian phone number format
+  const phoneValidation = validateIranianPhoneNumber(phone);
+  if (!phoneValidation.isValid) {
     return {
       success: false,
-      message: 'Invalid phone number',
+      message: phoneValidation.message || 'شماره تلفن معتبر نیست',
     };
   }
 
@@ -95,7 +100,7 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
   if (!limitCheck.allowed) {
     return {
       success: false,
-      message: `Maximum OTP requests (${MAX_OTP_PER_DAY}) reached for today. Please try again tomorrow.`,
+      message: `حداکثر درخواست OTP (${MAX_OTP_PER_DAY} بار) برای امروز انجام شده است. لطفاً فردا دوباره تلاش کنید.`,
       remainingAttempts: 0,
     };
   }
@@ -117,21 +122,15 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
       console.warn('⚠️ Redis not available, OTP will not be stored. Please start Redis for OTP to work.');
       return {
         success: false,
-        message: 'OTP service temporarily unavailable. Please try again later.',
+        message: 'سرویس OTP موقتاً در دسترس نیست. لطفاً بعداً تلاش کنید.',
       };
     }
 
     // Increment attempts counter
     await incrementOtpAttempts(phone);
 
-    // Find or create user in database
-    await prisma.user.upsert({
-      where: { phone },
-      update: {},
-      create: {
-        phone,
-      },
-    });
+    // Note: User account will be created after successful OTP verification
+    // We don't create user here to avoid creating accounts for invalid OTP requests
 
     // Send OTP (In production, integrate with SMS service)
     // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
@@ -139,7 +138,7 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
 
     return {
       success: true,
-      message: 'OTP sent successfully',
+      message: 'کد OTP با موفقیت ارسال شد',
       expiresIn: OTP_EXPIRY_SECONDS,
       remainingAttempts: limitCheck.remaining - 1,
     };
@@ -147,7 +146,7 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
     console.error('Error sending OTP:', error);
     return {
       success: false,
-      message: 'Failed to send OTP',
+      message: 'ارسال کد OTP با خطا مواجه شد',
     };
   }
 }
@@ -156,12 +155,32 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
  * Verify OTP service
  */
 export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOtpResponse> {
-  const { phone, otp } = data;
+  let { phone, otp } = data;
+
+  // Normalize phone number
+  phone = normalizePhoneNumber(phone);
+
+  // Validate Iranian phone number format
+  const phoneValidation = validateIranianPhoneNumber(phone);
+  if (!phoneValidation.isValid) {
+    return {
+      success: false,
+      message: phoneValidation.message || 'شماره تلفن معتبر نیست',
+    };
+  }
+
+  // Validate OTP format (should be 4 digits)
+  if (!otp || !/^\d{4}$/.test(otp)) {
+    return {
+      success: false,
+      message: 'کد OTP باید 4 رقم باشد',
+    };
+  }
 
   if (!isRedisConnected()) {
     return {
       success: false,
-      message: 'OTP service temporarily unavailable. Please request a new OTP after Redis is available.',
+      message: 'سرویس OTP موقتاً در دسترس نیست. لطفاً پس از در دسترس بودن Redis، OTP جدید درخواست دهید.',
     };
   }
 
@@ -178,7 +197,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     if (!storedOtp) {
       return {
         success: false,
-        message: 'OTP not found or expired. Please request a new OTP',
+        message: 'کد OTP یافت نشد یا منقضی شده است. لطفاً OTP جدید درخواست دهید',
       };
     }
 
@@ -186,7 +205,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     if (storedOtp !== otp) {
       return {
         success: false,
-        message: 'Invalid OTP',
+        message: 'کد OTP نامعتبر است',
       };
     }
 
@@ -199,17 +218,34 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       undefined // fallback
     );
 
-    // Find or create user in database
-    const user = await prisma.user.upsert({
+    // Check if user exists or is new
+    let user = await prisma.user.findUnique({
       where: { phone },
-      update: {
-        lastLoginAt: new Date(),
-      },
-      create: {
-        phone,
-        lastLoginAt: new Date(),
-      },
     });
+
+    let isNewUser = false;
+
+    if (!user) {
+      // User is new - create new account
+      user = await prisma.user.create({
+        data: {
+          phone,
+          role: 'CUSTOMER', // Default role
+          lastLoginAt: new Date(),
+        },
+      });
+      isNewUser = true;
+      console.log(`✅ New user account created for phone: ${phone} (ID: ${user.id})`);
+    } else {
+      // User exists - update last login time
+      user = await prisma.user.update({
+        where: { phone },
+        data: {
+          lastLoginAt: new Date(),
+        },
+      });
+      console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
+    }
 
     // Generate JWT tokens
     const payload = {
@@ -223,7 +259,9 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
 
     return {
       success: true,
-      message: 'OTP verified successfully',
+      message: isNewUser 
+        ? 'کد OTP با موفقیت تایید شد. خوش آمدید! حساب کاربری شما ایجاد شد.'
+        : 'کد OTP با موفقیت تایید شد',
       token,
       refreshToken,
       user: {
@@ -239,7 +277,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     console.error('Error verifying OTP:', error);
     return {
       success: false,
-      message: 'Failed to verify OTP',
+      message: 'تایید کد OTP با خطا مواجه شد',
     };
   }
 }

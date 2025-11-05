@@ -11,7 +11,7 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
   if (!payload) {
     return {
       success: false,
-      message: 'Invalid or expired refresh token',
+      message: 'Refresh token نامعتبر یا منقضی شده است',
     };
   }
 
@@ -23,7 +23,7 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
   if (!user) {
     return {
       success: false,
-      message: 'User not found',
+      message: 'کاربر یافت نشد',
     };
   }
 
@@ -39,7 +39,7 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
 
   return {
     success: true,
-    message: 'Token refreshed successfully',
+      message: 'Token با موفقیت به‌روزرسانی شد',
     token: newToken,
     refreshToken: newRefreshToken,
   };
@@ -54,7 +54,7 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
   if (!payload) {
     return {
       success: false,
-      message: 'Invalid or expired token',
+      message: 'Token نامعتبر یا منقضی شده است',
     };
   }
 
@@ -66,13 +66,13 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
   if (!user) {
     return {
       success: false,
-      message: 'User not found',
+      message: 'کاربر یافت نشد',
     };
   }
 
   return {
     success: true,
-    message: 'Token is valid',
+      message: 'Token معتبر است',
     user: {
       id: user.id,
       phone: user.phone,
@@ -88,6 +88,6 @@ export async function logoutService(refreshToken?: string): Promise<LogoutRespon
   // just for example.
   return {
     success: true,
-    message: 'Logged out successfully',
+      message: 'خروج با موفقیت انجام شد',
   };
 }

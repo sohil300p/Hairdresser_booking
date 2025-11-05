@@ -20,7 +20,7 @@ export async function sendOtpController(req: Request, res: Response): Promise<vo
     console.error('Error in sendOtpController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -43,7 +43,7 @@ export async function verifyOtpController(req: Request, res: Response): Promise<
     console.error('Error in verifyOtpController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }

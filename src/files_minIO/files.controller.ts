@@ -29,7 +29,7 @@ export async function uploadFileController(req: Request, res: Response): Promise
     if (!req.file) {
       res.status(400).json({
         success: false,
-        message: 'No file uploaded',
+        message: 'فایلی آپلود نشده است',
       });
       return;
     }
@@ -46,7 +46,7 @@ export async function uploadFileController(req: Request, res: Response): Promise
     console.error('Error in uploadFileController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -63,7 +63,7 @@ export async function downloadFileController(req: Request, res: Response): Promi
     if (!fileName) {
       res.status(400).json({
         success: false,
-        message: 'File name is required',
+        message: 'نام فایل الزامی است',
       });
       return;
     }
@@ -73,7 +73,7 @@ export async function downloadFileController(req: Request, res: Response): Promi
     if (!fileBuffer) {
       res.status(404).json({
         success: false,
-        message: 'File not found',
+        message: 'فایل یافت نشد',
       });
       return;
     }
@@ -88,7 +88,7 @@ export async function downloadFileController(req: Request, res: Response): Promi
     console.error('Error in downloadFileController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -105,7 +105,7 @@ export async function getFileMetadataController(req: Request, res: Response): Pr
     if (!fileName) {
       res.status(400).json({
         success: false,
-        message: 'File name is required',
+        message: 'نام فایل الزامی است',
       });
       return;
     }
@@ -121,7 +121,7 @@ export async function getFileMetadataController(req: Request, res: Response): Pr
     console.error('Error in getFileMetadataController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -138,7 +138,7 @@ export async function deleteFileController(req: Request, res: Response): Promise
     if (!fileName) {
       res.status(400).json({
         success: false,
-        message: 'File name is required',
+        message: 'نام فایل الزامی است',
       });
       return;
     }
@@ -154,7 +154,7 @@ export async function deleteFileController(req: Request, res: Response): Promise
     console.error('Error in deleteFileController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -173,7 +173,7 @@ export async function listFilesController(req: Request, res: Response): Promise<
     console.error('Error in listFilesController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }

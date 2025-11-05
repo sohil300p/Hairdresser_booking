@@ -32,7 +32,7 @@ export async function uploadFileService(
 
     return {
       success: true,
-      message: 'File uploaded successfully',
+      message: 'فایل با موفقیت آپلود شد',
       fileUrl,
       fileName: objectName,
       fileSize: file.size,
@@ -42,7 +42,7 @@ export async function uploadFileService(
     console.error('Error uploading file:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to upload file',
+      message: error instanceof Error ? error.message : 'آپلود فایل با خطا مواجه شد',
     };
   }
 }
@@ -93,7 +93,7 @@ export async function getFileMetadataService(fileName: string, folder?: string) 
     console.error('Error getting file metadata:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to get file metadata',
+      message: error instanceof Error ? error.message : 'دریافت اطلاعات فایل با خطا مواجه شد',
     };
   }
 }
@@ -113,13 +113,13 @@ export async function deleteFileService(
 
     return {
       success: true,
-      message: 'File deleted successfully',
+      message: 'فایل با موفقیت حذف شد',
     };
   } catch (error) {
     console.error('Error deleting file:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to delete file',
+      message: error instanceof Error ? error.message : 'حذف فایل با خطا مواجه شد',
     };
   }
 }
@@ -151,7 +151,7 @@ export async function listFilesService(folder?: string) {
     console.error('Error listing files:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to list files',
+      message: error instanceof Error ? error.message : 'دریافت لیست فایل‌ها با خطا مواجه شد',
       files: [],
       count: 0,
     };

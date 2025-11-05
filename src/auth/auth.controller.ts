@@ -12,7 +12,7 @@ export async function refreshTokenController(req: Request, res: Response): Promi
     if (!refreshToken) {
       res.status(400).json({
         success: false,
-        message: 'Refresh token is required',
+        message: 'Refresh token الزامی است',
       });
       return;
     }
@@ -28,7 +28,7 @@ export async function refreshTokenController(req: Request, res: Response): Promi
     console.error('Error in refreshTokenController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -44,7 +44,7 @@ export async function verifyTokenController(req: Request, res: Response): Promis
     if (!token) {
       res.status(400).json({
         success: false,
-        message: 'Token is required',
+        message: 'Token الزامی است',
       });
       return;
     }
@@ -60,7 +60,7 @@ export async function verifyTokenController(req: Request, res: Response): Promis
     console.error('Error in verifyTokenController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
@@ -79,7 +79,7 @@ export async function logoutController(req: Request, res: Response): Promise<voi
     console.error('Error in logoutController:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+        message: 'خطای داخلی سرور',
     });
   }
 }
