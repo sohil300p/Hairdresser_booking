@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import type { AppContextType } from '../types';
 import { Button } from '../components/Button';
+import { authService } from '../src/services/auth.service';
 
 interface LoginPageProps {
     context: AppContextType;
@@ -11,14 +11,61 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
 
-    const handleLogin = () => {
-        // In a real app, you would verify the OTP
-        if (otp === '1234') {
-            context.login();
-            context.setCurrentPage('home');
-        } else {
-            context.showToast('کد وارد شده صحیح نیست.', 'error');
+    const handleSendOtp = async () => {
+        if (phone.length < 11) {
+            context.showToast('شماره موبایل باید ۱۱ رقمی باشد.', 'error');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const result = await authService.sendOtp(phone);
+            if (result.success) {
+                setOtpSent(true);
+                setStep(2);
+                context.showToast(result.message || 'کد تایید ارسال شد', 'success');
+            } else {
+                context.showToast(result.message || 'خطا در ارسال کد تایید', 'error');
+            }
+        } catch (error: any) {
+            context.showToast(error.response?.data?.message || 'خطا در ارسال کد تایید', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (otp.length < 4) {
+            context.showToast('کد تایید باید ۴ رقمی باشد.', 'error');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const result = await authService.verifyOtp(phone, otp);
+            if (result.success && result.user) {
+                const userData = {
+                    name: result.user.firstName && result.user.lastName
+                        ? `${result.user.firstName} ${result.user.lastName}`
+                        : result.user.firstName || result.user.lastName || result.user.phone,
+                    phone: result.user.phone,
+                    walletBalance: 0,
+                    bankCards: [],
+                    avatarUrl: result.user.profileImage || undefined,
+                };
+                await context.login(userData);
+                context.setCurrentPage('home');
+                context.showToast('ورود با موفقیت انجام شد', 'success');
+            } else {
+                context.showToast(result.message || 'کد وارد شده صحیح نیست', 'error');
+            }
+        } catch (error: any) {
+            context.showToast(error.response?.data?.message || 'خطا در تایید کد', 'error');
+        } finally {
+            setLoading(false);
         }
     };
     
@@ -38,10 +85,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             onChange={(e) => setPhone(e.target.value)}
                             placeholder="09123456789"
                             className="form-input text-left direction-ltr"
+                            disabled={loading}
                         />
                         <p className="text-xs text-gray-500 mt-2 text-right">شماره موبایل ۱۱ رقمی خود را وارد کنید.</p>
-                        <Button className="mt-4" onClick={() => setStep(2)} disabled={phone.length < 11}>
-                            دریافت کد تایید
+                        <Button className="mt-4" onClick={handleSendOtp} disabled={phone.length < 11 || loading}>
+                            {loading ? 'در حال ارسال...' : 'دریافت کد تایید'}
                         </Button>
                     </>
                 ) : (
@@ -52,13 +100,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             id="otp"
                             value={otp}
                             onChange={(e) => setOtp(e.target.value)}
-                            placeholder="کد ۴ رقمی (1234)"
+                            placeholder="کد ۴ رقمی"
                             className="form-input text-center tracking-[1em]"
                             maxLength={4}
+                            disabled={loading}
                         />
                         <p className="text-xs text-gray-500 mt-2 text-right">کد ۴ رقمی ارسال شده را وارد کنید.</p>
-                        <Button className="mt-4" onClick={handleLogin} disabled={otp.length < 4}>
-                           ورود
+                        {otpSent && (
+                            <button
+                                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                                onClick={handleSendOtp}
+                                disabled={loading}
+                            >
+                                ارسال مجدد کد
+                            </button>
+                        )}
+                        <Button className="mt-4" onClick={handleVerifyOtp} disabled={otp.length < 4 || loading}>
+                            {loading ? 'در حال تایید...' : 'ورود'}
                         </Button>
                     </>
                 )}

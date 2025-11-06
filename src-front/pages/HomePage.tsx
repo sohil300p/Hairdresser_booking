@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { AppContextType, Barber } from '../types';
-import { BARBERS } from '../constants';
+import { BARBERS, SERVICES } from '../constants';
 import { BarberCard } from '../components/BarberCard';
 import { Icon } from '../components/Icon';
+import { barberService } from '../src/services/barber.service';
 
 type SortType = 'distance' | 'rating' | 'price_asc';
 type ViewMode = 'list' | 'map';
@@ -22,11 +23,52 @@ export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => 
   const [sortType, setSortType] = useState<SortType>('distance');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedBarberOnMap, setSelectedBarberOnMap] = useState<Barber | null>(null);
+  const [barbers, setBarbers] = useState<Barber[]>(BARBERS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBarbers = async () => {
+      try {
+        const result = await barberService.getBarbers();
+        if (result.success && result.data) {
+          // Transform API barbers to frontend Barber type
+          const transformedBarbers: Barber[] = result.data.map((apiBarber, index) => ({
+            id: apiBarber.id,
+            name: apiBarber.name,
+            avatarUrl: apiBarber.profileImage || `https://picsum.photos/seed/barber${apiBarber.id}/200/200`,
+            rating: apiBarber.rating || 0,
+            reviewCount: 0, // TODO: Add review count to API
+            distance: apiBarber.distance || Math.random() * 5, // Mock distance until location is added
+            priceRange: [80000, 1200000] as [number, number], // TODO: Add price range to API
+            isVerified: true, // TODO: Add verification status to API
+            isOpen: true, // TODO: Add open status to API
+            discount: index === 0 ? '۲۰٪ تخفیف' : undefined,
+            gallery: [
+              `https://picsum.photos/seed/gal${apiBarber.id}1/400/300`,
+              `https://picsum.photos/seed/gal${apiBarber.id}2/400/300`,
+            ], // TODO: Add gallery to API
+            services: SERVICES.slice(0, 3), // TODO: Add services to API
+            reviews: [], // TODO: Add reviews to API
+            about: apiBarber.bio || 'آرایشگاه با تجربه و تخصص بالا',
+            location: { lat: 35.72 + Math.random() * 0.1, lng: 51.42 + Math.random() * 0.1 }, // Mock location
+          }));
+          setBarbers(transformedBarbers);
+        }
+      } catch (error) {
+        console.error('Error fetching barbers:', error);
+        // Keep using mock data on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBarbers();
+  }, []);
 
   const unreadCount = useMemo(() => context.notifications.filter(n => !n.isRead).length, [context.notifications]);
 
   const sortedBarbers = useMemo(() => {
-    const barbersCopy = [...BARBERS];
+    const barbersCopy = [...barbers];
     switch (sortType) {
       case 'rating':
         return barbersCopy.sort((a, b) => b.rating - a.rating);
@@ -36,7 +78,7 @@ export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => 
       default:
         return barbersCopy.sort((a, b) => a.distance - b.distance);
     }
-  }, [sortType]);
+  }, [sortType, barbers]);
   
   const handleBarberClick = (barber: Barber) => {
     context.setCurrentPage('barber', { barber });
@@ -140,15 +182,21 @@ export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => 
         
         {viewMode === 'list' && (
             <div>
-                {sortedBarbers.map(barber => (
-                <BarberCard 
-                    key={barber.id} 
-                    barber={barber} 
-                    onClick={() => handleBarberClick(barber)}
-                    isFavorite={context.favorites.includes(barber.id)}
-                    onFavoriteToggle={() => context.toggleFavorite(barber.id)}
-                />
-                ))}
+                {loading ? (
+                    <div className="text-center py-8 text-gray-500">در حال بارگذاری...</div>
+                ) : sortedBarbers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">آرایشگاهی یافت نشد</div>
+                ) : (
+                    sortedBarbers.map(barber => (
+                        <BarberCard 
+                            key={barber.id} 
+                            barber={barber} 
+                            onClick={() => handleBarberClick(barber)}
+                            isFavorite={context.favorites.includes(barber.id)}
+                            onFavoriteToggle={() => context.toggleFavorite(barber.id)}
+                        />
+                    ))
+                )}
             </div>
         )}
       </div>

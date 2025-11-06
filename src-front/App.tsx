@@ -1,6 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { AppContextType, Page, Booking, Notification, User, Discount, BankCard, ToastType } from './types';
 import { BookingStatus } from './types';
+import { tokenService } from './src/services/token.service';
+import { authService } from './src/services/auth.service';
 
 // New Pages
 import { HomePage } from './pages/HomePage';
@@ -41,6 +43,45 @@ const App: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [modalPosition, setModalPosition] = useState<'center' | 'bottom'>('center');
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
+
+  // Check for valid token on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (tokenService.hasValidToken()) {
+        try {
+          const result = await authService.verifyToken();
+          if (result.success && result.user) {
+            // Set user from token verification
+            setUser({
+              name: result.user.phone,
+              phone: result.user.phone,
+              walletBalance: 0,
+              bankCards: [],
+            });
+            setCurrentPage('home');
+          }
+        } catch (error) {
+          // Token invalid, clear and show login
+          tokenService.clearTokens();
+        }
+      }
+      setIsCheckingAuth(false);
+    };
+    checkAuth();
+  }, []);
+
+  // Auto-refresh token if expired
+  useEffect(() => {
+    const token = tokenService.getAccessToken();
+    if (token && tokenService.isTokenExpired(token)) {
+      authService.refreshToken().catch(() => {
+        tokenService.clearTokens();
+        setUser(null);
+        setCurrentPage('login');
+      });
+    }
+  }, []);
 
   const handleSetCurrentPage = useCallback((page: Page, params: any = null) => {
     setCurrentPage(page);
@@ -48,8 +89,19 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const login = () => { setUser(LOGGED_IN_USER); };
-  const logout = () => { setUser(null); setCurrentPage('login'); };
+  const login = async (userData?: User) => {
+    if (userData) {
+      setUser(userData);
+    } else {
+      setUser(LOGGED_IN_USER);
+    }
+  };
+
+  const logout = async () => {
+    await authService.logout();
+    setUser(null);
+    setCurrentPage('login');
+  };
   
   const updateUser = (updatedUserData: Partial<User>) => {
     if (user) {
@@ -210,6 +262,14 @@ const App: React.FC = () => {
 
   const pagesWithoutNav = ['login', 'booking', 'wallet-withdraw', 'chat', 'faq'];
   const showNav = user && !pagesWithoutNav.includes(currentPage);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="max-w-md mx-auto bg-white font-sans h-screen flex items-center justify-center">
+        <div className="text-center">در حال بارگذاری...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white font-sans">

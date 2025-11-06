@@ -10,7 +10,11 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "install:all": "npm install && cd src-front && npm install",
+    "dev:frontend": "cd src-front && npm run dev",
+    "dev:backend": "npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\""
   },
   "keywords": [
     "barber",
@@ -49,6 +53,7 @@
     "@types/swagger-ui-express": "^4.1.6",
     "@types/uuid": "^9.0.7",
     "prisma": "^6.18.0",
+    "concurrently": "^9.1.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"

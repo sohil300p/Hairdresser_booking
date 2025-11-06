@@ -1,13 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { AppContextType } from '../types';
 import { Icon, IconName } from '../components/Icon';
 import { Button } from '../components/Button';
+import { profileService } from '../src/services/profile.service';
 
 interface ProfilePageProps {
   context: AppContextType;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ context }) => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const result = await profileService.getProfile();
+        if (result.success && result.data) {
+          const profileData = result.data;
+          context.updateUser({
+            name: profileData.firstName && profileData.lastName
+              ? `${profileData.firstName} ${profileData.lastName}`
+              : profileData.firstName || profileData.lastName || profileData.phone,
+            phone: profileData.phone,
+            avatarUrl: profileData.profileImage || undefined,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (context.user) {
+      fetchProfile();
+    } else {
+      setLoading(false);
+    }
+  }, []);
     
   const ProfileMenuItem: React.FC<{ icon: IconName; label: string; onClick: () => void; }> = ({ icon, label, onClick }) => (
     <button onClick={onClick} className="flex items-center justify-between w-full p-4 bg-white rounded-xl border border-gray-200 mb-3 text-right transition-transform transform active:scale-95 hover:bg-gray-50">
@@ -34,6 +64,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ context }) => {
       'bottom'
     );
   };
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="text-center">در حال بارگذاری...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen" dir="rtl">

@@ -3,10 +3,12 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Environment variables
+# Environment variables - NEVER COMMIT THESE!
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # Build output
 dist/
@@ -38,4 +40,7 @@ prisma/migrations/
 coverage/
 .nyc_output/
 
-
+# Frontend build
+src-front/dist/
+src-front/dist-ssr/
+src-front/node_modules/

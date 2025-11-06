@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import type { AppContextType, Service } from '../types';
+import type { AppContextType, Service, Barber } from '../types';
 import { Icon, IconName } from '../components/Icon';
 import { Button } from '../components/Button';
+import { SERVICES } from '../constants';
 
 interface BarberProfilePageProps {
   context: AppContextType;
@@ -13,7 +14,7 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
 
   if (!barber) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
         <p>آرایشگاه مورد نظر یافت نشد.</p>
         <Button onClick={() => context.setCurrentPage('home')}>بازگشت به خانه</Button>
       </div>
@@ -48,7 +49,7 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
     <div className="bg-gray-50 min-h-screen" dir="rtl">
       <div className="relative">
         <header className="h-56">
-          <img src={barber.gallery[0]} alt="gallery" className="w-full h-full object-cover" />
+          <img src={barber.gallery[0] || barber.avatarUrl} alt="gallery" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-black/10"></div>
           <button onClick={() => context.setCurrentPage('home')} className="absolute top-4 right-4 bg-white/70 backdrop-blur-sm rounded-full p-2 shadow-md z-10 transition-transform active:scale-90">
               <Icon name="chevronRight" className="w-6 h-6 text-gray-800" />
@@ -63,7 +64,7 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
               <span className="mx-2">|</span>
               <span>({barber.reviewCount} نظر)</span>
               <span className="mx-2">|</span>
-              <span>{barber.distance} کیلومتر</span>
+              <span>{barber.distance.toFixed(1)} کیلومتر</span>
            </div>
            <div className="border-t my-4"></div>
            <div className="flex justify-around items-center">
@@ -86,17 +87,21 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
       <div className="p-4">
         {activeTab === 'services' && (
             <div className="space-y-3">
-                {barber.services.map(service => (
-                    <div key={service.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200">
-                        <div>
-                            <p className="font-semibold text-right">{service.name}</p>
-                            <p className="text-sm text-gray-500 text-right">{service.duration} دقیقه - {Number(service.price).toLocaleString('en-US')} تومان</p>
+                {barber.services.length > 0 ? (
+                    barber.services.map(service => (
+                        <div key={service.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200">
+                            <div>
+                                <p className="font-semibold text-right">{service.name}</p>
+                                <p className="text-sm text-gray-500 text-right">{service.duration} دقیقه - {Number(service.price).toLocaleString('en-US')} تومان</p>
+                            </div>
+                            <button onClick={() => handleServiceSelect(service)} className="bg-[var(--md-sys-color-primary)] text-white px-4 py-1.5 rounded-md text-sm font-semibold transition-transform active:scale-95">
+                               رزرو
+                            </button>
                         </div>
-                        <button onClick={() => handleServiceSelect(service)} className="bg-[var(--md-sys-color-primary)] text-white px-4 py-1.5 rounded-md text-sm font-semibold transition-transform active:scale-95">
-                           رزرو
-                        </button>
-                    </div>
-                ))}
+                    ))
+                ) : (
+                    <div className="text-center py-8 text-gray-500">خدماتی ثبت نشده است</div>
+                )}
             </div>
         )}
         {activeTab === 'about' && (
@@ -106,26 +111,34 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
         )}
          {activeTab === 'gallery' && (
             <div className="grid grid-cols-2 gap-2">
-                {barber.gallery.map((img, index) => (
-                    <img key={index} src={img} alt={`gallery ${index}`} className="w-full h-32 object-cover rounded-md" />
-                ))}
+                {barber.gallery.length > 0 ? (
+                    barber.gallery.map((img, index) => (
+                        <img key={index} src={img} alt={`gallery ${index}`} className="w-full h-32 object-cover rounded-md" />
+                    ))
+                ) : (
+                    <div className="col-span-2 text-center py-8 text-gray-500">گالری خالی است</div>
+                )}
             </div>
         )}
         {activeTab === 'reviews' && (
              <div className="space-y-3 text-right">
-                {barber.reviews.map(review => (
-                    <div key={review.id} className="bg-white p-4 rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center">
-                            <p className="font-bold">{review.author}</p>
-                            <div className="flex items-center text-sm text-yellow-500">
-                                <span className="ml-1">{review.rating}</span>
-                                <Icon name="star" className="w-4 h-4 fill-current"/>
+                {barber.reviews.length > 0 ? (
+                    barber.reviews.map(review => (
+                        <div key={review.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                            <div className="flex justify-between items-center">
+                                <p className="font-bold">{review.author}</p>
+                                <div className="flex items-center text-sm text-yellow-500">
+                                    <span className="ml-1">{review.rating}</span>
+                                    <Icon name="star" className="w-4 h-4 fill-current"/>
+                                </div>
                             </div>
+                            <p className="text-gray-500 text-xs my-1">{review.date}</p>
+                            <p className="text-gray-700">{review.comment}</p>
                         </div>
-                        <p className="text-gray-500 text-xs my-1">{review.date}</p>
-                        <p className="text-gray-700">{review.comment}</p>
-                    </div>
-                ))}
+                    ))
+                ) : (
+                    <div className="text-center py-8 text-gray-500">نظری ثبت نشده است</div>
+                )}
             </div>
         )}
       </div>

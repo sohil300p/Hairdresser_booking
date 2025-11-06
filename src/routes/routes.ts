@@ -5,6 +5,7 @@ import { refreshTokenController, verifyTokenController, logoutController } from 
 import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile/profile.controller';
 import { editProfileController } from '../Profile/editprofile.controller';
+import { getBarbersController, getBarberByIdController } from '../Barber/barber.controller';
 import {
   uploadFileController,
   downloadFileController,
@@ -22,6 +23,10 @@ router.get('/health', healthCheck);
 // OTP Routes
 router.post('/otp/send', sendOtpController);
 router.post('/otp/verify', verifyOtpController);
+
+// Barber Routes
+router.get('/barbers', getBarbersController);
+router.get('/barbers/:id', getBarberByIdController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
