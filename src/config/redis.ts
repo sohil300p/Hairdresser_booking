@@ -68,4 +68,24 @@ export async function safeRedisOperation<T>(
   }
 }
 
-export default getRedisClient();
+/**
+ * Get Redis connection status
+ */
+export async function getRedisStatus(): Promise<{ connected: boolean; error?: string }> {
+  try {
+    const client = getRedisClient();
+    if (!isConnected) {
+      return { connected: false, error: 'Not connected' };
+    }
+    // Perform a lightweight ping to verify connection
+    await client.ping();
+    return { connected: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Check if it's a connection error
+    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND') || errorMessage.includes('timeout')) {
+      return { connected: false, error: 'Connection failed - check REDIS_URL' };
+    }
+    return { connected: false, error: errorMessage };
+  }
+}

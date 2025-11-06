@@ -15,5 +15,13 @@ export interface HealthCheckResponse {
     connected: boolean;
     status: string;
   };
+  redis: {
+    connected: boolean;
+    status: string;
+  };
+  minio: {
+    connected: boolean;
+    status: string;
+  };
 }
 

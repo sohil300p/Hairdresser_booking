@@ -57,14 +57,35 @@ async function initializeBucket(): Promise<void> {
   }
 }
 
-// Test MinIO connection
+// Test MinIO connection and authentication
 async function testMinioConnection(): Promise<boolean> {
   try {
+    // listBuckets() requires valid access key and secret key
+    // This tests both connection and authentication
     await minioClient.listBuckets();
     return true;
   } catch (error) {
-    console.error('❌ MinIO connection failed:', error);
+    console.error('❌ MinIO connection/authentication failed:', error);
     return false;
+  }
+}
+
+// Get detailed MinIO connection status
+export async function getMinioStatus(): Promise<{ connected: boolean; error?: string }> {
+  try {
+    await minioClient.listBuckets();
+    return { connected: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Check if it's an authentication error
+    if (errorMessage.includes('InvalidAccessKeyId') || errorMessage.includes('SignatureDoesNotMatch') || errorMessage.includes('403')) {
+      return { connected: false, error: 'Authentication failed - check MINIO_ACCESS_KEY and MINIO_SECRET_KEY' };
+    }
+    // Check if it's a connection error
+    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ENOTFOUND') || errorMessage.includes('timeout')) {
+      return { connected: false, error: 'Connection failed - check MINIO_ENDPOINT and MINIO_PORT' };
+    }
+    return { connected: false, error: errorMessage };
   }
 }
 
@@ -84,6 +105,6 @@ export async function ensureMinioInitialized(): Promise<void> {
 }
 
 // Export MinIO client and utilities
-export { minioClient, DEFAULT_BUCKET, testMinioConnection };
+export { minioClient, DEFAULT_BUCKET, testMinioConnection, getMinioStatus };
 export default minioClient;
 

@@ -1,36 +1,103 @@
 import { Request, Response } from 'express';
 import prisma from '../config/prisma';
+import { getRedisStatus } from '../config/redis';
+import { getMinioStatus } from '../config/minio';
 import { HealthCheckResponse } from './helth.type';
 
-export const healthCheck = async (req: Request, res: Response): Promise<void> => {
+// Cache health check results to avoid hitting services on every request
+// Standard practice: cache for 5-10 seconds, update in background
+interface CachedHealthStatus {
+  timestamp: number;
+  data: HealthCheckResponse;
+}
+
+let cachedHealthStatus: CachedHealthStatus | null = null;
+const CACHE_TTL_MS = 5000; // 5 seconds cache
+
+async function performHealthCheck(): Promise<HealthCheckResponse> {
+  const timestamp = new Date().toISOString();
+  let databaseConnected = false;
+  let databaseStatus = 'نامشخص';
+  let redisConnected = false;
+  let redisStatus = 'نامشخص';
+  let minioConnected = false;
+  let minioStatus = 'نامشخص';
+
   try {
-    // Test database connection
-    await prisma.$connect();
+    // Lightweight database check (connection pool is already established)
     await prisma.$queryRaw`SELECT 1`;
-
-    const response: HealthCheckResponse = {
-      status: 'OK',
-      message: 'سرور در حال اجراست و به دیتابیس متصل است',
-      timestamp: new Date().toISOString(),
-      database: {
-        connected: true,
-        status: 'متصل',
-      },
-    };
-
-    res.status(200).json(response);
+    databaseConnected = true;
+    databaseStatus = 'متصل';
   } catch (error) {
-    const response: HealthCheckResponse = {
-      status: 'ERROR',
-      message: 'اتصال به دیتابیس با خطا مواجه شد',
-      timestamp: new Date().toISOString(),
-      database: {
-        connected: false,
-        status: error instanceof Error ? error.message : 'خطای نامشخص',
-      },
-    };
-
-    res.status(500).json(response);
+    databaseStatus = error instanceof Error ? error.message : 'خطای نامشخص';
   }
+
+  try {
+    // Redis check with timeout to prevent hanging
+    const redisStatusResult = await Promise.race([
+      getRedisStatus(),
+      new Promise<{ connected: boolean; error?: string }>((resolve) =>
+        setTimeout(() => resolve({ connected: false, error: 'Timeout' }), 1000)
+      ),
+    ]);
+    redisConnected = redisStatusResult.connected;
+    redisStatus = redisConnected ? 'متصل' : redisStatusResult.error || 'قطع شده';
+  } catch (error) {
+    redisStatus = error instanceof Error ? error.message : 'خطای نامشخص';
+  }
+
+  try {
+    // MinIO check with timeout to prevent hanging
+    const minioStatusResult = await Promise.race([
+      getMinioStatus(),
+      new Promise<{ connected: boolean; error?: string }>((resolve) =>
+        setTimeout(() => resolve({ connected: false, error: 'Timeout' }), 2000)
+      ),
+    ]);
+    minioConnected = minioStatusResult.connected;
+    minioStatus = minioConnected ? 'متصل و احراز هویت موفق' : minioStatusResult.error || 'قطع شده';
+  } catch (error) {
+    minioStatus = error instanceof Error ? error.message : 'خطای نامشخص';
+  }
+
+  const allServicesConnected = databaseConnected && redisConnected && minioConnected;
+  return {
+    status: allServicesConnected ? 'OK' : 'ERROR',
+    message: allServicesConnected
+      ? 'سرور در حال اجراست و به تمام سرویس‌ها متصل است'
+      : 'سرور در حال اجراست اما برخی سرویس‌ها در دسترس نیستند',
+    timestamp,
+    database: {
+      connected: databaseConnected,
+      status: databaseStatus,
+    },
+    redis: {
+      connected: redisConnected,
+      status: redisStatus,
+    },
+    minio: {
+      connected: minioConnected,
+      status: minioStatus,
+    },
+  };
+}
+
+export const healthCheck = async (req: Request, res: Response): Promise<void> => {
+  const now = Date.now();
+
+  // Return cached result if still valid
+  if (cachedHealthStatus && (now - cachedHealthStatus.timestamp) < CACHE_TTL_MS) {
+    res.status(cachedHealthStatus.data.status === 'OK' ? 200 : 503).json(cachedHealthStatus.data);
+    return;
+  }
+
+  // Perform health check and cache result
+  const healthData = await performHealthCheck();
+  cachedHealthStatus = {
+    timestamp: now,
+    data: healthData,
+  };
+
+  res.status(healthData.status === 'OK' ? 200 : 503).json(healthData);
 };
 

@@ -1,0 +1,28 @@
+---
+description: Code output format guidelines for agent responses
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Code Output Format
+
+## CRITICAL: Code-Only Responses
+- **Output ONLY the code itself**
+- **NO explanations of what was coded**
+- **NO descriptions of what changed**
+- **NO additional commentary or explanations**
+- **Just provide the requested code directly**
+
+## What NOT to Include
+- ❌ Explanations of the implementation
+- ❌ Descriptions of changes made
+- ❌ Commentary about the code
+- ❌ Step-by-step breakdowns
+- ❌ "Here's what I did" statements
+- ❌ Technical explanations
+
+## What TO Include
+- ✅ Only the requested code
+- ✅ Proper formatting and indentation
+- ✅ Complete, functional code
+- ✅ Necessary imports and dependencies
