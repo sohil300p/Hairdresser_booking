@@ -4,6 +4,7 @@ import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../auth/auth.controller';
 import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile/profile.controller';
+import { editProfileController } from '../Profile/editprofile.controller';
 import {
   uploadFileController,
   downloadFileController,
@@ -24,22 +25,20 @@ router.post('/otp/verify', verifyOtpController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
+router.put('/profile', authenticateToken, upload.single('profileImage'), editProfileController);
 
 
 
+// Authentication Routes
+router.post('/auth/refresh-token', refreshTokenController);
+router.post('/auth/verify-token', verifyTokenController);
+router.post('/auth/logout', logoutController);
 
-
-
-// // Authentication Routes
-// router.post('/auth/refresh-token', refreshTokenController);
-// router.post('/auth/verify-token', verifyTokenController);
-// router.post('/auth/logout', logoutController);
-
-// // File Routes
-// router.post('/files/upload', upload.single('file'), uploadFileController);
-// router.get('/files/download/:fileName', downloadFileController);
-// router.get('/files/metadata/:fileName', getFileMetadataController);
-// router.delete('/files/:fileName', deleteFileController);
-// router.get('/files/list', listFilesController);
+// File Routes
+router.post('/files/upload', upload.single('file'), uploadFileController);
+router.get('/files/download/:fileName', downloadFileController);
+router.get('/files/metadata/:fileName', getFileMetadataController);
+router.delete('/files/:fileName', deleteFileController);
+router.get('/files/list', listFilesController);
 
 export default router;
