@@ -13,7 +13,7 @@ const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
 function generateOTP(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
-console.log(generateOTP())
+
 /**
  * Get Redis key for OTP
  */

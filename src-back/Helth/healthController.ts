@@ -27,7 +27,7 @@ async function performHealthCheck(): Promise<HealthCheckResponse> {
     // Lightweight database check (connection pool is already established)
     await prisma.$queryRaw`SELECT 1`;
     databaseConnected = true;
-    databaseStatus = 'متصل';
+    databaseStatus = 'Connected.';
   } catch (error) {
     databaseStatus = error instanceof Error ? error.message : 'خطای نامشخص';
   }
@@ -41,7 +41,7 @@ async function performHealthCheck(): Promise<HealthCheckResponse> {
       ),
     ]);
     redisConnected = redisStatusResult.connected;
-    redisStatus = redisConnected ? 'متصل' : redisStatusResult.error || 'قطع شده';
+    redisStatus = redisConnected ? 'Connected' : redisStatusResult.error || 'Disconnected';
   } catch (error) {
     redisStatus = error instanceof Error ? error.message : 'خطای نامشخص';
   }
@@ -55,7 +55,7 @@ async function performHealthCheck(): Promise<HealthCheckResponse> {
       ),
     ]);
     minioConnected = minioStatusResult.connected;
-    minioStatus = minioConnected ? 'متصل و احراز هویت موفق' : minioStatusResult.error || 'قطع شده';
+    minioStatus = minioConnected ? 'Connected and authenticion is successfully.' : minioStatusResult.error || 'Disconnected';
   } catch (error) {
     minioStatus = error instanceof Error ? error.message : 'خطای نامشخص';
   }

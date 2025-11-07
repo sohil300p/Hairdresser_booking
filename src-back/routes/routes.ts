@@ -5,7 +5,7 @@ import { refreshTokenController, verifyTokenController, logoutController } from 
 import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile/profile.controller';
 import { editProfileController } from '../Profile/editprofile.controller';
-import { getBarbersController, getBarberByIdController } from '../Barber/barber.controller';
+import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/barber.controller';
 import {
   uploadFileController,
   downloadFileController,
