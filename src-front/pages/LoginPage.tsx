@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { AppContextType } from '../types';
 import { Button } from '../components/Button';
+import { Logo } from '../components/Logo';
 import { authService } from '../src/services/auth.service';
 
 interface LoginPageProps {
@@ -71,10 +72,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
     
     return (
         <div className="h-screen bg-white flex flex-col justify-center items-center p-8">
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">LocalBarber</h1>
-            <p className="text-gray-500 mt-2">به اپلیکیشن رزرو آرایشگر خوش آمدید</p>
+            <Logo height={80} className="mb-2" />
+            {/* <h1 className="text-3xl font-bold text-[var(--text-primary)]">KitChi</h1> */}
+            <p className="text-gray-500">به اپلیکیشن رزرو آرایشگر خوش آمدید</p>
             
-            <div className="w-full mt-12">
+            <div className="w-full mt-6">
                 {step === 1 ? (
                     <>
                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 text-right mb-1">شماره موبایل</label>
@@ -87,10 +89,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             className="form-input text-left direction-ltr"
                             disabled={loading}
                         />
-                        <p className="text-xs text-gray-500 mt-2 text-right">شماره موبایل ۱۱ رقمی خود را وارد کنید.</p>
                         <Button className="mt-4" onClick={handleSendOtp} disabled={phone.length < 11 || loading}>
                             {loading ? 'در حال ارسال...' : 'دریافت کد تایید'}
                         </Button>
+                        <p className="text-xs text-center text-gray-500 mt-2">جهت وورد و رزرو وقت آرایشگاه، شماره همراه خود را وارد کنید.</p>
                     </>
                 ) : (
                     <>
@@ -105,24 +107,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             maxLength={4}
                             disabled={loading}
                         />
-                        <p className="text-xs text-gray-500 mt-2 text-right">کد ۴ رقمی ارسال شده را وارد کنید.</p>
-                        {otpSent && (
-                            <button
-                                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                                onClick={handleSendOtp}
-                                disabled={loading}
-                            >
-                                ارسال مجدد کد
-                            </button>
-                        )}
+                        <p className="text-xs text-center text-gray-500 mt-2">کد ۴ رقمی ارسال شده را وارد کنید.</p>
                         <Button className="mt-4" onClick={handleVerifyOtp} disabled={otp.length < 4 || loading}>
                             {loading ? 'در حال تایید...' : 'ورود'}
                         </Button>
+
+                        {otpSent && (
+                            <Button 
+                                className="mt-2 bg-transparent border-2 text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-primary)] hover:bg-blue-50"
+                                onClick={handleSendOtp}
+                                disabled={loading || !otpExpired}
+                            >
+                                ارسال مجدد کد
+                            </Button>
+                        )}
                     </>
                 )}
             </div>
              <button className="mt-8 text-sm text-gray-500 hover:text-[var(--primary)]" onClick={() => { context.login(); context.setCurrentPage('home');}}>
-                فعلا رد شو
+                فعلا نمیخواد
             </button>
         </div>
     )

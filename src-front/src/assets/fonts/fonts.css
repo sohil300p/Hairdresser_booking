@@ -1,0 +1,45 @@
+/* IranSansX Variable Font */
+@font-face {
+  font-family: 'IranSansX';
+  src: url('/fonts/IRANSansXV.woff2') format('woff2'),
+       url('/fonts/IRANSansXV.woff') format('woff');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  font-variation-settings: 'wght' 400;
+}
+
+/* Fallback static fonts */
+@font-face {
+  font-family: 'IranSansX';
+  src: url('/fonts/IRANSansX-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IranSansX';
+  src: url('/fonts/IRANSansX-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Root font family */
+:root {
+  --font-iransansx: 'IranSansX', 'IRANSans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  font-family: var(--font-iransansx);
+}
+
+body {
+  font-family: var(--font-iransansx);
+  font-feature-settings: 'kern' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+

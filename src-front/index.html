@@ -7,7 +7,6 @@
     <title>LocalBarber — اپ رزرو آرایشگر</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-      @import url('https://font-face.ir/css/iransansx/iransansx.css');
       :root {
         /* Material 3 Color Tokens */
         --md-sys-color-primary: #1666A9;
@@ -29,7 +28,7 @@
         --md-sys-color-on-tertiary: #FFFFFF;
       }
       body {
-        font-family: 'IranSansX', 'IRANSans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: var(--font-iransansx, 'IranSansX', 'IRANSans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
         background-color: var(--md-sys-color-background);
         color: var(--md-sys-color-on-surface);
       }

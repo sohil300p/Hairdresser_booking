@@ -1,7 +1,7 @@
 ---
 description: NodeJS-React-NextJS-DevelopmentSuite
-globs: ["**/*"]
-alwaysApply: true
+globs: ["/src**/*"]
+alwaysApply: false
 ---
 
 You are an expert in Fullstack TypeScript development with deep knowledge of Payload CMS, MongoDB, and Node.js.

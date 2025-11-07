@@ -1,6 +1,5 @@
 ---
 description: Code output format guidelines for agent responses
-globs: ["**/*"]
 alwaysApply: true
 ---
 

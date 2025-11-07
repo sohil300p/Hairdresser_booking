@@ -1,23 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { AppContextType, Barber } from '../types';
-import { BARBERS, SERVICES } from '../constants';
+import { BARBERS, SERVICES, MAPIR_API_KEY } from '../constants';
 import { BarberCard } from '../components/BarberCard';
+import { Map, type MapMarker } from '../components/Map';
 import { Icon } from '../components/Icon';
 import { barberService } from '../src/services/barber.service';
 
 type SortType = 'distance' | 'rating' | 'price_asc';
 type ViewMode = 'list' | 'map';
-
-const MapMarker: React.FC<{ isSelected: boolean }> = ({ isSelected }) => (
-  <div className={`transition-all duration-300 ${isSelected ? 'scale-125 z-20' : 'z-10'}`}>
-    <div
-      className={`rounded-full flex items-center justify-center transition-all duration-300 border-2 border-white shadow-lg ${isSelected ? 'w-9 h-9 bg-[var(--md-sys-color-error)]' : 'w-7 h-7 bg-[var(--md-sys-color-primary)]'}`}
-    >
-      <Icon name="location" className="w-4 h-4 text-white" />
-    </div>
-    <div className={`mx-auto mt-1 w-2 h-2 rounded-full transition-all ${isSelected ? 'bg-[var(--md-sys-color-error)]' : 'bg-[var(--md-sys-color-primary)]'}`} />
-  </div>
-);
 
 export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => {
   const [sortType, setSortType] = useState<SortType>('distance');
@@ -79,9 +69,41 @@ export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => 
         return barbersCopy.sort((a, b) => a.distance - b.distance);
     }
   }, [sortType, barbers]);
+
+  const mapMarkers: MapMarker[] = useMemo(() => {
+    return sortedBarbers.map((barber) => ({
+      id: barber.id,
+      lat: barber.location.lat,
+      lng: barber.location.lng,
+      title: barber.name,
+      data: barber,
+    }));
+  }, [sortedBarbers]);
+
+  const mapCenter = useMemo(() => {
+    if (sortedBarbers.length === 0) {
+      return { lat: 35.6892, lng: 51.3890 };
+    }
+    const avgLat = sortedBarbers.reduce((sum, b) => sum + b.location.lat, 0) / sortedBarbers.length;
+    const avgLng = sortedBarbers.reduce((sum, b) => sum + b.location.lng, 0) / sortedBarbers.length;
+    return { lat: avgLat, lng: avgLng };
+  }, [sortedBarbers]);
+
+  useEffect(() => {
+    if (viewMode === 'map' && !selectedBarberOnMap && sortedBarbers.length > 0) {
+      setSelectedBarberOnMap(sortedBarbers[0]);
+    }
+  }, [viewMode, selectedBarberOnMap, sortedBarbers]);
   
   const handleBarberClick = (barber: Barber) => {
     context.setCurrentPage('barber', { barber });
+  };
+
+  const handleMarkerClick = (marker: MapMarker) => {
+    const barber = marker.data as Barber;
+    if (barber) {
+      setSelectedBarberOnMap(barber);
+    }
   };
 
   const SortButton: React.FC<{ type: SortType, label: string }> = ({ type, label }) => (
@@ -143,29 +165,16 @@ export const HomePage: React.FC<{ context: AppContextType }> = ({ context }) => 
         </div>
 
         {viewMode === 'map' && (
-            <div className="mb-4 h-[calc(100vh-350px)] bg-gray-300 rounded-lg flex items-center justify-center text-gray-500 relative overflow-hidden">
-                 <img src="https://storage.googleapis.com/maker-studio-project-media-prod/maps/static_map.png" className="w-full h-full object-cover" alt="Map"/>
-                 {sortedBarbers.map(barber => {
-                     const MAP_TOP_LAT = 35.73;
-                     const MAP_LEFT_LNG = 51.37;
-                     const LAT_SPAN = 0.045;
-                     const LNG_SPAN = 0.09;
-                     
-                     const top = Math.max(5, Math.min(95, ((MAP_TOP_LAT - barber.location.lat) / LAT_SPAN) * 100));
-                     const left = Math.max(5, Math.min(95, ((barber.location.lng - MAP_LEFT_LNG) / LNG_SPAN) * 100));
-                     const isSelected = selectedBarberOnMap?.id === barber.id;
-
-                     return (
-                         <div 
-                            key={barber.id} 
-                            style={{ top: `${top}%`, left: `${left}%` }} 
-                            className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer" 
-                            onClick={(e) => { e.stopPropagation(); setSelectedBarberOnMap(barber); }}
-                          >
-                             <MapMarker isSelected={isSelected} />
-                         </div>
-                     )
-                 })}
+            <div className="mb-4 h-[calc(100vh-350px)] relative">
+                 <Map
+                   markers={mapMarkers}
+                   selectedMarkerId={selectedBarberOnMap?.id || null}
+                   onMarkerClick={handleMarkerClick}
+                   center={mapCenter}
+                   zoom={12}
+                   height="100%"
+                   className="rounded-lg"
+                 />
                  
                  <div className={`absolute bottom-0 left-0 right-0 p-3 transition-transform duration-500 ease-in-out z-30 ${selectedBarberOnMap ? 'translate-y-0' : 'translate-y-full'}`}>
                     {selectedBarberOnMap && (
