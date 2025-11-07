@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+dist
+.git
+.gitignore
+Dockerfile.*
+docker-compose*.yml
+docker-compose*.yaml
+src-front/node_modules
+src-front/dist
+src-front/.vite
+docker
+TEST_API.md

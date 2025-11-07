@@ -110,6 +110,37 @@ npm run dev
 
 The API will be available at `http://localhost:3000`
 
+## 🚀 Production Deployment (Docker)
+
+The repository ships with a production-ready compose stack that builds the backend, frontend, and MySQL services without exposing container ports. This layout is compatible with Dockploy/Traefik-managed ingress.
+
+1. **Prepare environment variables**
+   - Populate the root `.env` with production secrets (JWT keys, database credentials, Map.ir key, etc.).
+   - Ensure the database URL host resolves inside the compose network (it is overridden to `mysql` by default).
+   - Set `VITE_MAPIR_API_KEY` and (optionally) `VITE_API_BASE_URL` before building the frontend image.
+
+2. **Build images**
+
+   ```bash
+   docker compose -f docker-compose.production.yml build
+   ```
+
+3. **Run the stack** (Traefik will discover services via labels you supply):
+
+   ```bash
+   docker compose -f docker-compose.production.yml up -d
+   ```
+
+4. **Add Traefik labels**
+   - Uncomment and customise the sample labels in `docker-compose.production.yml` for both `backend` and `frontend` services to match your domains.
+
+5. **Database persistence**
+   - A `mysql-data` named volume stores MySQL data between deployments.
+
+6. **Updating configuration**
+   - Re-run the build command whenever frontend or backend dependencies change.
+   - Redeploy with `docker compose -f docker-compose.production.yml up -d` to roll out new images.
+
 ## 🐳 Docker Commands
 
 ```bash
@@ -125,96 +156,3 @@ docker-compose logs -f
 # Restart services
 docker-compose restart
 ```
-
-## 💾 Database Setup Guide
-
-### For First Time Setup:
-
-1. **Start Docker MySQL:**
-   ```bash
-   docker compose up -d
-   ```
-
-2. **Wait for MySQL to be ready** (10-15 seconds):
-   ```bash
-   docker logs barber-mysql --tail 10
-   ```
-   Look for: `ready for connections`
-
-3. **Generate Prisma Client:**
-   ```bash
-   npx prisma generate
-   ```
-
-4. **Run Migrations:**
-   ```bash
-   npx prisma migrate dev --name init
-   ```
-
-5. **Verify Tables Created:**
-   ```bash
-   npx prisma studio
-   ```
-   This opens a GUI at `http://localhost:5555` where you can view your database.
-
-### Database Schema:
-
-- **users**: Stores user accounts with phone-based authentication
-  - Fields: `id`, `first_name`, `last_name`, `phone` (unique), `password`, `profile_image`, `role`, `created_at`, `updated_at`
-
-- **barbers**: Barber profiles linked to users
-  - Fields: `id`, `user_id` (FK), `specialization`, `experience_years`, `rating`, `bio`, `profile_image`
-
-- **appointments**: Appointment bookings
-  - Fields: `id`, `user_id` (FK), `barber_id` (FK), `appointment_date`, `status`, `service_type`, `notes`
-
-### Troubleshooting:
-
-**Port 3306 Already in Use:**
-- Docker automatically uses port 3307
-- Update `DATABASE_URL` in `.env` to use port 3307
-
-**Shadow Database Permission Error:**
-- Use `root` user for migrations: `DATABASE_URL="mysql://root:rootpassword@localhost:3307/barber_booking"`
-- After migration, switch back to regular user
-
-**Connection Failed:**
-- Make sure Docker container is running: `docker ps`
-- Check MySQL logs: `docker logs barber-mysql`
-- Verify port in `DATABASE_URL` matches Docker port mapping
-
-## 📝 Scripts
-
-```bash
-npm start          # Start production server
-npm run dev        # Start development server with hot reload
-npm run build      # Build TypeScript (if applicable)
-npm run migrate    # Run database migrations
-npm run seed       # Seed database with sample data
-npm test           # Run tests
-```
-
-## 🔒 Security Best Practices
-
-- Store sensitive data in environment variables
-- Use HTTPS in production
-- Implement rate limiting
-- Validate and sanitize all user inputs
-- Use strong JWT secrets
-- Implement proper error handling
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 👤 Author
-
-Soheil saffari
