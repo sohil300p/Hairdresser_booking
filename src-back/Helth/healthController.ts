@@ -64,7 +64,7 @@ async function performHealthCheck(): Promise<HealthCheckResponse> {
   return {
     status: allServicesConnected ? 'OK' : 'ERROR',
     message: allServicesConnected
-      ? 'سرور در حال اجراست و به تمام سرویس‌ها متصل است'
+      ? 'The server is running and connected to all services.'
       : 'سرور در حال اجراست اما برخی سرویس‌ها در دسترس نیستند',
     timestamp,
     database: {

@@ -5,7 +5,7 @@ import { refreshTokenController, verifyTokenController, logoutController } from 
 import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile/profile.controller';
 import { editProfileController } from '../Profile/editprofile.controller';
-import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/barber.controller';
+import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/Hairdresser.controller';
 import {
   uploadFileController,
   downloadFileController,
@@ -24,9 +24,9 @@ router.get('/health', healthCheck);
 router.post('/otp/send', sendOtpController);
 router.post('/otp/verify', verifyOtpController);
 
-// Barber Routes
-router.get('/barbers', getBarbersController);
-router.get('/barbers/:id', getBarberByIdController);
+// Home page
+router.get('/Hairdresser', getBarbersController);
+router.get('/Hairdresser/:id', getBarberByIdController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);

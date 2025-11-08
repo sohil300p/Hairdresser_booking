@@ -42,15 +42,73 @@ model Barber {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+  appointments Appointment[] @relation("BarberAppointments")
 
   @@map("barbers")
+}
+
+model Barbershop {
+  id              Int              @id @default(autoincrement())
+  name            String
+  description     String?          @db.Text
+  gender          BarbershopGender
+  type            BarbershopType
+  averageRating   Float            @default(0)
+  ratingCount     Int              @default(0)
+  minServicePrice Decimal?         @map("min_service_price") @db.Decimal(10, 2)
+  maxServicePrice Decimal?         @map("max_service_price") @db.Decimal(10, 2)
+  startingPrice   Decimal?         @map("starting_price") @db.Decimal(10, 2)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  services Service[]
+  staff    Staff[]
+
+  @@map("barbershops")
+}
+
+model Service {
+  id            Int           @id @default(autoincrement())
+  barbershopId  Int           @map("barbershop_id")
+  name          String
+  gender        ServiceGender
+  estimatedTime Int           @map("estimated_time")
+  isVip         Boolean       @default(false) @map("is_vip")
+  price         Decimal       @db.Decimal(10, 2)
+  description   String?       @db.Text
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointments Appointment[] @relation("ServiceAppointments")
+
+  @@map("services")
+}
+
+model Staff {
+  id              Int         @id @default(autoincrement())
+  barbershopId    Int         @map("barbershop_id")
+  fullName        String      @map("full_name")
+  phone           String      @unique
+  gender          StaffGender
+  experienceYears Int?        @map("experience_years")
+  bio             String?     @db.Text
+  profileImage    String?     @map("profile_image")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  appointments Appointment[] @relation("StaffAppointments")
+
+  @@map("staff")
 }
 
 model Appointment {
   id              Int               @id @default(autoincrement())
   userId          Int               @map("user_id")
-  barberId        Int               @map("barber_id")
+  barberId        Int?              @map("barber_id")
+  staffId         Int?              @map("staff_id")
+  serviceId       Int?              @map("service_id")
   appointmentDate DateTime          @map("appointment_date")
   status          AppointmentStatus @default(PENDING)
   serviceType     String?           @map("service_type")
@@ -58,8 +116,10 @@ model Appointment {
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  barber Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  barber  Barber?  @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
+  staff   Staff?   @relation("StaffAppointments", fields: [staffId], references: [id], onDelete: SetNull)
+  service Service? @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@map("appointments")
 }
@@ -84,15 +144,38 @@ enum Role {
   ADMIN
 }
 
+enum FileType {
+  PROFILE
+  PORTFOLIO
+  OTHER
+}
+
+enum BarbershopGender {
+  MALE
+  FEMALE
+  UNISEX
+}
+
+enum BarbershopType {
+  FIXED
+  MOBILE
+  HYBRID
+}
+
+enum ServiceGender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum StaffGender {
+  MALE
+  FEMALE
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
   COMPLETED
   CANCELLED
-}
-
-enum FileType {
-  PROFILE
-  PORTFOLIO
-  OTHER
 }

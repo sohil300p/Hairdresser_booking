@@ -1,17 +1,29 @@
-import prisma from '../config/prisma';
-import { GetBarbersRequest, GetBarbersResponse, GetBarberByIdResponse, BarberResponse } from './barber.type';
+import prisma from "../config/prisma";
+import {
+  GetBarbersRequest,
+  GetBarbersResponse,
+  GetBarberByIdResponse,
+  BarberResponse,
+} from "./Hairdresser.type";
 
 /**
  * Calculate distance between two coordinates using Haversine formula
  */
-function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function calculateDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
   const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -19,7 +31,9 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 /**
  * Get all barbers with optional geographical filtering
  */
-export async function getBarbersService(params: GetBarbersRequest = {}): Promise<GetBarbersResponse> {
+export async function getBarbersService(
+  params: GetBarbersRequest = {}
+): Promise<GetBarbersResponse> {
   try {
     const barbers = await prisma.barber.findMany({
       include: {
@@ -33,14 +47,15 @@ export async function getBarbersService(params: GetBarbersRequest = {}): Promise
         },
       },
       orderBy: {
-        rating: 'desc',
+        rating: "desc",
       },
     });
 
     let barbersWithDistance: BarberResponse[] = barbers.map((barber) => {
-      const fullName = barber.user.firstName && barber.user.lastName
-        ? `${barber.user.firstName} ${barber.user.lastName}`
-        : barber.user.firstName || barber.user.lastName || 'بدون نام';
+      const fullName =
+        barber.user.firstName && barber.user.lastName
+          ? `${barber.user.firstName} ${barber.user.lastName}`
+          : barber.user.firstName || barber.user.lastName || "بدون نام";
 
       return {
         id: barber.id,
@@ -70,21 +85,25 @@ export async function getBarbersService(params: GetBarbersRequest = {}): Promise
     }
 
     // Filter by radius if provided
-    if (params.radius !== undefined && params.lat !== undefined && params.lng !== undefined) {
+    if (
+      params.radius !== undefined &&
+      params.lat !== undefined &&
+      params.lng !== undefined
+    ) {
       // Note: This will work once location fields are added to Barber model
       // For now, we return all barbers
     }
 
     return {
       success: true,
-      message: 'لیست آرایشگران با موفقیت دریافت شد',
+      message: "لیست آرایشگران با موفقیت دریافت شد",
       data: barbersWithDistance,
     };
   } catch (error) {
-    console.error('Error getting barbers:', error);
+    console.error("Error getting barbers:", error);
     return {
       success: false,
-      message: 'دریافت لیست آرایشگران با خطا مواجه شد',
+      message: "دریافت لیست آرایشگران با خطا مواجه شد",
     };
   }
 }
@@ -92,7 +111,9 @@ export async function getBarbersService(params: GetBarbersRequest = {}): Promise
 /**
  * Get single barber by ID
  */
-export async function getBarberByIdService(barberId: number): Promise<GetBarberByIdResponse> {
+export async function getBarberByIdService(
+  barberId: number
+): Promise<GetBarberByIdResponse> {
   try {
     const barber = await prisma.barber.findUnique({
       where: { id: barberId },
@@ -111,13 +132,14 @@ export async function getBarberByIdService(barberId: number): Promise<GetBarberB
     if (!barber) {
       return {
         success: false,
-        message: 'آرایشگر یافت نشد',
+        message: "آرایشگر یافت نشد",
       };
     }
 
-    const fullName = barber.user.firstName && barber.user.lastName
-      ? `${barber.user.firstName} ${barber.user.lastName}`
-      : barber.user.firstName || barber.user.lastName || 'بدون نام';
+    const fullName =
+      barber.user.firstName && barber.user.lastName
+        ? `${barber.user.firstName} ${barber.user.lastName}`
+        : barber.user.firstName || barber.user.lastName || "بدون نام";
 
     const barberResponse: BarberResponse = {
       id: barber.id,
@@ -138,15 +160,14 @@ export async function getBarberByIdService(barberId: number): Promise<GetBarberB
 
     return {
       success: true,
-      message: 'اطلاعات آرایشگر با موفقیت دریافت شد',
+      message: "اطلاعات آرایشگر با موفقیت دریافت شد",
       data: barberResponse,
     };
   } catch (error) {
-    console.error('Error getting barber by ID:', error);
+    console.error("Error getting barber by ID:", error);
     return {
       success: false,
-      message: 'دریافت اطلاعات آرایشگر با خطا مواجه شد',
+      message: "دریافت اطلاعات آرایشگر با خطا مواجه شد",
     };
   }
 }
-
