@@ -10,59 +10,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Customer {
   id           Int       @id @default(autoincrement())
-  firstName    String?   @map("first_name")
-  lastName     String?   @map("last_name")
+  fullName     String?   @map("full_name")
   phone        String    @unique
+  password     String?   @map("password")
+  avatar       String?   @map("avatar")
   otp          String?
   otpExpiresAt DateTime? @map("otp_expires_at")
   profileImage String?   @map("profile_image")
-  role         Role      @default(CUSTOMER)
+  publicMeta   Json?     @map("public_meta")
+  privateMeta  Json?     @map("private_meta")
+  role         Role      @default(customer)
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  appointments  Appointment[]
-  barberProfile Barber?
-  files         File[]
+  appointments Appointment[]
+  files        File[]
+  ratings      BarbershopRating[]
 
-  @@map("users")
+  @@map("customer")
 }
 
 model Barber {
   id              Int      @id @default(autoincrement())
-  userId          Int      @unique @map("user_id")
   specialization  String?
   experienceYears Int?     @map("experience_years")
   rating          Float?   @default(0)
   bio             String?  @db.Text
   profileImage    String?  @map("profile_image")
+  serviceAudience Json?    @map("service_audience")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  appointments Appointment[] @relation("BarberAppointments")
+  appointments     Appointment[] @relation("BarberAppointments")
+  ownedBarbershops Barbershop[]  @relation("BarbershopOwner")
 
   @@map("barbers")
 }
 
 model Barbershop {
-  id              Int              @id @default(autoincrement())
-  name            String
-  description     String?          @db.Text
-  gender          BarbershopGender
-  type            BarbershopType
-  averageRating   Float            @default(0)
-  ratingCount     Int              @default(0)
-  minServicePrice Decimal?         @map("min_service_price") @db.Decimal(10, 2)
-  maxServicePrice Decimal?         @map("max_service_price") @db.Decimal(10, 2)
-  startingPrice   Decimal?         @map("starting_price") @db.Decimal(10, 2)
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  id                Int              @id @default(autoincrement())
+  name              String
+  description       String?          @db.Text
+  gender            BarbershopGender
+  type              BarbershopType
+  active            Boolean          @default(true)
+  deactivatedReason String?          @map("deactivated_reason") @db.Text
+  latitude          Decimal?         @db.Decimal(10, 7)
+  longitude         Decimal?         @db.Decimal(10, 7)
+  city              String?          @map("city")
+  neighborhood      String?          @map("neighborhood")
+  ownerId           Int              @map("owner_id")
+  openingTime       String?          @map("opening_time")
+  closingTime       String?          @map("closing_time")
+  averageRating     Float            @default(0)
+  ratingCount       Int              @default(0)
+  minServicePrice   Decimal?         @map("min_service_price") @db.Decimal(10, 2)
+  maxServicePrice   Decimal?         @map("max_service_price") @db.Decimal(10, 2)
+  startingPrice     Decimal?         @map("starting_price") @db.Decimal(10, 2)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
+  owner    Barber             @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   services Service[]
   staff    Staff[]
+  ratings  BarbershopRating[]
 
   @@map("barbershops")
 }
@@ -76,6 +90,8 @@ model Service {
   isVip         Boolean       @default(false) @map("is_vip")
   price         Decimal       @db.Decimal(10, 2)
   description   String?       @db.Text
+  reamemore     String?       @db.Text
+  isMedical     Boolean       @default(false) @map("is_medical")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
@@ -105,77 +121,94 @@ model Staff {
 
 model Appointment {
   id              Int               @id @default(autoincrement())
-  userId          Int               @map("user_id")
+  customerId      Int               @map("customer_id")
   barberId        Int?              @map("barber_id")
   staffId         Int?              @map("staff_id")
   serviceId       Int?              @map("service_id")
   appointmentDate DateTime          @map("appointment_date")
-  status          AppointmentStatus @default(PENDING)
+  status          AppointmentStatus @default(pending)
   serviceType     String?           @map("service_type")
   notes           String?           @db.Text
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  barber  Barber?  @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
-  staff   Staff?   @relation("StaffAppointments", fields: [staffId], references: [id], onDelete: SetNull)
-  service Service? @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  barber   Barber?  @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
+  staff    Staff?   @relation("StaffAppointments", fields: [staffId], references: [id], onDelete: SetNull)
+  service  Service? @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@map("appointments")
 }
 
 model File {
-  id        Int      @id @default(autoincrement())
-  fileUrl   String   @map("file_url") @db.Text
-  fileName  String   @map("file_name")
-  bucket    String
-  type      FileType
-  userId    Int      @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         Int      @id @default(autoincrement())
+  fileUrl    String   @map("file_url") @db.Text
+  fileName   String   @map("file_name")
+  bucket     String
+  type       FileType
+  customerId Int      @map("customer_id")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@map("files")
 }
 
+model BarbershopRating {
+  id           Int      @id @default(autoincrement())
+  barbershopId Int      @map("barbershop_id")
+  customerId   Int      @map("customer_id")
+  score        Int
+  comment      String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("barbershop_ratings")
+}
+
 enum Role {
-  CUSTOMER
-  BARBER
-  ADMIN
+  /// مشتری سیستم
+  customer
+  /// آرایشگر فعال در سیستم
+  barber
+  /// مدیر سیستم
+  admin
 }
 
 enum FileType {
-  PROFILE
-  PORTFOLIO
-  OTHER
+  profile
+  portfolio
+  other
 }
 
 enum BarbershopGender {
-  MALE
-  FEMALE
-  UNISEX
+  male
+  female
+  unisex
 }
 
 enum BarbershopType {
-  FIXED
-  MOBILE
-  HYBRID
+  fixed
+  mobile
+  hybrid
 }
 
 enum ServiceGender {
-  MALE
-  FEMALE
-  OTHER
+  male
+  female
+  other
 }
 
 enum StaffGender {
-  MALE
-  FEMALE
+  male
+  female
 }
 
 enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  COMPLETED
-  CANCELLED
+  pending
+  confirmed
+  completed
+  cancelled
 }
