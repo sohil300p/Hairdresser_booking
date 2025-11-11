@@ -18,17 +18,12 @@ model Customer {
   avatar       String?   @map("avatar")
   otp          String?
   otpExpiresAt DateTime? @map("otp_expires_at")
-  profileImage String?   @map("profile_image")
   publicMeta   Json?     @map("public_meta")
   privateMeta  Json?     @map("private_meta")
   role         Role      @default(customer)
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  appointments Appointment[]
-  files        File[]
-  ratings      BarbershopRating[]
 
   @@map("customer")
 }
@@ -37,14 +32,12 @@ model Barber {
   id              Int      @id @default(autoincrement())
   specialization  String?
   experienceYears Int?     @map("experience_years")
-  rating          Float?   @default(0)
   bio             String?  @db.Text
-  profileImage    String?  @map("profile_image")
+  avatar    String?  @map("avatar")
   serviceAudience Json?    @map("service_audience")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  appointments     Appointment[] @relation("BarberAppointments")
   ownedBarbershops Barbershop[]  @relation("BarbershopOwner")
 
   @@map("barbers")
@@ -67,16 +60,11 @@ model Barbershop {
   closingTime       String?          @map("closing_time")
   averageRating     Float            @default(0)
   ratingCount       Int              @default(0)
-  minServicePrice   Decimal?         @map("min_service_price") @db.Decimal(10, 2)
-  maxServicePrice   Decimal?         @map("max_service_price") @db.Decimal(10, 2)
-  startingPrice     Decimal?         @map("starting_price") @db.Decimal(10, 2)
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")
 
   owner    Barber             @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   services Service[]
-  staff    Staff[]
-  ratings  BarbershopRating[]
 
   @@map("barbershops")
 }
@@ -88,42 +76,22 @@ model Service {
   gender        ServiceGender
   estimatedTime Int           @map("estimated_time")
   isVip         Boolean       @default(false) @map("is_vip")
-  price         Decimal       @db.Decimal(10, 2)
   description   String?       @db.Text
-  reamemore     String?       @db.Text
+  readmore     String?       @db.Text
   isMedical     Boolean       @default(false) @map("is_medical")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  appointments Appointment[] @relation("ServiceAppointments")
 
   @@map("services")
 }
 
-model Staff {
-  id              Int         @id @default(autoincrement())
-  barbershopId    Int         @map("barbershop_id")
-  fullName        String      @map("full_name")
-  phone           String      @unique
-  gender          StaffGender
-  experienceYears Int?        @map("experience_years")
-  bio             String?     @db.Text
-  profileImage    String?     @map("profile_image")
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @updatedAt @map("updated_at")
-
-  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  appointments Appointment[] @relation("StaffAppointments")
-
-  @@map("staff")
-}
 
 model Appointment {
   id              Int               @id @default(autoincrement())
   customerId      Int               @map("customer_id")
   barberId        Int?              @map("barber_id")
-  staffId         Int?              @map("staff_id")
   serviceId       Int?              @map("service_id")
   appointmentDate DateTime          @map("appointment_date")
   status          AppointmentStatus @default(pending)
