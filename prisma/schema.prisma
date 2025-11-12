@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Customer {
@@ -17,13 +18,17 @@ model Customer {
   password     String?   @map("password")
   avatar       String?   @map("avatar")
   otp          String?
-  otpExpiresAt DateTime? @map("otp_expires_at")
+  otpExpiresAt DateTime? @map("otp_expires_at") @db.Timestamp(3)
   publicMeta   Json?     @map("public_meta")
   privateMeta  Json?     @map("private_meta")
   role         Role      @default(customer)
-  lastLoginAt  DateTime? @map("last_login_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamp(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  appointments Appointment[]
+  files        File[]
+  commentRates CommentRate[]
 
   @@map("customer")
 }
@@ -33,11 +38,12 @@ model Barber {
   specialization  String?
   experienceYears Int?     @map("experience_years")
   bio             String?  @db.Text
-  avatar    String?  @map("avatar")
+  avatar          String?  @map("avatar")
   serviceAudience Json?    @map("service_audience")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(3)
 
+  appointments     Appointment[] @relation("BarberAppointments")
   ownedBarbershops Barbershop[]  @relation("BarbershopOwner")
 
   @@map("barbers")
@@ -60,49 +66,57 @@ model Barbershop {
   closingTime       String?          @map("closing_time")
   averageRating     Float            @default(0)
   ratingCount       Int              @default(0)
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  minServicePrice   Decimal?         @map("min_service_price") @db.Decimal(10, 2)
+  maxServicePrice   Decimal?         @map("max_service_price") @db.Decimal(10, 2)
+  startingPrice     Decimal?         @map("starting_price") @db.Decimal(10, 2)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamp(3)
 
-  owner    Barber             @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  services Service[]
+  owner        Barber        @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  services     Service[]
+  commentRates CommentRate[]
 
   @@map("barbershops")
 }
 
 model Service {
-  id            Int           @id @default(autoincrement())
-  barbershopId  Int           @map("barbershop_id")
-  name          String
-  gender        ServiceGender
-  estimatedTime Int           @map("estimated_time")
-  isVip         Boolean       @default(false) @map("is_vip")
-  description   String?       @db.Text
-  readmore     String?       @db.Text
-  isMedical     Boolean       @default(false) @map("is_medical")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id              Int           @id @default(autoincrement())
+  barbershopId    Int           @map("barbershop_id")
+  parentServiceId Int?          @map("parent_service_id")
+  name            String
+  gender          ServiceGender
+  estimatedTime   Int           @map("estimated_time")
+  isVip           Boolean       @default(false) @map("is_vip")
+  price           Decimal       @db.Decimal(10, 2)
+  description     String?       @db.Text
+  reamemore       String?       @db.Text
+  files           Json?         @map("files")
+  isMedical       Boolean       @default(false) @map("is_medical")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamp(3)
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  parent       Service?      @relation("ServiceHierarchy", fields: [parentServiceId], references: [id])
+  children     Service[]     @relation("ServiceHierarchy")
+  appointments Appointment[] @relation("ServiceAppointments")
 
   @@map("services")
 }
-
 
 model Appointment {
   id              Int               @id @default(autoincrement())
   customerId      Int               @map("customer_id")
   barberId        Int?              @map("barber_id")
   serviceId       Int?              @map("service_id")
-  appointmentDate DateTime          @map("appointment_date")
+  appointmentDate DateTime          @map("appointment_date") @db.Timestamp(3)
   status          AppointmentStatus @default(pending)
   serviceType     String?           @map("service_type")
   notes           String?           @db.Text
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamp(3)
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   barber   Barber?  @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
-  staff    Staff?   @relation("StaffAppointments", fields: [staffId], references: [id], onDelete: SetNull)
   service  Service? @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@map("appointments")
@@ -115,33 +129,36 @@ model File {
   bucket     String
   type       FileType
   customerId Int      @map("customer_id")
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(3)
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@map("files")
 }
 
-model BarbershopRating {
-  id           Int      @id @default(autoincrement())
-  barbershopId Int      @map("barbershop_id")
-  customerId   Int      @map("customer_id")
-  score        Int
-  comment      String?  @db.Text
-  createdAt    DateTime @default(now()) @map("created_at")
+model CommentRate {
+  id              Int      @id @default(autoincrement())
+  barbershopId    Int      @map("barbershop_id")
+  customerId      Int      @map("customer_id")
+  commentId       String   @default(uuid()) @map("comment_id")
+  comment         String?  @db.Text
+  commentRate     Int      @map("comment_rate")
+  commentMeta     Json?    @map("comment_meta")
+  parentCommentId Int?     @map("parent_comment_id")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(3)
 
-  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  barbershop Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  parent     CommentRate?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies    CommentRate[] @relation("CommentThread")
 
-  @@map("barbershop_ratings")
+  @@map("comment_rates")
 }
 
 enum Role {
-  /// مشتری سیستم
   customer
-  /// آرایشگر فعال در سیستم
   barber
-  /// مدیر سیستم
   admin
 }
 
@@ -167,11 +184,6 @@ enum ServiceGender {
   male
   female
   other
-}
-
-enum StaffGender {
-  male
-  female
 }
 
 enum AppointmentStatus {
