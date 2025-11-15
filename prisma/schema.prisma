@@ -6,29 +6,31 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Customer {
-  id           Int       @id @default(autoincrement())
-  fullName     String?   @map("full_name")
-  phone        String    @unique
-  password     String?   @map("password")
-  avatar       String?   @map("avatar")
-  otp          String?
-  otpExpiresAt DateTime? @map("otp_expires_at") @db.Timestamp(3)
-  publicMeta   Json?     @map("public_meta")
-  privateMeta  Json?     @map("private_meta")
-  role         Role      @default(customer)
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamp(3)
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(3)
+  id              Int       @id @default(autoincrement())
+  fullName        String?   @map("full_name")
+  phone           String    @unique
+  password        String?   @map("password")
+  avatar          String?   @map("avatar")
+  walletBalance   Decimal   @default(0) @map("wallet_balance") @db.Decimal(10, 2)
+  transactionCode String?   @map("transaction_code")
+  otp             String?
+  otpExpires      DateTime? @map("otp_expires") @db.Timestamp(3)
+  publicMeta      Json?     @map("public_meta")
+  privateMeta     Json?     @map("private_meta")
+  role            Role      @default(customer)
+  lastLogin       DateTime? @map("last_login") @db.Timestamp(3)
+  created         DateTime  @default(now()) @map("created") @db.Timestamp(3)
+  updated         DateTime  @updatedAt @map("updated") @db.Timestamp(3)
 
-  appointments Appointment[]
-  files        File[]
   commentRates CommentRate[]
+  appointments Appointment[]
+  transactions Transaction[]
 
   @@map("customer")
 }
@@ -39,12 +41,15 @@ model Barber {
   experienceYears Int?     @map("experience_years")
   bio             String?  @db.Text
   avatar          String?  @map("avatar")
+  walletBalance   Decimal  @default(0) @map("wallet_balance") @db.Decimal(10, 2)
+  transactionCode String?  @map("transaction_code")
   serviceAudience Json?    @map("service_audience")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(3)
+  created         DateTime @default(now()) @map("created") @db.Timestamp(3)
+  updated         DateTime @updatedAt @map("updated") @db.Timestamp(3)
 
-  appointments     Appointment[] @relation("BarberAppointments")
   ownedBarbershops Barbershop[]  @relation("BarbershopOwner")
+  appointments     Appointment[] @relation("BarberAppointments")
+  transactions     Transaction[]
 
   @@map("barbers")
 }
@@ -64,17 +69,19 @@ model Barbershop {
   ownerId           Int              @map("owner_id")
   openingTime       String?          @map("opening_time")
   closingTime       String?          @map("closing_time")
+  avatar            String?          @map("avatar")
+  walletBalance     Decimal          @default(0) @map("wallet_balance") @db.Decimal(10, 2)
+  transactionCode   String?          @map("transaction_code")
   averageRating     Float            @default(0)
   ratingCount       Int              @default(0)
-  minServicePrice   Decimal?         @map("min_service_price") @db.Decimal(10, 2)
-  maxServicePrice   Decimal?         @map("max_service_price") @db.Decimal(10, 2)
-  startingPrice     Decimal?         @map("starting_price") @db.Decimal(10, 2)
-  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamp(3)
+  created           DateTime         @default(now()) @map("created") @db.Timestamp(3)
+  updated           DateTime         @updatedAt @map("updated") @db.Timestamp(3)
 
   owner        Barber        @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   services     Service[]
   commentRates CommentRate[]
+  appointments Appointment[]
+  transactions Transaction[]
 
   @@map("barbershops")
 }
@@ -87,13 +94,14 @@ model Service {
   gender          ServiceGender
   estimatedTime   Int           @map("estimated_time")
   isVip           Boolean       @default(false) @map("is_vip")
-  price           Decimal       @db.Decimal(10, 2)
+  price           Decimal?      @db.Decimal(10, 2)
   description     String?       @db.Text
-  reamemore       String?       @db.Text
+  readmore        String?       @db.Text
   files           Json?         @map("files")
+  avatar          String?       @map("avatar")
   isMedical       Boolean       @default(false) @map("is_medical")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamp(3)
+  created         DateTime      @default(now()) @map("created") @db.Timestamp(3)
+  updated         DateTime      @updatedAt @map("updated") @db.Timestamp(3)
 
   barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   parent       Service?      @relation("ServiceHierarchy", fields: [parentServiceId], references: [id])
@@ -104,68 +112,83 @@ model Service {
 }
 
 model Appointment {
-  id              Int               @id @default(autoincrement())
-  customerId      Int               @map("customer_id")
-  barberId        Int?              @map("barber_id")
-  serviceId       Int?              @map("service_id")
-  appointmentDate DateTime          @map("appointment_date") @db.Timestamp(3)
-  status          AppointmentStatus @default(pending)
-  serviceType     String?           @map("service_type")
-  notes           String?           @db.Text
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamp(3)
+  id           Int                     @id @default(autoincrement())
+  customerId   Int                     @map("customer_id")
+  barberId     Int?                    @map("barber_id")
+  serviceId    Int?                    @map("service_id")
+  barbershopId Int?                    @map("barbershop_id")
+  locationType AppointmentLocationType @map("location_type")
+  startTime    DateTime                @map("start_time") @db.Timestamp(3)
+  endTime      DateTime                @map("end_time") @db.Timestamp(3)
+  status       AppointmentStatus       @default(pending)
+  serviceType  String?                 @map("service_type")
+  notes        String?                 @db.Text
+  publicMeta   Json?                   @map("public_meta")
+  privateMeta  Json?                   @map("private_meta")
+  created      DateTime                @default(now()) @map("created") @db.Timestamp(3)
+  updated      DateTime                @updatedAt @map("updated") @db.Timestamp(3)
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  barber   Barber?  @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
-  service  Service? @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  barber       Barber?       @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
+  service      Service?      @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
+  barbershop   Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
+  commentRates CommentRate[]
+  transactions Transaction[]
 
   @@map("appointments")
-}
-
-model File {
-  id         Int      @id @default(autoincrement())
-  fileUrl    String   @map("file_url") @db.Text
-  fileName   String   @map("file_name")
-  bucket     String
-  type       FileType
-  customerId Int      @map("customer_id")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(3)
-
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  @@map("files")
 }
 
 model CommentRate {
   id              Int      @id @default(autoincrement())
   barbershopId    Int      @map("barbershop_id")
   customerId      Int      @map("customer_id")
+  appointmentId   Int?     @map("appointment_id")
   commentId       String   @default(uuid()) @map("comment_id")
   comment         String?  @db.Text
   commentRate     Int      @map("comment_rate")
   commentMeta     Json?    @map("comment_meta")
   parentCommentId Int?     @map("parent_comment_id")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(3)
+  created         DateTime @default(now()) @map("created") @db.Timestamp(3)
+  updated         DateTime @updatedAt @map("updated") @db.Timestamp(3)
 
-  barbershop Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  parent     CommentRate?  @relation("CommentThread", fields: [parentCommentId], references: [id])
-  replies    CommentRate[] @relation("CommentThread")
+  barbershop  Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointment Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  parent      CommentRate?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies     CommentRate[] @relation("CommentThread")
 
   @@map("comment_rates")
 }
 
-enum Role {
-  customer
-  barber
-  admin
+model Transaction {
+  id           Int                   @id @default(autoincrement())
+  type         TransactionType
+  direction    TransactionDirection?
+  authority    String?               @map("authority")
+  status       TransactionStatus     @default(pending)
+  amount       Decimal               @db.Decimal(10, 2)
+  referenceId  Int?                  @map("reference_id")
+  parentId     Int?                  @map("parent_id")
+  customerId   Int?                  @map("customer_id")
+  barberId     Int?                  @map("barber_id")
+  barbershopId Int?                  @map("barbershop_id")
+  description  String?               @db.Text
+  created      DateTime              @default(now()) @map("created") @db.Timestamp(3)
+  updated      DateTime              @updatedAt @map("updated") @db.Timestamp(3)
+
+  parent      Transaction?  @relation("TransactionHierarchy", fields: [parentId], references: [id])
+  children    Transaction[] @relation("TransactionHierarchy")
+  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  barber      Barber?       @relation(fields: [barberId], references: [id], onDelete: SetNull)
+  barbershop  Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
+  appointment Appointment?  @relation(fields: [referenceId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
 }
 
-enum FileType {
-  profile
-  portfolio
-  other
+enum Role {
+  customer
+  admin
 }
 
 enum BarbershopGender {
@@ -176,7 +199,7 @@ enum BarbershopGender {
 
 enum BarbershopType {
   fixed
-  mobile
+  onsite
   hybrid
 }
 
@@ -191,4 +214,25 @@ enum AppointmentStatus {
   confirmed
   completed
   cancelled
+}
+
+enum AppointmentLocationType {
+  customer_location
+  barbershop_fixed
+}
+
+enum TransactionType {
+  internal
+  external
+}
+
+enum TransactionDirection {
+  deposit
+  withdrawal
+}
+
+enum TransactionStatus {
+  pending
+  failed
+  done
 }
