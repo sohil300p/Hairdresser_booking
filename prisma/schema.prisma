@@ -1,194 +1,20 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider          = "mysql"
-  url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
-model Customer {
-  id              Int       @id @default(autoincrement())
-  fullName        String?   @map("full_name")
-  phone           String    @unique
-  password        String?   @map("password")
-  avatar          String?   @map("avatar")
-  walletBalance   Decimal   @default(0) @map("wallet_balance") @db.Decimal(10, 2)
-  transactionCode String?   @map("transaction_code")
-  otp             String?
-  otpExpires      DateTime? @map("otp_expires") @db.Timestamp(3)
-  publicMeta      Json?     @map("public_meta")
-  privateMeta     Json?     @map("private_meta")
-  role            Role      @default(customer)
-  lastLogin       DateTime? @map("last_login") @db.Timestamp(3)
-  created         DateTime  @default(now()) @map("created") @db.Timestamp(3)
-  updated         DateTime  @updatedAt @map("updated") @db.Timestamp(3)
-
-  commentRates CommentRate[]
-  appointments Appointment[]
-  transactions Transaction[]
-
-  @@map("customer")
-}
-
-model Barber {
-  id              Int      @id @default(autoincrement())
-  specialization  String?
-  experienceYears Int?     @map("experience_years")
-  bio             String?  @db.Text
-  avatar          String?  @map("avatar")
-  walletBalance   Decimal  @default(0) @map("wallet_balance") @db.Decimal(10, 2)
-  transactionCode String?  @map("transaction_code")
-  serviceAudience Json?    @map("service_audience")
-  created         DateTime @default(now()) @map("created") @db.Timestamp(3)
-  updated         DateTime @updatedAt @map("updated") @db.Timestamp(3)
-
-  ownedBarbershops Barbershop[]  @relation("BarbershopOwner")
-  appointments     Appointment[] @relation("BarberAppointments")
-  transactions     Transaction[]
-
-  @@map("barbers")
-}
-
-model Barbershop {
-  id                Int              @id @default(autoincrement())
-  name              String
-  description       String?          @db.Text
-  gender            BarbershopGender
-  type              BarbershopType
-  active            Boolean          @default(true)
-  deactivatedReason String?          @map("deactivated_reason") @db.Text
-  latitude          Decimal?         @db.Decimal(10, 7)
-  longitude         Decimal?         @db.Decimal(10, 7)
-  city              String?          @map("city")
-  neighborhood      String?          @map("neighborhood")
-  ownerId           Int              @map("owner_id")
-  openingTime       String?          @map("opening_time")
-  closingTime       String?          @map("closing_time")
-  avatar            String?          @map("avatar")
-  walletBalance     Decimal          @default(0) @map("wallet_balance") @db.Decimal(10, 2)
-  transactionCode   String?          @map("transaction_code")
-  averageRating     Float            @default(0)
-  ratingCount       Int              @default(0)
-  created           DateTime         @default(now()) @map("created") @db.Timestamp(3)
-  updated           DateTime         @updatedAt @map("updated") @db.Timestamp(3)
-
-  owner        Barber        @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  services     Service[]
-  commentRates CommentRate[]
-  appointments Appointment[]
-  transactions Transaction[]
-
-  @@map("barbershops")
-}
-
-model Service {
-  id              Int           @id @default(autoincrement())
-  barbershopId    Int           @map("barbershop_id")
-  parentServiceId Int?          @map("parent_service_id")
-  name            String
-  gender          ServiceGender
-  estimatedTime   Int           @map("estimated_time")
-  isVip           Boolean       @default(false) @map("is_vip")
-  price           Decimal?      @db.Decimal(10, 2)
-  description     String?       @db.Text
-  readmore        String?       @db.Text
-  files           Json?         @map("files")
-  avatar          String?       @map("avatar")
-  isMedical       Boolean       @default(false) @map("is_medical")
-  created         DateTime      @default(now()) @map("created") @db.Timestamp(3)
-  updated         DateTime      @updatedAt @map("updated") @db.Timestamp(3)
-
-  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  parent       Service?      @relation("ServiceHierarchy", fields: [parentServiceId], references: [id])
-  children     Service[]     @relation("ServiceHierarchy")
-  appointments Appointment[] @relation("ServiceAppointments")
-
-  @@map("services")
-}
-
-model Appointment {
-  id           Int                     @id @default(autoincrement())
-  customerId   Int                     @map("customer_id")
-  barberId     Int?                    @map("barber_id")
-  serviceId    Int?                    @map("service_id")
-  barbershopId Int?                    @map("barbershop_id")
-  locationType AppointmentLocationType @map("location_type")
-  startTime    DateTime                @map("start_time") @db.Timestamp(3)
-  endTime      DateTime                @map("end_time") @db.Timestamp(3)
-  status       AppointmentStatus       @default(pending)
-  serviceType  String?                 @map("service_type")
-  notes        String?                 @db.Text
-  publicMeta   Json?                   @map("public_meta")
-  privateMeta  Json?                   @map("private_meta")
-  created      DateTime                @default(now()) @map("created") @db.Timestamp(3)
-  updated      DateTime                @updatedAt @map("updated") @db.Timestamp(3)
-
-  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  barber       Barber?       @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
-  service      Service?      @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
-  barbershop   Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
-  commentRates CommentRate[]
-  transactions Transaction[]
-
-  @@map("appointments")
-}
-
-model CommentRate {
-  id              Int      @id @default(autoincrement())
-  barbershopId    Int      @map("barbershop_id")
-  customerId      Int      @map("customer_id")
-  appointmentId   Int?     @map("appointment_id")
-  commentId       String   @default(uuid()) @map("comment_id")
-  comment         String?  @db.Text
-  commentRate     Int      @map("comment_rate")
-  commentMeta     Json?    @map("comment_meta")
-  parentCommentId Int?     @map("parent_comment_id")
-  created         DateTime @default(now()) @map("created") @db.Timestamp(3)
-  updated         DateTime @updatedAt @map("updated") @db.Timestamp(3)
-
-  barbershop  Barbershop    @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
-  customer    Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  appointment Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  parent      CommentRate?  @relation("CommentThread", fields: [parentCommentId], references: [id])
-  replies     CommentRate[] @relation("CommentThread")
-
-  @@map("comment_rates")
-}
-
-model Transaction {
-  id           Int                   @id @default(autoincrement())
-  type         TransactionType
-  direction    TransactionDirection?
-  authority    String?               @map("authority")
-  status       TransactionStatus     @default(pending)
-  amount       Decimal               @db.Decimal(10, 2)
-  referenceId  Int?                  @map("reference_id")
-  parentId     Int?                  @map("parent_id")
-  customerId   Int?                  @map("customer_id")
-  barberId     Int?                  @map("barber_id")
-  barbershopId Int?                  @map("barbershop_id")
-  description  String?               @db.Text
-  created      DateTime              @default(now()) @map("created") @db.Timestamp(3)
-  updated      DateTime              @updatedAt @map("updated") @db.Timestamp(3)
-
-  parent      Transaction?  @relation("TransactionHierarchy", fields: [parentId], references: [id])
-  children    Transaction[] @relation("TransactionHierarchy")
-  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  barber      Barber?       @relation(fields: [barberId], references: [id], onDelete: SetNull)
-  barbershop  Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
-  appointment Appointment?  @relation(fields: [referenceId], references: [id], onDelete: SetNull)
-
-  @@map("transactions")
-}
-
+// --------------------------
+// ENUMS
+// --------------------------
 enum Role {
   customer
   admin
+  staff_admin
 }
 
 enum BarbershopGender {
@@ -212,8 +38,10 @@ enum ServiceGender {
 enum AppointmentStatus {
   pending
   confirmed
+  paid
   completed
   cancelled
+  no_show
 }
 
 enum AppointmentLocationType {
@@ -222,17 +50,589 @@ enum AppointmentLocationType {
 }
 
 enum TransactionType {
-  internal
   external
+  internal
+}
+
+enum ExternalTransactionKind {
+  deposit
+  withdrawal
+  appointment_lock
+  payout
 }
 
 enum TransactionDirection {
-  deposit
-  withdrawal
+  credit
+  debit
 }
 
 enum TransactionStatus {
   pending
+  success
   failed
-  done
+}
+
+enum PaymentMethod {
+  cash
+  card
+  online
+  wallet
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
+// --------------------------
+// CORE MODELS (separate tables)
+// - Customer (auth + profile)
+// - Barber (profile; can be linked to a Customer account if needed via optional userRefId)
+// - Barbershop (separate table)
+// All timestamps are BigInt (ms) and must be set in application code.
+// --------------------------
+
+model Customer {
+  id               Int      @id @default(autoincrement())
+  fullName         String?  @map("full_name")
+  email            String?  @unique
+  phone            String   @unique
+  passwordHash     String?  @map("password_hash")   // hashed password (bcrypt/argon2)
+  passwordSalt     String?  @map("password_salt")   // optional
+  avatar           String?  @map("avatar")
+  role             Role     @default(customer)
+  emailVerifiedAt  BigInt?  @map("email_verified_at") @db.BigInt
+  phoneVerified    Boolean  @default(false) @map("phone_verified")
+
+  // Authentication recovery / OTP
+  otp              String?  @map("otp")
+  otpExpires       BigInt?  @map("otp_expires") @db.BigInt
+
+  // Wallet cache (derived from internal transactions; keep for speed)
+  walletBalance    Decimal  @default(0) @map("wallet_balance") @db.Decimal(20, 2)
+  transactionCode  String?  @map("transaction_code")
+
+  // Metadata
+  publicMeta       Json?    @map("public_meta")
+  privateMeta      Json?    @map("private_meta")
+
+  // Timestamps (ms)
+  lastLogin        BigInt?  @map("last_login") @db.BigInt
+  created          BigInt   @default(0) @map("created") @db.BigInt
+  updated          BigInt   @default(0) @map("updated") @db.BigInt
+
+  // Relations
+  commentRates     CommentRate[]
+  appointments     Appointment[]    @relation("CustomerAppointments")
+  transactions     Transaction[]    @relation("CustomerTransactions")
+  couponsUsed      CouponUsage[]
+  sessions         UserSession[]    @relation("CustomerSessions")
+  wallets          Wallet[]         // customers may have one or multiple wallet records (e.g., separate wallet types)
+
+  @@index([email])
+  @@index([phone])
+  @@map("customers")
+}
+
+model Barber {
+  id              Int      @id @default(autoincrement())
+  // Optional link to a Customer-like account if you want single sign-on.
+  userRefId       Int?     @map("user_ref_id")    // optional pointer to customers.id for shared auth
+  fullName        String?  @map("full_name")
+  specialization  String?
+  experienceYears Int?     @map("experience_years")
+  bio             String?  @db.Text
+  avatar          String?  @map("avatar")
+  serviceAudience Json?    @map("service_audience")
+
+  // Authentication fields for barbers (if barbers authenticate separately)
+  email           String?  @unique
+  phone           String?  @unique
+  passwordHash    String?  @map("password_hash")
+  emailVerifiedAt BigInt?  @map("email_verified_at") @db.BigInt
+  phoneVerified   Boolean  @default(false) @map("phone_verified")
+
+  // Wallet cache
+  walletBalance   Decimal  @default(0) @map("wallet_balance") @db.Decimal(20,2)
+  transactionCode String?  @map("transaction_code")
+
+  // Timestamps (ms)
+  created         BigInt   @default(0) @map("created") @db.BigInt
+  updated         BigInt   @default(0) @map("updated") @db.BigInt
+
+  // Relations
+  ownedBarbershops Barbershop[]       @relation("BarbershopOwner")
+  appointments     Appointment[]      @relation("BarberAppointments")
+  transactions     Transaction[]      @relation("BarberTransactions")
+  schedules        BarberSchedule[]
+  timeOff          BarberTimeOff[]
+  kpis             BarberKPI[]
+  sessions         UserSession[]      @relation("BarberSessions")
+  appointmentBarbers AppointmentBarber[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("barbers")
+}
+
+model Barbershop {
+  id                Int              @id @default(autoincrement())
+  ownerId           Int              @map("owner_id")            // references Barber.id
+  name              String
+  description       String?          @db.Text
+  gender            BarbershopGender
+  type              BarbershopType
+  active            Boolean          @default(true)
+  address           String?          @map("address")
+  latitude          Decimal?         @db.Decimal(10,7)
+  longitude         Decimal?         @db.Decimal(10,7)
+  city              String?          @map("city")
+  neighborhood      String?          @map("neighborhood")
+  openingTime       String?          @map("opening_time")        // human readable; schedules hold weekday rules
+  closingTime       String?          @map("closing_time")
+  avatar            String?          @map("avatar")
+
+  // Wallet cache
+  walletBalance     Decimal          @default(0) @map("wallet_balance") @db.Decimal(20,2)
+  transactionCode   String?          @map("transaction_code")
+
+  averageRating     Float            @default(0)
+  ratingCount       Int              @default(0)
+
+  // Timestamps (ms)
+  created           BigInt           @default(0) @map("created") @db.BigInt
+  updated           BigInt           @default(0) @map("updated") @db.BigInt
+
+  // Relations
+  owner        Barber        @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  services     Service[]
+  commentRates CommentRate[]
+  appointments Appointment[]
+  transactions Transaction[]
+  schedules    BarbershopSchedule[]
+
+  @@index([ownerId])
+  @@map("barbershops")
+}
+
+// --------------------------
+// SERVICES, ADDONS, FILES
+// --------------------------
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  barbershopId    Int           @map("barbershop_id")
+  parentServiceId Int?          @map("parent_service_id")
+  name            String
+  gender          ServiceGender
+  estimatedTime   Int           @map("estimated_time") // minutes baseline
+  isVip           Boolean       @default(false) @map("is_vip")
+  price           Decimal?      @db.Decimal(20,2)
+  description     String?       @db.Text
+  readmore        String?       @db.Text
+  files           Json?         @map("files")
+  avatar          String?       @map("avatar")
+  isMedical       Boolean       @default(false) @map("is_medical")
+
+  // timestamps (ms)
+  created         BigInt        @default(0) @map("created") @db.BigInt
+  updated         BigInt        @default(0) @map("updated") @db.BigInt
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  parent     Service?      @relation("ServiceHierarchy", fields: [parentServiceId], references: [id])
+  children   Service[]     @relation("ServiceHierarchy")
+
+  addons     ServiceAddon[]
+  appointments Appointment[] @relation("ServiceAppointments")
+
+  @@index([barbershopId])
+  @@map("services")
+}
+
+model ServiceAddon {
+  id        Int     @id @default(autoincrement())
+  serviceId Int     @map("service_id")
+  name      String
+  price     Decimal @db.Decimal(20,2)
+  duration  Int     // minutes
+  created   BigInt  @default(0) @db.BigInt
+  updated   BigInt  @default(0) @db.BigInt
+
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+  @@map("service_addons")
+}
+
+// --------------------------
+// APPOINTMENTS (multi-staff support, payment lock, addons)
+// --------------------------
+
+model Appointment {
+  id           Int                     @id @default(autoincrement())
+  customerId   Int                     @map("customer_id")
+  barberId     Int?                    @map("barber_id")      // primary barber (nullable if multi-staff-only)
+  serviceId    Int?                    @map("service_id")
+  barbershopId Int?                    @map("barbershop_id")
+  locationType AppointmentLocationType @map("location_type")
+  startTime    BigInt                  @map("start_time")     @db.BigInt
+  endTime      BigInt                  @map("end_time")       @db.BigInt
+  status       AppointmentStatus       @default(pending)
+  serviceType  String?                 @map("service_type")
+  notes        String?                 @db.Text
+  publicMeta   Json?                   @map("public_meta")
+  privateMeta  Json?                   @map("private_meta")
+
+  // Pricing snapshot
+  basePrice    Decimal?                @map("base_price")     @db.Decimal(20,2)
+  addonsTotal  Decimal?                @map("addons_total")  @db.Decimal(20,2)
+  priceTotal   Decimal?                @map("price_total")   @db.Decimal(20,2) // price locked when payment lock is created
+  paidAmount   Decimal?                @map("paid_amount")   @db.Decimal(20,2)
+
+  // Payment locking - external transaction that locked funds for this appointment
+  paymentLockExternalTransactionId Int? @map("payment_lock_external_transaction_id")
+
+  // timestamps
+  created      BigInt                  @default(0) @map("created") @db.BigInt
+  updated      BigInt                  @default(0) @map("updated") @db.BigInt
+
+  // relations
+  customer     Customer      @relation("CustomerAppointments", fields: [customerId], references: [id], onDelete: Cascade)
+  barber       Barber?       @relation("BarberAppointments", fields: [barberId], references: [id], onDelete: SetNull)
+  service      Service?      @relation("ServiceAppointments", fields: [serviceId], references: [id], onDelete: SetNull)
+  barbershop   Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
+
+  commentRates CommentRate[]
+  transactions Transaction[]   // transactions that reference this appointment
+  logs         AppointmentLog[]
+  invoices     Invoice[]
+  payments     AppointmentPayment[]
+  reminders    AppointmentReminder[]
+  barbers      AppointmentBarber[]
+  addons       AppointmentAddon[]
+
+  @@index([customerId])
+  @@index([barberId])
+  @@index([serviceId])
+  @@index([barbershopId])
+  @@index([startTime])
+  @@map("appointments")
+}
+
+// join table for multi-staff appointments
+model AppointmentBarber {
+  appointmentId Int
+  barberId      Int
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  barber      Barber      @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@id([appointmentId, barberId])
+  @@map("appointment_barbers")
+}
+
+model AppointmentAddon {
+  id            Int     @id @default(autoincrement())
+  appointmentId Int     @map("appointment_id")
+  addonId       Int     @map("addon_id")
+  price         Decimal @db.Decimal(20,2)
+  duration      Int     // minutes
+  created       BigInt  @default(0) @db.BigInt
+
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  addon          ServiceAddon @relation(fields: [addonId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@map("appointment_addons")
+}
+
+// --------------------------
+// WALLET & TRANSACTIONS
+// - Wallet balance must be derived from aggregation of internal_transactions (wallet_balance is cache only).
+// - ExternalTransaction is the parent for logically-related internal transactions.
+// --------------------------
+
+model Wallet {
+  id           Int     @id @default(autoincrement())
+  ownerType    String  @map("owner_type") // "customer", "barber", "barbershop", "system"
+  ownerId      Int     @map("owner_id")   // id of the owner in their table
+  currency     String  @default("IRR")
+  // cached balance for performance; single source of truth: internal_transactions
+  balance      Decimal @default(0) @db.Decimal(20,2)
+  created      BigInt  @default(0) @db.BigInt
+  updated      BigInt  @default(0) @db.BigInt
+
+  internalTransactions InternalTransaction[] @relation("WalletInternalTxsFrom", fields: [id], references: [fromWalletId])
+  internalTransactionsTo InternalTransaction[] @relation("WalletInternalTxsTo", fields: [id], references: [toWalletId])
+
+  @@index([ownerType, ownerId])
+  @@map("wallets")
+}
+
+model ExternalTransaction {
+  id                  Int                    @id @default(autoincrement())
+  initiatorType       String                 @map("initiator_type") // "customer", "barber", "system", etc.
+  initiatorId         Int                    @map("initiator_id")
+  kind                ExternalTransactionKind @map("kind")
+  relatedAppointmentId Int?                  @map("related_appointment_id")
+  amount              Decimal                @db.Decimal(20,2)
+  method              PaymentMethod?
+  status              TransactionStatus      @default(pending)
+  reference           String?                @map("reference")   // gateway reference
+  metadata            Json?
+  created             BigInt                 @default(0) @db.BigInt
+  updated             BigInt                 @default(0) @db.BigInt
+
+  // relations
+  internalTransactions InternalTransaction[]
+
+  @@index([initiatorType, initiatorId])
+  @@index([relatedAppointmentId])
+  @@map("external_transactions")
+}
+
+model InternalTransaction {
+  id                          Int     @id @default(autoincrement())
+  parentExternalTransactionId Int     @map("parent_external_transaction_id")
+  fromWalletId                Int?    @map("from_wallet_id")
+  toWalletId                  Int?    @map("to_wallet_id")
+  amount                      Decimal @db.Decimal(20,2)
+  direction                   TransactionDirection
+  note                        String? @db.Text
+  created                     BigInt  @default(0) @db.BigInt
+
+  // relations
+  parentExternal ExternalTransaction @relation(fields: [parentExternalTransactionId], references: [id], onDelete: Cascade)
+  fromWallet     Wallet?             @relation("WalletInternalTxsFrom", fields: [fromWalletId], references: [id], onDelete: SetNull)
+  toWallet       Wallet?             @relation("WalletInternalTxsTo", fields: [toWalletId], references: [id], onDelete: SetNull)
+
+  @@index([parentExternalTransactionId])
+  @@index([fromWalletId])
+  @@index([toWalletId])
+  @@map("internal_transactions")
+}
+
+// --------------------------
+// PAYMENTS, INVOICES
+// --------------------------
+
+model AppointmentPayment {
+  id             Int       @id @default(autoincrement())
+  appointmentId   Int       @map("appointment_id")
+  externalTransactionId Int? @map("external_transaction_id")
+  amount         Decimal   @db.Decimal(20,2)
+  method         PaymentMethod?
+  paidAt         BigInt?   @map("paid_at") @db.BigInt
+  created        BigInt    @default(0) @db.BigInt
+
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  externalTx     ExternalTransaction? @relation(fields: [externalTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@map("appointment_payments")
+}
+
+model Invoice {
+  id            Int       @id @default(autoincrement())
+  appointmentId Int       @map("appointment_id")
+  invoiceNo     String    @unique @map("invoice_no")
+  total         Decimal   @db.Decimal(20,2)
+  discount      Decimal?  @db.Decimal(20,2)
+  tax           Decimal?  @db.Decimal(20,2)
+  grandTotal    Decimal   @db.Decimal(20,2) @map("grand_total")
+  method        PaymentMethod?
+  created       BigInt    @default(0) @db.BigInt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("invoices")
+}
+
+// --------------------------
+// COUPONS & USAGE
+// --------------------------
+
+model Coupon {
+  id         Int      @id @default(autoincrement())
+  code       String   @unique
+  kind       String   // "percentage", "fixed", "free", etc.
+  value      Decimal? @db.Decimal(20,2)
+  usageMax   Int?     @map("usage_max")
+  usageCount Int      @default(0) @map("usage_count")
+  expiresAt  BigInt?  @map("expires_at") @db.BigInt
+  created    BigInt   @default(0) @db.BigInt
+  updated    BigInt   @default(0) @db.BigInt
+
+  usages     CouponUsage[]
+
+  @@map("coupons")
+}
+
+model CouponUsage {
+  id            Int     @id @default(autoincrement())
+  couponId      Int     @map("coupon_id")
+  customerId    Int?    @map("customer_id")
+  appointmentId Int?    @map("appointment_id")
+  usedAt        BigInt  @map("used_at") @db.BigInt
+
+  coupon        Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
+  @@index([customerId])
+  @@map("coupon_usages")
+}
+
+// --------------------------
+// SCHEDULING & AVAILABILITY
+// - schedules store ms since midnight for times
+// --------------------------
+
+model BarberSchedule {
+  id        Int    @id @default(autoincrement())
+  barberId  Int    @map("barber_id")
+  weekday   Int    // 0-6
+  startMs   Int    @map("start_ms") // ms since midnight
+  endMs     Int    @map("end_ms")
+  created   BigInt @default(0) @db.BigInt
+  updated   BigInt @default(0) @db.BigInt
+
+  barber    Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@map("barber_schedules")
+}
+
+model BarberTimeOff {
+  id        Int    @id @default(autoincrement())
+  barberId  Int    @map("barber_id")
+  startAt   BigInt @map("start_at") @db.BigInt
+  endAt     BigInt @map("end_at") @db.BigInt
+  reason    String?
+  created   BigInt @default(0) @db.BigInt
+  updated   BigInt @default(0) @db.BigInt
+
+  barber    Barber  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@map("barber_time_off")
+}
+
+model BarbershopSchedule {
+  id        Int    @id @default(autoincrement())
+  shopId    Int    @map("shop_id")
+  weekday   Int    // 0-6
+  openMs    Int    @map("open_ms")
+  closeMs   Int    @map("close_ms")
+  isClosed  Boolean @default(false)
+  created   BigInt @default(0) @db.BigInt
+  updated   BigInt @default(0) @db.BigInt
+
+  barbershop Barbershop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@map("barbershop_schedules")
+}
+
+// --------------------------
+// NOTIFICATIONS, REMINDERS, LOGS, SESSIONS, META
+// --------------------------
+
+model Notification {
+  id          Int                @id @default(autoincrement())
+  userType    String             @map("user_type") // "customer","barber","barbershop","system"
+  userId      Int?               @map("user_id")
+  channel     String             // sms | email | push
+  payload     Json?
+  status      NotificationStatus @default(pending)
+  errorMsg    String?            @map("error_msg")
+  attempts    Int                @default(0)
+  scheduledAt BigInt?            @map("scheduled_at") @db.BigInt
+  sentAt      BigInt?            @map("sent_at") @db.BigInt
+  created     BigInt             @default(0) @db.BigInt
+
+  @@index([userType, userId])
+  @@map("notifications")
+}
+
+model AppointmentReminder {
+  id            Int     @id @default(autoincrement())
+  appointmentId Int     @map("appointment_id")
+  channel       String  // sms,email,push
+  sendAt        BigInt  @map("send_at") @db.BigInt
+  sent          Boolean @default(false)
+  created       BigInt  @default(0) @db.BigInt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("appointment_reminders")
+}
+
+model AppointmentLog {
+  id            Int               @id @default(autoincrement())
+  appointmentId Int               @map("appointment_id")
+  status        AppointmentStatus
+  note          String?           @db.Text
+  changedByType String?           @map("changed_by_type") // "customer","barber","system",...
+  changedById   Int?              @map("changed_by_id")
+  changedAt     BigInt            @map("changed_at") @db.BigInt
+
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("appointment_logs")
+}
+
+model UserSession {
+  id          Int     @id @default(autoincrement())
+  customerId  Int?    @map("customer_id")
+  barberId    Int?    @map("barber_id")
+  token       String  @unique
+  device      String?
+  ip          String?
+  expiresAt   BigInt? @map("expires_at") @db.BigInt
+  created     BigInt  @default(0) @db.BigInt
+
+  customer    Customer? @relation("CustomerSessions", fields: [customerId], references: [id], onDelete: Cascade)
+  barber      Barber?   @relation("BarberSessions", fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([barberId])
+  @@map("user_sessions")
+}
+
+model AppointmentMeta {
+  id            Int     @id @default(autoincrement())
+  appointmentId Int     @map("appointment_id")
+  metaKey       String  @map("meta_key")
+  metaValue     String? @map("meta_value")
+  created       BigInt  @default(0) @db.BigInt
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@map("appointment_meta")
+}
+
+// --------------------------
+// KPIs
+// --------------------------
+
+model BarberKPI {
+  id           Int     @id @default(autoincrement())
+  barberId     Int     @map("barber_id")
+  date         BigInt  @db.BigInt // ms at midnight UTC for snapshot day
+  revenue      Decimal @db.Decimal(20,2)
+  appointments Int
+  ratingAvg    Float
+  created      BigInt  @default(0) @db.BigInt
+
+  barber       Barber  @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId, date])
+  @@map("barber_kpis")
 }
