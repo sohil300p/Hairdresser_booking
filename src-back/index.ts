@@ -117,12 +117,25 @@ async function startServer() {
     }
 
     // Start listening
-    app.listen(PORT, () => {
+    serverInstance = app.listen(PORT, () => {
       console.log(`🚀 Server is running on http://localhost:${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
       console.log(`📱 OTP send: POST http://localhost:${PORT}/api/otp/send`);
       console.log(`🔐 OTP verify: POST http://localhost:${PORT}/api/otp/verify`);
+    });
+
+    // Handle port already in use error
+    serverInstance.on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use. Please stop the process using this port or use a different port.`);
+        console.error(`💡 To find and kill the process: netstat -ano | findstr :${PORT}`);
+        console.error(`💡 Then kill it: taskkill /F /PID <PID>`);
+        process.exit(1);
+      } else {
+        console.error('❌ Server error:', error);
+        process.exit(1);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -134,26 +147,29 @@ async function startServer() {
   }
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down server...');
-  await prisma.$disconnect();
-  if (isRedisConnected()) {
-    await redisClient.quit().catch(() => {});
-  }
-  console.log('✅ Database and Redis disconnected');
-  process.exit(0);
-});
+// Store server instance for graceful shutdown
+let serverInstance: any = null;
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down server...');
+// Graceful shutdown
+async function gracefulShutdown(signal: string) {
+  console.log(`\n🛑 Received ${signal}. Shutting down server...`);
+  
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('✅ HTTP server closed');
+    });
+  }
+  
   await prisma.$disconnect();
   if (isRedisConnected()) {
     await redisClient.quit().catch(() => {});
   }
   console.log('✅ Database and Redis disconnected');
   process.exit(0);
-});
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Start the server
 startServer();

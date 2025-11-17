@@ -4,7 +4,7 @@
   "description": "Backend API for barber shop appointment booking system",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src-back/index.ts",
+    "dev": "node scripts/kill-port.js 3000 && ts-node-dev --respawn --transpile-only src-back/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",

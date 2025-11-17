@@ -1,6 +1,48 @@
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 import { EditProfileResponse, EditProfileRequest } from './profile.type';
-import { uploadFileService, deleteFileService } from '../files_minIO/files.service';
+import { minioClient, DEFAULT_BUCKET } from '../../config/minio';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Upload file to MinIO
+ */
+async function uploadFileService(file: Express.Multer.File, folder?: string): Promise<{ success: boolean; fileUrl?: string; message?: string }> {
+  try {
+    const fileExtension = file.originalname.split('.').pop();
+    const fileName = `${uuidv4()}.${fileExtension}`;
+    const objectName = folder ? `${folder}/${fileName}` : fileName;
+
+    await minioClient.putObject(DEFAULT_BUCKET, objectName, file.buffer, file.size, {
+      'Content-Type': file.mimetype,
+    });
+
+    const fileUrl = `${process.env.MINIO_ENDPOINT || 'http://localhost'}:${process.env.MINIO_PORT || '9000'}/${DEFAULT_BUCKET}/${objectName}`;
+
+    return {
+      success: true,
+      fileUrl,
+    };
+  } catch (error) {
+    console.error('Error uploading file to MinIO:', error);
+    return {
+      success: false,
+      message: 'خطا در آپلود فایل',
+    };
+  }
+}
+
+/**
+ * Delete file from MinIO
+ */
+async function deleteFileService(fileName: string, folder?: string): Promise<void> {
+  try {
+    const objectName = folder ? `${folder}/${fileName}` : fileName;
+    await minioClient.removeObject(DEFAULT_BUCKET, objectName);
+  } catch (error) {
+    console.error('Error deleting file from MinIO:', error);
+    throw error;
+  }
+}
 
 /**
  * Extract file name from MinIO URL
@@ -105,7 +147,7 @@ export async function editProfileService(
         }
       }
 
-      updateData.profileImage = uploadResult.fileUrl;
+      updateData.avatar = uploadResult.fileUrl;
     }
 
     // Check if there's anything to update
@@ -117,7 +159,6 @@ export async function editProfileService(
     }
 
     // Update customer profile
-    updateData.avatar = updateData.avatar || undefined;
     
     const updatedCustomer = await prisma.customer.update({
       where: { id: userId },

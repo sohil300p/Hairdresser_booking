@@ -8,10 +8,14 @@ export interface GetProfileResponse {
     firstName: string | null;
     lastName: string | null;
     phone: string;
+    email: string | null;
     profileImage: string | null;
     role: 'CUSTOMER' | 'BARBER' | 'ADMIN';
-    createdAt: Date;
-    updatedAt: Date;
+    gender?: 'male' | 'female' | 'other' | null;
+    userType?: 'customer' | 'barber';
+    barberId?: number;
+    createdAt: number;
+    updatedAt: number;
   };
 }
 
@@ -29,10 +33,14 @@ export interface EditProfileResponse {
     firstName: string | null;
     lastName: string | null;
     phone: string;
+    email: string | null;
     profileImage: string | null;
     role: 'CUSTOMER' | 'BARBER' | 'ADMIN';
-    createdAt: Date;
-    updatedAt: Date;
+    gender?: 'male' | 'female' | 'other' | null;
+    userType?: 'customer' | 'barber';
+    barberId?: number;
+    createdAt: number;
+    updatedAt: number;
   };
 }
 
