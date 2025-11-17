@@ -1,4 +1,4 @@
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 import {
   GetRevenueShareConfigResponse,
   CalculateRevenueShareRequest,
@@ -31,7 +31,7 @@ export class RevenueShareCalculator {
     }
 
     // Get most specific config first
-    const config = await prisma.revenueShareConfig.findFirst({
+    const config = await (prisma as any).revenueShareConfig?.findFirst({
       where,
       orderBy: [
         { serviceType: 'desc' }, // non-null serviceType first
@@ -41,7 +41,7 @@ export class RevenueShareCalculator {
 
     // Fallback to default if no specific config found
     if (!config && serviceType) {
-      return await prisma.revenueShareConfig.findFirst({
+      return await (prisma as any).revenueShareConfig?.findFirst({
         where: {
           active: true,
           serviceType: null,

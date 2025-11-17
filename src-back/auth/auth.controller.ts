@@ -72,14 +72,15 @@ export async function verifyTokenController(req: Request, res: Response): Promis
 export async function logoutController(req: Request, res: Response): Promise<void> {
   try {
     const { refreshToken } = req.body;
-    const result = await logoutService(refreshToken);
+    const userId = (req as any).user?.id;
+    const result = await logoutService(refreshToken, userId);
 
     res.status(200).json(result);
   } catch (error) {
     console.error('Error in logoutController:', error);
     res.status(500).json({
       success: false,
-        message: 'خطای داخلی سرور',
+      message: 'خطای داخلی سرور',
     });
   }
 }

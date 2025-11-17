@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { AuthRequest } from '../auth/auth.middleware';
+import { AuthRequest } from '../../auth/auth.middleware';
 import { requestPayment, verifyPayment } from './zarrinpal.service';
 import { ZarrinPalPaymentRequest, ZarrinPalVerifyRequest } from './payment-gateway.type';
-import prisma from '../config/prisma';
+import prisma from '../../config/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
 import { calculateWalletBalance } from '../Transaction/transaction.service';
 

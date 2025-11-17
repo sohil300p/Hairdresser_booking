@@ -4,33 +4,26 @@ export interface GetBarbersRequest {
   radius?: number; // in km
 }
 
-export interface BarberResponse {
+export interface BarbershopResponse {
   id: number;
-  userId: number;
   name: string;
-  specialization: string | null;
-  experienceYears: number | null;
-  rating: number | null;
-  bio: string | null;
-  profileImage: string | null;
-  user: {
-    id: number;
-    firstName: string | null;
-    lastName: string | null;
-    phone: string;
-  };
   distance?: number; // calculated distance in km
+  averageRating: number;
+  ratingCount: number;
+  priceFrom: number | null; // min price from services
+  isOpen: boolean;
+  discountPercentage: number | null;
+  avatar: string | null;
 }
 
 export interface GetBarbersResponse {
   success: boolean;
   message: string;
-  data?: BarberResponse[];
+  data?: BarbershopResponse[];
 }
 
 export interface GetBarberByIdResponse {
   success: boolean;
   message: string;
-  data?: BarberResponse;
+  data?: BarbershopResponse;
 }
-

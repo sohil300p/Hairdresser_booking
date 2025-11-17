@@ -4,17 +4,9 @@ import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../auth/auth.controller';
 import { loginWithPasswordController } from '../auth/login.controller';
 import { authenticateToken } from '../auth/auth.middleware';
-import { getProfileController } from '../Profile/profile.controller';
-import { editProfileController } from '../Profile/editprofile.controller';
+import { getProfileController } from '../Profile_User/Get_Edit_profile/profile.controller';
+import { editProfileController } from '../Profile_User/Get_Edit_profile/editprofile.controller';
 import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/Hairdresser.controller';
-import {
-  uploadFileController,
-  downloadFileController,
-  getFileMetadataController,
-  deleteFileController,
-  listFilesController,
-  upload,
-} from '../files_minIO/files.controller';
 import {
   getWalletBalanceController,
   depositController,
@@ -22,25 +14,25 @@ import {
   transferController,
   getTransactionHistoryController,
   lockFundsController,
-} from '../Transaction/transaction.controller';
+} from '../Just_mony/Transaction/transaction.controller';
 import {
   getAvailablePackagesController,
   purchasePackageController,
   getUserPackagesController,
-} from '../Package/package.controller';
+} from '../Just_mony/Package/package.controller';
 import {
   validateCouponController,
   getAvailableCouponsController,
-} from '../Coupon/coupon.controller';
+} from '../Just_mony/Coupon/coupon.controller';
 import {
   getRevenueShareConfigController,
   calculateRevenueShareController,
-} from '../RevenueShare/revenue-share.controller';
+} from '../Just_mony/RevenueShare/revenue-share.controller';
 import {
   requestPaymentController,
   verifyPaymentCallbackController,
   verifyPaymentController,
-} from '../PaymentGateway/payment-gateway.controller';
+} from '../Just_mony/PaymentGateway/payment-gateway.controller';
 import {
   checkAvailabilityController,
   createAppointmentController,
@@ -73,7 +65,7 @@ router.get('/Hairdresser/:id', getBarberByIdController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
-router.put('/profile', authenticateToken, upload.single('profileImage'), editProfileController);
+
 
 // Transaction & Wallet Routes (Protected)
 router.get('/transactions/wallet/balance', authenticateToken, getWalletBalanceController);
@@ -109,12 +101,5 @@ router.get('/appointments/:id', authenticateToken, getAppointmentController);
 router.put('/appointments/:id/status', authenticateToken, updateAppointmentStatusController);
 router.post('/appointments/:id/cancel', authenticateToken, cancelAppointmentController);
 router.post('/appointments/:id/reschedule', authenticateToken, rescheduleAppointmentController);
-
-// File Routes
-router.post('/files/upload', upload.single('file'), uploadFileController);
-router.get('/files/download/:fileName', downloadFileController);
-router.get('/files/metadata/:fileName', getFileMetadataController);
-router.delete('/files/:fileName', deleteFileController);
-router.get('/files/list', listFilesController);
 
 export default router;

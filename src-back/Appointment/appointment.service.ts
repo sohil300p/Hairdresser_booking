@@ -14,9 +14,9 @@ import {
 } from './appointment.type';
 import { Decimal } from '@prisma/client/runtime/library';
 import { checkAvailabilityService } from './availability.service';
-import { lockFundsForAppointmentService } from '../Transaction/transaction.service';
-import { validateCouponService, applyCouponService } from '../Coupon/coupon.service';
-import { requestPayment } from '../PaymentGateway/zarrinpal.service';
+import { lockFundsForAppointmentService } from '../Just_mony/Transaction/transaction.service';
+import { validateCouponService, applyCouponService } from '../Just_mony/Coupon/coupon.service';
+import { requestPayment } from '../Just_mony/PaymentGateway/zarrinpal.service';
 import dotenv from 'dotenv';
 
 dotenv.config();

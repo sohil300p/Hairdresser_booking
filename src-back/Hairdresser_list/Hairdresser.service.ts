@@ -3,7 +3,7 @@ import {
   GetBarbersRequest,
   GetBarbersResponse,
   GetBarberByIdResponse,
-  BarberResponse,
+  BarbershopResponse,
 } from "./Hairdresser.type";
 
 /**
@@ -29,145 +29,259 @@ function calculateDistance(
 }
 
 /**
- * Get all barbers with optional geographical filtering
+ * Check if barbershop is currently open
+ */
+function isBarbershopOpen(
+  schedules: Array<{ weekday: number; openMs: number; closeMs: number; isClosed: boolean }>,
+  openingTime?: string | null,
+  closingTime?: string | null
+): boolean {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const currentMs = now.getHours() * 3600000 + now.getMinutes() * 60000 + now.getSeconds() * 1000;
+
+  // Check schedule for current day
+  const todaySchedule = schedules.find(s => s.weekday === currentDay);
+  
+  if (todaySchedule) {
+    if (todaySchedule.isClosed) {
+      return false;
+    }
+    return currentMs >= todaySchedule.openMs && currentMs <= todaySchedule.closeMs;
+  }
+
+  // Fallback to openingTime/closingTime if schedule not available
+  if (openingTime && closingTime) {
+    // Simple time comparison (assuming format like "09:00" or "09:00:00")
+    const [openHour, openMin] = openingTime.split(':').map(Number);
+    const [closeHour, closeMin] = closingTime.split(':').map(Number);
+    const openMs = (openHour || 0) * 3600000 + (openMin || 0) * 60000;
+    const closeMs = (closeHour || 0) * 3600000 + (closeMin || 0) * 60000;
+    
+    return currentMs >= openMs && currentMs <= closeMs;
+  }
+
+  return true; // Default to open if no schedule info
+}
+
+/**
+ * Extract discount percentage from publicMeta
+ */
+function getDiscountPercentage(publicMeta: any): number | null {
+  if (!publicMeta || typeof publicMeta !== 'object') {
+    return null;
+  }
+  
+  if (typeof publicMeta.discountPercentage === 'number') {
+    return publicMeta.discountPercentage;
+  }
+  
+  if (typeof publicMeta.discount === 'number') {
+    return publicMeta.discount;
+  }
+  
+  return null;
+}
+
+/**
+ * Get all barbershops for homepage
  */
 export async function getBarbersService(
   params: GetBarbersRequest = {}
 ): Promise<GetBarbersResponse> {
   try {
-    const barbers = await prisma.barber.findMany({
+    const barbershops = await prisma.barbershop.findMany({
+      where: {
+        active: true,
+      },
       include: {
-        user: {
+        services: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
+            price: true,
+          },
+          where: {
+            price: {
+              not: null,
+            },
           },
         },
-      },
-      orderBy: {
-        rating: "desc",
-      },
+        commentRates: true,
+        schedules: {
+          select: {
+            weekday: true,
+            openMs: true,
+            closeMs: true,
+            isClosed: true,
+          },
+        },
+      } as any,
     });
 
-    let barbersWithDistance: BarberResponse[] = barbers.map((barber) => {
-      const fullName =
-        barber.user.firstName && barber.user.lastName
-          ? `${barber.user.firstName} ${barber.user.lastName}`
-          : barber.user.firstName || barber.user.lastName || "بدون نام";
+    const now = Date.now();
+    const barbershopsWithData: BarbershopResponse[] = barbershops.map((shop: any) => {
+      // Calculate distance if coordinates provided
+      let distance: number | undefined;
+      if (params.lat !== undefined && params.lng !== undefined && shop.latitude && shop.longitude) {
+        distance = calculateDistance(
+          params.lat,
+          params.lng,
+          Number(shop.latitude),
+          Number(shop.longitude)
+        );
+      }
+
+      // Calculate average rating and count
+      const ratings = (shop.commentRates || [])
+        .map((cr: any) => cr.rate)
+        .filter((r: any): r is number => r !== null && r !== undefined);
+      const averageRating = ratings.length > 0
+        ? ratings.reduce((sum: number, r: number) => sum + r, 0) / ratings.length
+        : shop.averageRating || 0;
+      const ratingCount = ratings.length || shop.ratingCount || 0;
+
+      // Calculate min price (priceFrom)
+      const prices = (shop.services || [])
+        .map((s: any) => s.price)
+        .filter((p: any): p is NonNullable<typeof p> => p !== null)
+        .map((p: any) => Number(p));
+      const priceFrom = prices.length > 0 ? Math.min(...prices) : null;
+
+      // Check if open
+      const isOpen = isBarbershopOpen(shop.schedules || [], shop.openingTime, shop.closingTime);
+
+      // Get discount percentage from publicMeta
+      const discountPercentage = shop.publicMeta ? getDiscountPercentage(shop.publicMeta as any) : null;
 
       return {
-        id: barber.id,
-        userId: barber.userId,
-        name: fullName,
-        specialization: barber.specialization,
-        experienceYears: barber.experienceYears,
-        rating: barber.rating,
-        bio: barber.bio,
-        profileImage: barber.profileImage,
-        user: {
-          id: barber.user.id,
-          firstName: barber.user.firstName,
-          lastName: barber.user.lastName,
-          phone: barber.user.phone,
-        },
+        id: shop.id,
+        name: shop.name,
+        distance,
+        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+        ratingCount,
+        priceFrom,
+        isOpen,
+        discountPercentage,
+        avatar: shop.avatar,
       };
     });
 
-    // Apply geographical filtering if coordinates provided
-    if (params.lat !== undefined && params.lng !== undefined) {
-      // Note: Barber model doesn't have location fields yet
-      // For now, we'll return all barbers
-      // TODO: Add location fields (lat/lng) to Barber model and filter here
-      // For demonstration, we'll add a mock distance calculation
-      // In production, you'd filter barbers based on their stored location
+    // Filter by radius if provided
+    let filteredBarbershops = barbershopsWithData;
+    if (params.radius !== undefined && params.lat !== undefined && params.lng !== undefined) {
+      filteredBarbershops = barbershopsWithData.filter(
+        (shop) => shop.distance !== undefined && shop.distance <= params.radius!
+      );
     }
 
-    // Filter by radius if provided
-    if (
-      params.radius !== undefined &&
-      params.lat !== undefined &&
-      params.lng !== undefined
-    ) {
-      // Note: This will work once location fields are added to Barber model
-      // For now, we return all barbers
+    // Sort by distance if coordinates provided, otherwise by rating
+    if (params.lat !== undefined && params.lng !== undefined) {
+      filteredBarbershops.sort((a, b) => {
+        if (a.distance !== undefined && b.distance !== undefined) {
+          return a.distance - b.distance;
+        }
+        return (b.averageRating || 0) - (a.averageRating || 0);
+      });
+    } else {
+      filteredBarbershops.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
     }
 
     return {
       success: true,
-      message: "لیست آرایشگران با موفقیت دریافت شد",
-      data: barbersWithDistance,
+      message: "لیست آرایشگاه‌ها با موفقیت دریافت شد",
+      data: filteredBarbershops,
     };
   } catch (error) {
-    console.error("Error getting barbers:", error);
+    console.error("Error getting barbershops:", error);
     return {
       success: false,
-      message: "دریافت لیست آرایشگران با خطا مواجه شد",
+      message: "دریافت لیست آرایشگاه‌ها با خطا مواجه شد",
     };
   }
 }
 
 /**
- * Get single barber by ID
+ * Get single barbershop by ID
  */
 export async function getBarberByIdService(
-  barberId: number
+  barbershopId: number
 ): Promise<GetBarberByIdResponse> {
   try {
-    const barber = await prisma.barber.findUnique({
-      where: { id: barberId },
+    const barbershop = await prisma.barbershop.findUnique({
+      where: { id: barbershopId },
       include: {
-        user: {
+        services: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            phone: true,
+            price: true,
+          },
+          where: {
+            price: {
+              not: null,
+            },
           },
         },
-      },
+        commentRates: true,
+        schedules: {
+          select: {
+            weekday: true,
+            openMs: true,
+            closeMs: true,
+            isClosed: true,
+          },
+        },
+      } as any,
     });
 
-    if (!barber) {
+    if (!barbershop) {
       return {
         success: false,
-        message: "آرایشگر یافت نشد",
+        message: "آرایشگاه یافت نشد",
       };
     }
 
-    const fullName =
-      barber.user.firstName && barber.user.lastName
-        ? `${barber.user.firstName} ${barber.user.lastName}`
-        : barber.user.firstName || barber.user.lastName || "بدون نام";
+    // Calculate average rating and count
+    const shop = barbershop as any;
+    const ratings = (shop.commentRates || [])
+      .map((cr: any) => cr.rate)
+      .filter((r: any): r is number => r !== null && r !== undefined);
+    const averageRating = ratings.length > 0
+      ? ratings.reduce((sum: number, r: number) => sum + r, 0) / ratings.length
+      : shop.averageRating || 0;
+    const ratingCount = ratings.length || shop.ratingCount || 0;
 
-    const barberResponse: BarberResponse = {
-      id: barber.id,
-      userId: barber.userId,
-      name: fullName,
-      specialization: barber.specialization,
-      experienceYears: barber.experienceYears,
-      rating: barber.rating,
-      bio: barber.bio,
-      profileImage: barber.profileImage,
-      user: {
-        id: barber.user.id,
-        firstName: barber.user.firstName,
-        lastName: barber.user.lastName,
-        phone: barber.user.phone,
-      },
+    // Calculate min price (priceFrom)
+    const prices = (shop.services || [])
+      .map((s: any) => s.price)
+      .filter((p: any): p is NonNullable<typeof p> => p !== null)
+      .map((p: any) => Number(p));
+    const priceFrom = prices.length > 0 ? Math.min(...prices) : null;
+
+    // Check if open
+    const isOpen = isBarbershopOpen(shop.schedules || [], shop.openingTime, shop.closingTime);
+
+    // Get discount percentage from publicMeta
+    const discountPercentage = shop.publicMeta ? getDiscountPercentage(shop.publicMeta as any) : null;
+
+    const barbershopResponse: BarbershopResponse = {
+      id: shop.id,
+      name: shop.name,
+      averageRating: Math.round(averageRating * 10) / 10,
+      ratingCount,
+      priceFrom,
+      isOpen,
+      discountPercentage,
+      avatar: shop.avatar,
     };
 
     return {
       success: true,
-      message: "اطلاعات آرایشگر با موفقیت دریافت شد",
-      data: barberResponse,
+      message: "اطلاعات آرایشگاه با موفقیت دریافت شد",
+      data: barbershopResponse,
     };
   } catch (error) {
-    console.error("Error getting barber by ID:", error);
+    console.error("Error getting barbershop by ID:", error);
     return {
       success: false,
-      message: "دریافت اطلاعات آرایشگر با خطا مواجه شد",
+      message: "دریافت اطلاعات آرایشگاه با خطا مواجه شد",
     };
   }
 }
