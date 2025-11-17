@@ -85,6 +85,18 @@ enum NotificationStatus {
   failed
 }
 
+enum Gender {
+  male
+  female
+  other
+}
+
+enum PackageType {
+  deposit
+  full_payment
+  subscription
+}
+
 // --------------------------
 // CORE MODELS (separate tables)
 // - Customer (auth + profile)
@@ -101,6 +113,7 @@ model Customer {
   passwordHash     String?  @map("password_hash")   // hashed password (bcrypt/argon2)
   passwordSalt     String?  @map("password_salt")   // optional
   avatar           String?  @map("avatar")
+  gender           Gender?  @map("gender")
   role             Role     @default(customer)
   emailVerifiedAt  BigInt?  @map("email_verified_at") @db.BigInt
   phoneVerified    Boolean  @default(false) @map("phone_verified")
@@ -123,12 +136,13 @@ model Customer {
   updated          BigInt   @default(0) @map("updated") @db.BigInt
 
   // Relations
+  barber           Barber?           @relation("CustomerBarber")
   commentRates     CommentRate[]
   appointments     Appointment[]    @relation("CustomerAppointments")
-  transactions     Transaction[]    @relation("CustomerTransactions")
   couponsUsed      CouponUsage[]
   sessions         UserSession[]    @relation("CustomerSessions")
   wallets          Wallet[]         // customers may have one or multiple wallet records (e.g., separate wallet types)
+  packagePurchases PackagePurchase[]
 
   @@index([email])
   @@index([phone])
@@ -137,16 +151,17 @@ model Customer {
 
 model Barber {
   id              Int      @id @default(autoincrement())
-  // Optional link to a Customer-like account if you want single sign-on.
-  userRefId       Int?     @map("user_ref_id")    // optional pointer to customers.id for shared auth
+  // Link to Customer account for shared authentication
+  userRefId       Int      @map("user_ref_id")    // required pointer to customers.id for shared auth
   fullName        String?  @map("full_name")
   specialization  String?
   experienceYears Int?     @map("experience_years")
   bio             String?  @db.Text
   avatar          String?  @map("avatar")
   serviceAudience Json?    @map("service_audience")
+  gender          Gender?  @map("gender")
 
-  // Authentication fields for barbers (if barbers authenticate separately)
+  // Authentication fields for barbers (if barbers authenticate separately - legacy support)
   email           String?  @unique
   phone           String?  @unique
   passwordHash    String?  @map("password_hash")
@@ -162,15 +177,17 @@ model Barber {
   updated         BigInt   @default(0) @map("updated") @db.BigInt
 
   // Relations
+  customer         Customer           @relation("CustomerBarber", fields: [userRefId], references: [id], onDelete: Cascade)
   ownedBarbershops Barbershop[]       @relation("BarbershopOwner")
   appointments     Appointment[]      @relation("BarberAppointments")
-  transactions     Transaction[]      @relation("BarberTransactions")
   schedules        BarberSchedule[]
   timeOff          BarberTimeOff[]
   kpis             BarberKPI[]
   sessions         UserSession[]      @relation("BarberSessions")
   appointmentBarbers AppointmentBarber[]
+  packagePurchases PackagePurchase[]
 
+  @@index([userRefId])
   @@index([email])
   @@index([phone])
   @@map("barbers")
@@ -209,7 +226,6 @@ model Barbershop {
   services     Service[]
   commentRates CommentRate[]
   appointments Appointment[]
-  transactions Transaction[]
   schedules    BarbershopSchedule[]
 
   @@index([ownerId])
@@ -304,13 +320,13 @@ model Appointment {
   barbershop   Barbershop?   @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
 
   commentRates CommentRate[]
-  transactions Transaction[]   // transactions that reference this appointment
   logs         AppointmentLog[]
   invoices     Invoice[]
   payments     AppointmentPayment[]
   reminders    AppointmentReminder[]
   barbers      AppointmentBarber[]
   addons       AppointmentAddon[]
+  externalTransactions ExternalTransaction[] @relation("AppointmentTransactions")
 
   @@index([customerId])
   @@index([barberId])
@@ -385,7 +401,9 @@ model ExternalTransaction {
   updated             BigInt                 @default(0) @db.BigInt
 
   // relations
+  appointment         Appointment?           @relation("AppointmentTransactions", fields: [relatedAppointmentId], references: [id], onDelete: SetNull)
   internalTransactions InternalTransaction[]
+  packagePurchases     PackagePurchase[]
 
   @@index([initiatorType, initiatorId])
   @@index([relatedAppointmentId])
@@ -635,4 +653,92 @@ model BarberKPI {
 
   @@index([barberId, date])
   @@map("barber_kpis")
+}
+
+// --------------------------
+// RATINGS & REVIEWS
+// --------------------------
+
+model CommentRate {
+  id            Int     @id @default(autoincrement())
+  customerId    Int?    @map("customer_id")
+  barbershopId  Int?    @map("barbershop_id")
+  appointmentId Int?    @map("appointment_id")
+  rating        Float   // 1-5
+  comment       String? @db.Text
+  created       BigInt  @default(0) @db.BigInt
+  updated       BigInt  @default(0) @db.BigInt
+
+  customer      Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  barbershop    Barbershop? @relation(fields: [barbershopId], references: [id], onDelete: SetNull)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([barbershopId])
+  @@index([appointmentId])
+  @@map("comment_rates")
+}
+
+// --------------------------
+// PACKAGES & PURCHASES
+// --------------------------
+
+model Package {
+  id            Int         @id @default(autoincrement())
+  name          String
+  description   String?     @db.Text
+  type          PackageType
+  price         Decimal     @db.Decimal(20,2)
+  depositAmount Decimal?    @map("deposit_amount") @db.Decimal(20,2) // if type is deposit
+  serviceIds    Json?       @map("service_ids") // array of service IDs this package applies to
+  active        Boolean     @default(true)
+  validFrom     BigInt?     @map("valid_from") @db.BigInt
+  validUntil    BigInt?     @map("valid_until") @db.BigInt
+  created       BigInt      @default(0) @db.BigInt
+  updated       BigInt      @default(0) @db.BigInt
+
+  purchases     PackagePurchase[]
+
+  @@map("packages")
+}
+
+model PackagePurchase {
+  id            Int     @id @default(autoincrement())
+  packageId     Int     @map("package_id")
+  customerId    Int?    @map("customer_id")
+  barberId      Int?    @map("barber_id")
+  amount        Decimal @db.Decimal(20,2)
+  externalTransactionId Int? @map("external_transaction_id")
+  used          Boolean @default(false)
+  expiresAt     BigInt? @map("expires_at") @db.BigInt
+  created       BigInt  @default(0) @db.BigInt
+
+  package       Package   @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  barber        Barber?   @relation(fields: [barberId], references: [id], onDelete: SetNull)
+  externalTx    ExternalTransaction? @relation(fields: [externalTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([packageId])
+  @@index([customerId])
+  @@index([barberId])
+  @@map("package_purchases")
+}
+
+// --------------------------
+// REVENUE SHARING CONFIGURATION
+// --------------------------
+
+model RevenueShareConfig {
+  id              Int     @id @default(autoincrement())
+  name            String  // e.g., "default", "premium_service", "vip_barber"
+  platformPercent Decimal @map("platform_percent") @db.Decimal(5,2) // e.g., 20.00 for 20%
+  barberPercent   Decimal @map("barber_percent") @db.Decimal(5,2)   // e.g., 80.00 for 80%
+  barbershopPercent Decimal? @map("barbershop_percent") @db.Decimal(5,2) // if applicable
+  serviceType     String? @map("service_type") // optional: specific service type this applies to
+  active          Boolean @default(true)
+  created         BigInt  @default(0) @db.BigInt
+  updated         BigInt  @default(0) @db.BigInt
+
+  @@index([active])
+  @@map("revenue_share_configs")
 }

@@ -34,12 +34,53 @@ app.get('/', (req, res) => {
     message: 'Barber Booking API',
     version: '1.0.0',
     endpoints: {
-      health: '/api/health',
-      otpSend: 'POST /api/otp/send',
-      otpVerify: 'POST /api/otp/verify',
-      authRefresh: 'POST /api/auth/refresh-token',
-      authVerify: 'POST /api/auth/verify-token',
-      authLogout: 'POST /api/auth/logout',
+      health: 'GET /api/health',
+      auth: {
+        loginPassword: 'POST /api/auth/login/password',
+        loginOtp: 'POST /api/auth/login/otp',
+        refreshToken: 'POST /api/auth/refresh-token',
+        verifyToken: 'POST /api/auth/verify-token',
+        logout: 'POST /api/auth/logout',
+      },
+      otp: {
+        send: 'POST /api/otp/send',
+        verify: 'POST /api/otp/verify',
+      },
+      transactions: {
+        balance: 'GET /api/transactions/wallet/balance',
+        deposit: 'POST /api/transactions/deposit',
+        withdraw: 'POST /api/transactions/withdraw',
+        transfer: 'POST /api/transactions/transfer',
+        history: 'GET /api/transactions/history',
+        lock: 'POST /api/transactions/lock',
+      },
+      packages: {
+        list: 'GET /api/packages',
+        purchase: 'POST /api/packages/purchase',
+        myPackages: 'GET /api/packages/my-packages',
+      },
+      coupons: {
+        validate: 'POST /api/coupons/validate',
+        available: 'GET /api/coupons/available',
+      },
+      revenueShare: {
+        config: 'GET /api/revenue-share/config',
+        calculate: 'POST /api/revenue-share/calculate',
+      },
+      appointments: {
+        availability: 'GET /api/appointments/availability',
+        create: 'POST /api/appointments',
+        list: 'GET /api/appointments',
+        get: 'GET /api/appointments/:id',
+        updateStatus: 'PUT /api/appointments/:id/status',
+        cancel: 'POST /api/appointments/:id/cancel',
+        reschedule: 'POST /api/appointments/:id/reschedule',
+      },
+      payment: {
+        request: 'POST /api/payment/request',
+        verify: 'GET /api/payment/verify (callback)',
+        verifyApi: 'POST /api/payment/verify',
+      },
     },
   });
 });

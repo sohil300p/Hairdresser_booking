@@ -51,12 +51,12 @@ export async function editProfileService(
   profileImageFile?: Express.Multer.File
 ): Promise<EditProfileResponse> {
   try {
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
+    // Check if customer exists
+    const existingCustomer = await prisma.customer.findUnique({
       where: { id: userId },
     });
 
-    if (!existingUser) {
+    if (!existingCustomer) {
       return {
         success: false,
         message: 'کاربر یافت نشد',
@@ -65,21 +65,16 @@ export async function editProfileService(
 
     // Prepare update data
     const updateData: {
-      firstName?: string | null;
-      lastName?: string | null;
-      profileImage?: string | null;
+      fullName?: string | null;
+      avatar?: string | null;
     } = {};
 
-    // Update firstName if provided
-    if (data.firstName !== undefined) {
-      const trimmedFirstName = data.firstName.trim();
-      updateData.firstName = trimmedFirstName === '' ? null : trimmedFirstName;
-    }
-
-    // Update lastName if provided
-    if (data.lastName !== undefined) {
-      const trimmedLastName = data.lastName.trim();
-      updateData.lastName = trimmedLastName === '' ? null : trimmedLastName;
+    // Update fullName if firstName or lastName provided
+    if (data.firstName !== undefined || data.lastName !== undefined) {
+      const firstName = data.firstName?.trim() || '';
+      const lastName = data.lastName?.trim() || '';
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+      updateData.fullName = fullName === '' ? null : fullName;
     }
 
     // Handle profile image upload if file is provided
@@ -94,9 +89,9 @@ export async function editProfileService(
       }
 
       // Delete old profile image if exists
-      if (existingUser.profileImage) {
+      if (existingCustomer.avatar) {
         try {
-          const oldFileName = extractFileNameFromUrl(existingUser.profileImage);
+          const oldFileName = extractFileNameFromUrl(existingCustomer.avatar);
           if (oldFileName) {
             // Extract folder name (profiles)
             const folder = oldFileName.includes('/') ? oldFileName.split('/')[0] : undefined;
@@ -121,19 +116,25 @@ export async function editProfileService(
       };
     }
 
-    // Update user profile
-    const updatedUser = await prisma.user.update({
+    // Update customer profile
+    updateData.avatar = updateData.avatar || undefined;
+    
+    const updatedCustomer = await prisma.customer.update({
       where: { id: userId },
-      data: updateData,
+      data: {
+        ...updateData,
+        updated: BigInt(Date.now()),
+      },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        fullName: true,
         phone: true,
-        profileImage: true,
+        email: true,
+        avatar: true,
         role: true,
-        createdAt: true,
-        updatedAt: true,
+        gender: true,
+        created: true,
+        updated: true,
       },
     });
 
@@ -141,14 +142,16 @@ export async function editProfileService(
       success: true,
       message: 'پروفایل با موفقیت به‌روزرسانی شد',
       data: {
-        id: updatedUser.id,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        phone: updatedUser.phone,
-        profileImage: updatedUser.profileImage,
-        role: updatedUser.role,
-        createdAt: updatedUser.createdAt,
-        updatedAt: updatedUser.updatedAt,
+        id: updatedCustomer.id,
+        firstName: updatedCustomer.fullName?.split(' ')[0] || null,
+        lastName: updatedCustomer.fullName?.split(' ').slice(1).join(' ') || null,
+        phone: updatedCustomer.phone,
+        email: updatedCustomer.email,
+        profileImage: updatedCustomer.avatar,
+        role: updatedCustomer.role as any,
+        gender: updatedCustomer.gender as any,
+        createdAt: Number(updatedCustomer.created),
+        updatedAt: Number(updatedCustomer.updated),
       },
     };
   } catch (error) {

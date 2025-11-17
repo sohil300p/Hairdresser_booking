@@ -3,6 +3,7 @@ import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { validateIranianPhoneNumber, normalizePhoneNumber } from '../utils/validator';
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
+import { sendOTPSMS } from '../SMS/melipayamak.service';
 
 const OTP_EXPIRY_SECONDS = 60; // 60 seconds
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
@@ -132,9 +133,30 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
     // Note: User account will be created after successful OTP verification
     // We don't create user here to avoid creating accounts for invalid OTP requests
 
-    // Send OTP (In production, integrate with SMS service)
-    // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
-    console.log(`📱 OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds)`);
+    // Send OTP via MeliPayamak SMS service
+    const smsResult = await sendOTPSMS(phone, otp);
+
+    if (!smsResult.success) {
+      // In development, log OTP to console if SMS fails
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📱 [DEV] OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds)`);
+        console.warn('⚠️ SMS sending failed, but OTP is logged for development');
+      }
+      
+      // Still return success if Redis is working (OTP is stored)
+      // User can still verify OTP from Redis even if SMS fails
+      return {
+        success: true,
+        message: 'کد OTP ایجاد شد. در صورت عدم دریافت پیامک، لطفاً با پشتیبانی تماس بگیرید.',
+        expiresIn: OTP_EXPIRY_SECONDS,
+        remainingAttempts: limitCheck.remaining - 1,
+      };
+    }
+
+    // Log success in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📱 OTP sent via SMS to ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds)`);
+    }
 
     return {
       success: true,
@@ -153,9 +175,10 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
 
 /**
  * Verify OTP service
+ * Also handles automatic registration if user doesn't exist
  */
 export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOtpResponse> {
-  let { phone, otp } = data;
+  let { phone, otp, userType, gender } = data;
 
   // Normalize phone number
   phone = normalizePhoneNumber(phone);
@@ -218,40 +241,83 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       undefined // fallback
     );
 
-    // Check if user exists or is new
-    let user = await prisma.user.findUnique({
+    // Check if customer exists
+    let customer = await prisma.customer.findUnique({
       where: { phone },
     });
 
     let isNewUser = false;
+    let barber = null;
 
-    if (!user) {
-      // User is new - create new account
-      user = await prisma.user.create({
+    if (!customer) {
+      // New user - create customer account
+      if (!userType) {
+        return {
+          success: false,
+          message: 'لطفاً نوع کاربری خود را مشخص کنید (customer یا barber)',
+        };
+      }
+
+      if (!gender) {
+        return {
+          success: false,
+          message: 'لطفاً جنسیت خود را مشخص کنید',
+        };
+      }
+
+      // Create customer
+      customer = await prisma.customer.create({
         data: {
           phone,
-          role: 'CUSTOMER', // Default role
-          lastLoginAt: new Date(),
+          gender: gender as any,
+          role: 'customer',
+          phoneVerified: true,
+          created: BigInt(Date.now()),
+          updated: BigInt(Date.now()),
         },
       });
+
       isNewUser = true;
-      console.log(`✅ New user account created for phone: ${phone} (ID: ${user.id})`);
+      console.log(`✅ New customer account created for phone: ${phone} (ID: ${customer.id})`);
+
+      // If user is a barber, create barber record
+      if (userType === 'barber') {
+        barber = await prisma.barber.create({
+          data: {
+            userRefId: customer.id,
+            phone: customer.phone,
+            gender: gender as any,
+            created: BigInt(Date.now()),
+            updated: BigInt(Date.now()),
+          },
+        });
+        console.log(`✅ Barber record created for customer ID: ${customer.id} (Barber ID: ${barber.id})`);
+      }
     } else {
-      // User exists - update last login time
-      user = await prisma.user.update({
+      // Existing user - update last login time
+      customer = await prisma.customer.update({
         where: { phone },
         data: {
-          lastLoginAt: new Date(),
+          lastLogin: BigInt(Date.now()),
+          updated: BigInt(Date.now()),
+          phoneVerified: true,
         },
       });
-      console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
+      console.log(`✅ Existing customer logged in: ${phone} (ID: ${customer.id})`);
+
+      // Check if user is a barber
+      barber = await prisma.barber.findFirst({
+        where: { userRefId: customer.id },
+      });
     }
 
     // Generate JWT tokens
     const payload = {
-      sub: user.id,
-      phone: user.phone,
-      role: user.role,
+      sub: customer.id,
+      phone: customer.phone,
+      role: customer.role as 'customer' | 'admin' | 'staff_admin',
+      userType: barber ? ('barber' as const) : ('customer' as const),
+      barberId: barber?.id,
     };
 
     const token = generateAccessToken(payload);
@@ -265,13 +331,16 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       token,
       refreshToken,
       user: {
-        id: user.id,
-        phone: user.phone,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        profileImage: user.profileImage,
-        role: user.role,
+        id: customer.id,
+        phone: customer.phone,
+        firstName: customer.fullName?.split(' ')[0] || null,
+        lastName: customer.fullName?.split(' ').slice(1).join(' ') || null,
+        profileImage: customer.avatar,
+        role: customer.role as 'CUSTOMER' | 'BARBER' | 'ADMIN',
+        userType: barber ? 'barber' : 'customer',
+        barberId: barber?.id,
       },
+      isNewUser,
     };
   } catch (error) {
     console.error('Error verifying OTP:', error);

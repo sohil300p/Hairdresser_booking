@@ -15,23 +15,30 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
     };
   }
 
-  // Verify user still exists
-  const user = await prisma.user.findUnique({
+  // Verify customer still exists
+  const customer = await prisma.customer.findUnique({
     where: { id: payload.sub },
   });
 
-  if (!user) {
+  if (!customer) {
     return {
       success: false,
       message: 'کاربر یافت نشد',
     };
   }
 
+  // Check if user is a barber
+  const barber = await prisma.barber.findFirst({
+    where: { userRefId: customer.id },
+  });
+
   // Generate new tokens
   const newPayload = {
-    sub: user.id,
-    phone: user.phone,
-    role: user.role,
+    sub: customer.id,
+    phone: customer.phone,
+    role: customer.role as 'customer' | 'admin' | 'staff_admin',
+    userType: barber ? ('barber' as const) : ('customer' as const),
+    barberId: barber?.id,
   };
 
   const newToken = generateAccessToken(newPayload);
@@ -58,25 +65,32 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
     };
   }
 
-  // Verify user still exists
-  const user = await prisma.user.findUnique({
+  // Verify customer still exists
+  const customer = await prisma.customer.findUnique({
     where: { id: payload.sub },
   });
 
-  if (!user) {
+  if (!customer) {
     return {
       success: false,
       message: 'کاربر یافت نشد',
     };
   }
 
+  // Check if user is a barber
+  const barber = await prisma.barber.findFirst({
+    where: { userRefId: customer.id },
+  });
+
   return {
     success: true,
       message: 'Token معتبر است',
     user: {
-      id: user.id,
-      phone: user.phone,
-      role: user.role,
+      id: customer.id,
+      phone: customer.phone,
+      role: customer.role as 'customer' | 'admin' | 'staff_admin',
+      userType: barber ? 'barber' : 'customer',
+      barberId: barber?.id,
     },
   };
 }

@@ -26,8 +26,9 @@ export async function sendOtpController(req: Request, res: Response): Promise<vo
 }
 
 /**
- * Verify OTP Controller
- * POST /api/otp/verify
+ * Verify OTP Controller (also used as login endpoint)
+ * POST /api/auth/login/otp
+ * POST /api/otp/verify (legacy endpoint)
  */
 export async function verifyOtpController(req: Request, res: Response): Promise<void> {
   try {

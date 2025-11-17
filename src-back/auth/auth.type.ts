@@ -21,7 +21,9 @@ export interface VerifyTokenResponse {
   user?: {
     id: number;
     phone: string;
-    role: 'CUSTOMER' | 'BARBER' | 'ADMIN';
+    role: 'customer' | 'admin' | 'staff_admin';
+    userType?: 'customer' | 'barber';
+    barberId?: number;
   };
 }
 

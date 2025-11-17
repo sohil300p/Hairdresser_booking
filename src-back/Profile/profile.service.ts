@@ -6,40 +6,50 @@ import { GetProfileResponse } from './profile.type';
  */
 export async function getProfileService(userId: number): Promise<GetProfileResponse> {
   try {
-    // Find user by ID
-    const user = await prisma.user.findUnique({
+    // Find customer by ID
+    const customer = await prisma.customer.findUnique({
       where: { id: userId },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        fullName: true,
         phone: true,
-        profileImage: true,
+        email: true,
+        avatar: true,
         role: true,
-        createdAt: true,
-        updatedAt: true,
+        gender: true,
+        created: true,
+        updated: true,
       },
     });
 
-    if (!user) {
+    if (!customer) {
       return {
         success: false,
         message: 'کاربر یافت نشد',
       };
     }
 
+    // Check if user is a barber
+    const barber = await prisma.barber.findFirst({
+      where: { userRefId: customer.id },
+    });
+
     return {
       success: true,
       message: 'اطلاعات پروفایل با موفقیت دریافت شد',
       data: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        phone: user.phone,
-        profileImage: user.profileImage,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
+        id: customer.id,
+        firstName: customer.fullName?.split(' ')[0] || null,
+        lastName: customer.fullName?.split(' ').slice(1).join(' ') || null,
+        phone: customer.phone,
+        email: customer.email,
+        profileImage: customer.avatar,
+        role: customer.role as any,
+        gender: customer.gender as any,
+        userType: barber ? 'barber' : 'customer',
+        barberId: barber?.id,
+        createdAt: Number(customer.created),
+        updatedAt: Number(customer.updated),
       },
     };
   } catch (error) {
