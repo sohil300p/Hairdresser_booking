@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { healthCheck } from '../Helth/healthController';
 import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../auth/auth.controller';
@@ -6,6 +7,7 @@ import { loginWithPasswordController } from '../auth/login.controller';
 import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile_User/Get_Edit_profile/profile.controller';
 import { editProfileController } from '../Profile_User/Get_Edit_profile/editprofile.controller';
+import { getPaymentHistoryController } from '../Profile_User/Payment_Hisotry/payment-history.controller';
 import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/Hairdresser.controller';
 import {
   getWalletBalanceController,
@@ -14,25 +16,25 @@ import {
   transferController,
   getTransactionHistoryController,
   lockFundsController,
-} from '../Just_mony/Transaction/transaction.controller';
+} from '../Profile_User/Wallet/Transaction/transaction.controller';
 import {
   getAvailablePackagesController,
   purchasePackageController,
   getUserPackagesController,
-} from '../Just_mony/Package/package.controller';
+} from '../Profile_User/Wallet/Package/package.controller';
 import {
   validateCouponController,
   getAvailableCouponsController,
-} from '../Just_mony/Coupon/coupon.controller';
+} from '../Profile_User/Coupon/coupon.controller';
 import {
   getRevenueShareConfigController,
   calculateRevenueShareController,
-} from '../Just_mony/RevenueShare/revenue-share.controller';
+} from '../Profile_User/Wallet/RevenueShare/revenue-share.controller';
 import {
   requestPaymentController,
   verifyPaymentCallbackController,
   verifyPaymentController,
-} from '../Just_mony/PaymentGateway/payment-gateway.controller';
+} from '../PaymentGateway/payment-gateway.controller';
 import {
   checkAvailabilityController,
   createAppointmentController,
@@ -44,6 +46,14 @@ import {
 } from '../Appointment/appointment.controller';
 
 const router = Router();
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 // Health Check Route
 router.get('/health', healthCheck);
@@ -65,6 +75,10 @@ router.get('/Hairdresser/:id', getBarberByIdController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
+router.put('/profile', authenticateToken, upload.single('profileImage'), editProfileController);
+
+// Payment History Routes (Protected)
+router.get('/payment-history', authenticateToken, getPaymentHistoryController);
 
 
 // Transaction & Wallet Routes (Protected)

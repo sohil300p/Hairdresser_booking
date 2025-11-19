@@ -14,9 +14,9 @@ import {
 } from './appointment.type';
 import { Decimal } from '@prisma/client/runtime/library';
 import { checkAvailabilityService } from './availability.service';
-import { lockFundsForAppointmentService } from '../Just_mony/Transaction/transaction.service';
-import { validateCouponService, applyCouponService } from '../Just_mony/Coupon/coupon.service';
-import { requestPayment } from '../Just_mony/PaymentGateway/zarrinpal.service';
+import { lockFundsForAppointmentService } from '../Profile_User/Wallet/Transaction/transaction.service';
+import { validateCouponService, applyCouponService } from '../Profile_User/Coupon/coupon.service';
+import { requestPayment } from '../PaymentGateway/zarrinpal.service';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -765,7 +765,7 @@ export async function cancelAppointmentService(
           });
 
           // Update wallet balance
-          const { calculateWalletBalance } = await import('../Transaction/transaction.service');
+          const { calculateWalletBalance } = await import('../Profile_User/Wallet/Transaction/transaction.service');
           const newBalance = await calculateWalletBalance(customerWallet.id);
           await prisma.wallet.update({
             where: { id: customerWallet.id },
