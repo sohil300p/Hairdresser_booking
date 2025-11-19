@@ -133,6 +133,7 @@ export async function createAppointmentService(
         startTime,
         endTime,
         status: 'pending',
+        serviceType: service.name,
         notes: notes || null,
         basePrice: new Decimal(basePrice),
         addonsTotal: new Decimal(addonsTotal),

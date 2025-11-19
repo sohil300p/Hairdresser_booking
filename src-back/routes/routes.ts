@@ -44,6 +44,7 @@ import {
   cancelAppointmentController,
   rescheduleAppointmentController,
 } from '../Appointment/appointment.controller';
+import { getMyReservationsController } from '../My_Reservations/my-reservations.controller';
 
 const router = Router();
 
@@ -115,5 +116,8 @@ router.get('/appointments/:id', authenticateToken, getAppointmentController);
 router.put('/appointments/:id/status', authenticateToken, updateAppointmentStatusController);
 router.post('/appointments/:id/cancel', authenticateToken, cancelAppointmentController);
 router.post('/appointments/:id/reschedule', authenticateToken, rescheduleAppointmentController);
+
+// My Reservations Routes (Protected)
+router.get('/my-reservations', authenticateToken, getMyReservationsController);
 
 export default router;
