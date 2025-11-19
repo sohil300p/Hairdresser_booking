@@ -723,6 +723,9 @@ export async function cancelAppointmentService(
         where: { id: appointment.paymentLockExternalTransactionId },
       });
 
+      // Check if transaction exists and is valid
+      // For wallet payments, status is 'success' immediately
+      // For online payments, status becomes 'success' after payment verification
       if (externalTx && externalTx.status === 'success') {
         // Create refund transaction
         const refundTx = await prisma.externalTransaction.create({

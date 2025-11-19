@@ -1,5 +1,6 @@
 import prisma from '../config/prisma';
-import { GetMyReservationsResponse, ReservationItem } from './my-reservations.type';
+import { GetMyReservationsResponse, ReservationItem, CancelMyReservationRequest, CancelMyReservationResponse } from './my-reservations.type';
+import { cancelAppointmentService } from '../Appointment/appointment.service';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'در انتظار تایید',
@@ -99,4 +100,88 @@ export async function getMyReservationsService(
     };
   }
 }
+
+export async function cancelMyReservationService(
+  appointmentId: number,
+  customerId: number,
+  data: CancelMyReservationRequest
+): Promise<CancelMyReservationResponse> {
+  try {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+
+    if (!appointment) {
+      return {
+        success: false,
+        message: 'رزرو یافت نشد',
+      };
+    }
+
+    if (appointment.customerId !== customerId) {
+      return {
+        success: false,
+        message: 'شما مجاز به لغو این رزرو نیستید',
+      };
+    }
+
+    if (appointment.status === 'cancelled') {
+      return {
+        success: false,
+        message: 'این رزرو قبلاً لغو شده است',
+      };
+    }
+
+    if (appointment.status === 'completed') {
+      return {
+        success: false,
+        message: 'رزرو تکمیل شده قابل لغو نیست',
+      };
+    }
+
+    const now = Date.now();
+    const appointmentStart = Number(appointment.startTime);
+
+    if (appointmentStart <= now) {
+      return {
+        success: false,
+        message: 'رزروهای گذشته قابل لغو نیستند',
+      };
+    }
+
+    const result = await cancelAppointmentService(
+      appointmentId,
+      data,
+      customerId,
+      'customer'
+    );
+
+    if (result.success) {
+      const paidAmount = appointment.paidAmount ? Number(appointment.paidAmount) : 0;
+      const refundAmount = result.refundAmount || 0;
+      const penaltyAmount = paidAmount - refundAmount;
+
+      return {
+        success: true,
+        message: result.message,
+        refundAmount,
+        refundPercentage: result.refundPercentage,
+        penaltyAmount: penaltyAmount > 0 ? penaltyAmount : undefined,
+        appointmentId,
+      };
+    }
+
+    return {
+      success: false,
+      message: result.message || 'لغو رزرو با خطا مواجه شد',
+    };
+  } catch (error) {
+    console.error('Error cancelling my reservation:', error);
+    return {
+      success: false,
+      message: 'لغو رزرو با خطا مواجه شد',
+    };
+  }
+}
+
 

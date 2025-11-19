@@ -8,7 +8,8 @@ import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile_User/Get_Edit_profile/profile.controller';
 import { editProfileController } from '../Profile_User/Get_Edit_profile/editprofile.controller';
 import { getPaymentHistoryController } from '../Profile_User/Payment_Hisotry/payment-history.controller';
-import { getBarbersController, getBarberByIdController } from '../Hairdresser_list/Hairdresser.controller';
+import { getBarbersController, getBarberByIdController } from '../Home_Page/Hairdresser_list/Hairdresser.controller';
+import { searchController } from '../Home_Page/Searching/search.controller';
 import {
   getWalletBalanceController,
   depositController,
@@ -44,7 +45,7 @@ import {
   cancelAppointmentController,
   rescheduleAppointmentController,
 } from '../Appointment/appointment.controller';
-import { getMyReservationsController } from '../My_Reservations/my-reservations.controller';
+import { getMyReservationsController, cancelMyReservationController } from '../My_Reservations/my-reservations.controller';
 
 const router = Router();
 
@@ -73,6 +74,9 @@ router.post('/otp/verify', verifyOtpController);
 // Home page
 router.get('/Hairdresser', getBarbersController);
 router.get('/Hairdresser/:id', getBarberByIdController);
+
+// Search Routes
+router.get('/search', searchController);
 
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
@@ -119,5 +123,6 @@ router.post('/appointments/:id/reschedule', authenticateToken, rescheduleAppoint
 
 // My Reservations Routes (Protected)
 router.get('/my-reservations', authenticateToken, getMyReservationsController);
+router.post('/my-reservations/:id/cancel', authenticateToken, cancelMyReservationController);
 
 export default router;

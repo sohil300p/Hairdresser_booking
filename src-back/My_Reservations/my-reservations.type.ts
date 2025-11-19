@@ -21,3 +21,15 @@ export interface ReservationItem {
   statusLabel: string; // Persian label for status
 }
 
+export interface CancelMyReservationRequest {
+  reason?: string;
+}
+
+export interface CancelMyReservationResponse {
+  success: boolean;
+  message: string;
+  refundAmount?: number;
+  refundPercentage?: number;
+  penaltyAmount?: number;
+  appointmentId?: number;
+}
