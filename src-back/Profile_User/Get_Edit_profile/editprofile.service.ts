@@ -90,12 +90,19 @@ function extractFileNameFromUrl(url: string): string | null {
 export async function editProfileService(
   userId: number,
   data: EditProfileRequest,
-  profileImageFile?: Express.Multer.File
+  profileImageFile?: Express.Multer.File,
+  backgroundImageFile?: Express.Multer.File
 ): Promise<EditProfileResponse> {
   try {
     // Check if customer exists
     const existingCustomer = await prisma.customer.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        avatar: true,
+        publicMeta: true,
+      },
     });
 
     if (!existingCustomer) {
@@ -109,7 +116,11 @@ export async function editProfileService(
     const updateData: {
       fullName?: string | null;
       avatar?: string | null;
+      publicMeta?: any;
     } = {};
+
+    // Get existing publicMeta
+    const existingPublicMeta = (existingCustomer.publicMeta || {}) as any;
 
     // Update fullName if firstName or lastName provided
     if (data.firstName !== undefined || data.lastName !== undefined) {
@@ -150,6 +161,40 @@ export async function editProfileService(
       updateData.avatar = uploadResult.fileUrl;
     }
 
+    // Handle background image upload if file is provided
+    if (backgroundImageFile) {
+      const uploadResult = await uploadFileService(backgroundImageFile, 'backgrounds');
+      
+      if (!uploadResult.success || !uploadResult.fileUrl) {
+        return {
+          success: false,
+          message: 'آپلود عکس بک‌گراند با خطا مواجه شد',
+        };
+      }
+
+      // Delete old background image if exists
+      if (existingPublicMeta.backgroundImage) {
+        try {
+          const oldFileName = extractFileNameFromUrl(existingPublicMeta.backgroundImage);
+          if (oldFileName) {
+            const folder = oldFileName.includes('/') ? oldFileName.split('/')[0] : undefined;
+            const fileName = oldFileName.includes('/') ? oldFileName.split('/').slice(1).join('/') : oldFileName;
+            
+            await deleteFileService(fileName, folder);
+          }
+        } catch (error) {
+          console.error('Error deleting old background image:', error);
+          // Continue with update even if deletion fails
+        }
+      }
+
+      // Update publicMeta with new backgroundImage
+      updateData.publicMeta = {
+        ...existingPublicMeta,
+        backgroundImage: uploadResult.fileUrl,
+      };
+    }
+
     // Check if there's anything to update
     if (Object.keys(updateData).length === 0) {
       return {
@@ -159,7 +204,6 @@ export async function editProfileService(
     }
 
     // Update customer profile
-    
     const updatedCustomer = await prisma.customer.update({
       where: { id: userId },
       data: {
@@ -172,12 +216,17 @@ export async function editProfileService(
         phone: true,
         email: true,
         avatar: true,
+        publicMeta: true,
         role: true,
         gender: true,
         created: true,
         updated: true,
       },
     });
+
+    // Extract backgroundImage from updated publicMeta
+    const updatedPublicMeta = (updatedCustomer.publicMeta || {}) as any;
+    const backgroundImage = updatedPublicMeta.backgroundImage || null;
 
     return {
       success: true,
@@ -189,6 +238,7 @@ export async function editProfileService(
         phone: updatedCustomer.phone,
         email: updatedCustomer.email,
         profileImage: updatedCustomer.avatar,
+        backgroundImage,
         role: updatedCustomer.role as any,
         gender: updatedCustomer.gender as any,
         createdAt: Number(updatedCustomer.created),

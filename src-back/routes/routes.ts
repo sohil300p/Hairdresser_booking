@@ -8,8 +8,11 @@ import { authenticateToken } from '../auth/auth.middleware';
 import { getProfileController } from '../Profile_User/Get_Edit_profile/profile.controller';
 import { editProfileController } from '../Profile_User/Get_Edit_profile/editprofile.controller';
 import { getPaymentHistoryController } from '../Profile_User/Payment_Hisotry/payment-history.controller';
-import { getBarbersController, getBarberByIdController } from '../Home_Page/Hairdresser_list/Hairdresser.controller';
 import { searchController } from '../Home_Page/Searching/search.controller';
+import { getBarbershopOverviewController } from '../Home_Page/BarbershopOverview/barbershop-overview.controller';
+import { getBarbershopServicesController } from '../Home_Page/BarbershopServices/barbershop-services.controller';
+import { getBarbershopDetailsController } from '../Home_Page/BarbershopDetails/barbershop-details.controller';
+import { getBarbershopStaffController } from '../Home_Page/BarbershopStaff/barbershop-staff.controller';
 import {
   getWalletBalanceController,
   depositController,
@@ -71,16 +74,21 @@ router.post('/auth/logout', logoutController);
 router.post('/otp/send', sendOtpController);
 router.post('/otp/verify', verifyOtpController);
 
-// Home page
-router.get('/Hairdresser', getBarbersController);
-router.get('/Hairdresser/:id', getBarberByIdController);
-
 // Search Routes
 router.get('/search', searchController);
 
+// Barbershop Routes
+router.get('/barbershop/:id/overview', getBarbershopOverviewController);
+router.get('/barbershop/:id/services', getBarbershopServicesController);
+router.get('/barbershop/:id/details', getBarbershopDetailsController);
+router.get('/barbershop/:id/staff', getBarbershopStaffController);
+
 // Profile Routes (Protected)
 router.get('/profile', authenticateToken, getProfileController);
-router.put('/profile', authenticateToken, upload.single('profileImage'), editProfileController);
+router.put('/profile', authenticateToken, upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'backgroundImage', maxCount: 1 }
+]), editProfileController);
 
 // Payment History Routes (Protected)
 router.get('/payment-history', authenticateToken, getPaymentHistoryController);

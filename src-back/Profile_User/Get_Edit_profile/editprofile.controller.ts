@@ -11,6 +11,7 @@ import { EditProfileRequest } from './profile.type';
  * - firstName?: string
  * - lastName?: string
  * - profileImage?: File (image file)
+ * - backgroundImage?: File (image file)
  */
 export async function editProfileController(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -31,32 +32,42 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
       lastName: req.body.lastName,
     };
 
-    // Get profile image file if uploaded
-    const profileImageFile = req.file;
+    // Get files from request (using req.files for multiple files)
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const profileImageFile = files?.profileImage?.[0];
+    const backgroundImageFile = files?.backgroundImage?.[0];
 
     // Validate that at least one field is provided
     if (
       (editData.firstName === undefined || editData.firstName === '') &&
       (editData.lastName === undefined || editData.lastName === '') &&
-      !profileImageFile
+      !profileImageFile &&
+      !backgroundImageFile
     ) {
       res.status(400).json({
         success: false,
-        message: 'حداقل یکی از فیلدها (نام، نام خانوادگی یا عکس پروفایل) باید ارسال شود',
+        message: 'حداقل یکی از فیلدها (نام، نام خانوادگی، عکس پروفایل یا عکس بک‌گراند) باید ارسال شود',
       });
       return;
     }
 
-    // Validate file type if file is uploaded
-    if (profileImageFile) {
-      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedMimeTypes.includes(profileImageFile.mimetype)) {
-        res.status(400).json({
-          success: false,
-          message: 'فرمت فایل نامعتبر است. فقط تصاویر (JPEG, PNG, GIF, WebP) مجاز هستند',
-        });
-        return;
-      }
+    // Validate file types if files are uploaded
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (profileImageFile && !allowedMimeTypes.includes(profileImageFile.mimetype)) {
+      res.status(400).json({
+        success: false,
+        message: 'فرمت فایل عکس پروفایل نامعتبر است. فقط تصاویر (JPEG, PNG, GIF, WebP) مجاز هستند',
+      });
+      return;
+    }
+
+    if (backgroundImageFile && !allowedMimeTypes.includes(backgroundImageFile.mimetype)) {
+      res.status(400).json({
+        success: false,
+        message: 'فرمت فایل عکس بک‌گراند نامعتبر است. فقط تصاویر (JPEG, PNG, GIF, WebP) مجاز هستند',
+      });
+      return;
     }
 
     // Validate firstName and lastName if provided
@@ -76,7 +87,7 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const result = await editProfileService(userId, editData, profileImageFile);
+    const result = await editProfileService(userId, editData, profileImageFile, backgroundImageFile);
 
     if (result.success) {
       res.status(200).json(result);

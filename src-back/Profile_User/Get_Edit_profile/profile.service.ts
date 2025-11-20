@@ -15,6 +15,7 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         phone: true,
         email: true,
         avatar: true,
+        publicMeta: true,
         role: true,
         gender: true,
         created: true,
@@ -34,6 +35,10 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
       where: { userRefId: customer.id },
     });
 
+    // Extract backgroundImage from publicMeta
+    const publicMeta = (customer.publicMeta || {}) as any;
+    const backgroundImage = publicMeta.backgroundImage || null;
+
     return {
       success: true,
       message: 'اطلاعات پروفایل با موفقیت دریافت شد',
@@ -44,6 +49,7 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         phone: customer.phone,
         email: customer.email,
         profileImage: customer.avatar,
+        backgroundImage,
         role: customer.role as any,
         gender: customer.gender as any,
         userType: barber ? 'barber' : 'customer',

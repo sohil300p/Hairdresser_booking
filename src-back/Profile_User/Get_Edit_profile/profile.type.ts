@@ -10,6 +10,7 @@ export interface GetProfileResponse {
     phone: string;
     email: string | null;
     profileImage: string | null;
+    backgroundImage: string | null;
     role: 'CUSTOMER' | 'BARBER' | 'ADMIN';
     gender?: 'male' | 'female' | 'other' | null;
     userType?: 'customer' | 'barber';
@@ -35,6 +36,7 @@ export interface EditProfileResponse {
     phone: string;
     email: string | null;
     profileImage: string | null;
+    backgroundImage: string | null;
     role: 'CUSTOMER' | 'BARBER' | 'ADMIN';
     gender?: 'male' | 'female' | 'other' | null;
     userType?: 'customer' | 'barber';
