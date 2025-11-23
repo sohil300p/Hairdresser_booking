@@ -7,6 +7,7 @@ import { authService } from './src/services/auth.service';
 // New Pages
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
+import { BarberLoginPage } from './pages/BarberLoginPage';
 import { BarberProfilePage } from './pages/BarberProfilePage';
 import { BookingPage } from './pages/BookingPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
@@ -244,6 +245,7 @@ const App: React.FC = () => {
       case 'support-center': return <SupportCenterPage context={context} />;
       case 'chat': return <ChatPage context={context} />;
       case 'faq': return <FaqPage context={context} />;
+      case 'barber-login': return <BarberLoginPage context={context} />;
       case 'login': default: return <LoginPage context={context} />;
     }
   };
@@ -260,7 +262,7 @@ const App: React.FC = () => {
     </div>
   );
 
-  const pagesWithoutNav = ['login', 'booking', 'wallet-withdraw', 'chat', 'faq'];
+  const pagesWithoutNav = ['login', 'barber-login', 'booking', 'wallet-withdraw', 'chat', 'faq'];
   const showNav = user && !pagesWithoutNav.includes(currentPage);
 
   if (isCheckingAuth) {

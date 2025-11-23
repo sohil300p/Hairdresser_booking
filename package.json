@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "install:all": "npm install && cd src-front && npm install",
+    "install:all": "npm install && cd src-front && npm install --legacy-peer-deps",
     "dev:frontend": "cd src-front && npm run dev",
     "dev:backend": "npm run dev",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\"",

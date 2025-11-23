@@ -106,7 +106,8 @@ export type Page =
   | 'support-center'
   | 'chat'
   | 'faq'
-  | 'login';
+  | 'login'
+  | 'barber-login';
 
 export type ToastType = 'success' | 'error';
 
