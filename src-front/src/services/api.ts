@@ -1,7 +1,9 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import { tokenService } from './token.service';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+// In development, use relative path to leverage Vite proxy
+// In production, use full URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api');
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

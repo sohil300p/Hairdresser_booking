@@ -14,7 +14,8 @@
     "install:all": "npm install && cd src-front && npm install",
     "dev:frontend": "cd src-front && npm run dev",
     "dev:backend": "npm run dev",
-    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\""
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\"",
+    "test:otp": "ts-node scripts/test-otp.ts"
   },
   "keywords": [
     "barber",

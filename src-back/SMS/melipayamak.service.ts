@@ -4,10 +4,11 @@ import { SendSMSRequest, SendSMSResponse } from './sms.type';
 
 dotenv.config();
 
-const MELIPAYAMAK_USERNAME = process.env.MELIPAYAMAK_USERNAME || '';
-const MELIPAYAMAK_PASSWORD = process.env.MELIPAYAMAK_PASSWORD || '';
-const MELIPAYAMAK_FROM = process.env.MELIPAYAMAK_FROM || '';
-const MELIPAYAMAK_AUTH_PATTERN_ID = process.env.MELIPAYAMAK_AUTH_PATTERN_ID;
+// Support both naming conventions
+const MELIPAYAMAK_USERNAME = process.env.MELIPAYAMAK_USERNAME || process.env.MELLI_USERNAME || '';
+const MELIPAYAMAK_PASSWORD = process.env.MELIPAYAMAK_PASSWORD || process.env.MELLI_PASSWORD || '';
+const MELIPAYAMAK_FROM = process.env.MELIPAYAMAK_FROM || process.env.MELLI_SENDER || '';
+const MELIPAYAMAK_AUTH_PATTERN_ID = process.env.MELIPAYAMAK_AUTH_PATTERN_ID || process.env.MELLI_AUTH_PATTERN_ID;
 
 const MELIPAYAMAK_BASE_URL = 'https://rest.payamak-panel.com/api';
 
@@ -25,7 +26,7 @@ export async function sendSimpleSMS(data: SendSMSRequest): Promise<SendSMSRespon
     }
 
     const response = await axios.post(
-      `${MELIPAYAMAK_BASE_URL}/SendSimpleSMS/SendSimpleSMS`,
+      `${MELIPAYAMAK_BASE_URL}/SendSimpleSMS2`,
       {
         username: MELIPAYAMAK_USERNAME,
         password: MELIPAYAMAK_PASSWORD,
@@ -104,7 +105,7 @@ export async function sendPatternSMS(
       .map((key) => patternParams[key]);
 
     const response = await axios.post(
-      `${MELIPAYAMAK_BASE_URL}/SendByPattern/SendByPattern`,
+      `${MELIPAYAMAK_BASE_URL}/SendByBaseNumber`,
       {
         username: MELIPAYAMAK_USERNAME,
         password: MELIPAYAMAK_PASSWORD,

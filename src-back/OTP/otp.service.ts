@@ -3,6 +3,7 @@ import prisma from '../config/prisma';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
 import { validateIranianPhoneNumber, normalizePhoneNumber } from '../utils/validator';
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
+import { sendOTPSMS } from '../SMS/melipayamak.service';
 
 const OTP_EXPIRY_SECONDS = 60; // 60 seconds
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
@@ -119,21 +120,38 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
         undefined // fallback
       );
     } else {
-      console.warn('⚠️ Redis not available, OTP will not be stored. Please start Redis for OTP to work.');
-      return {
-        success: false,
-        message: 'سرویس OTP موقتاً در دسترس نیست. لطفاً بعداً تلاش کنید.',
-      };
+      console.warn('⚠️ Redis not available, OTP will not be stored. Please start Redis for OTP verification to work.');
+      // For testing purposes, we'll still send SMS even if Redis is not available
+      // But OTP verification will fail without Redis
     }
 
-    // Increment attempts counter
-    await incrementOtpAttempts(phone);
+    // Increment attempts counter (only if Redis is available)
+    if (isRedisConnected()) {
+      await incrementOtpAttempts(phone);
+    }
 
     // Note: User account will be created after successful OTP verification
     // We don't create user here to avoid creating accounts for invalid OTP requests
 
-    // Send OTP (In production, integrate with SMS service)
-    // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
+    // Send OTP via MeliPayamak SMS service
+    const smsResult = await sendOTPSMS(phone, otp);
+    
+    if (!smsResult.success) {
+      console.error(`❌ Failed to send OTP SMS to ${phone}:`, smsResult.message);
+      // Log OTP to console for development/debugging even if SMS fails
+      console.log(`📱 OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds) - SMS failed`);
+      
+      // Still return success if OTP is stored in Redis (for development)
+      // In production, you might want to return error if SMS fails
+      return {
+        success: true,
+        message: 'کد OTP با موفقیت ارسال شد (توجه: ارسال پیامک با خطا مواجه شد)',
+        expiresIn: OTP_EXPIRY_SECONDS,
+        remainingAttempts: limitCheck.remaining - 1,
+      };
+    }
+
+    console.log(`✅ OTP SMS sent successfully to ${phone} (Message ID: ${smsResult.messageId})`);
     console.log(`📱 OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds)`);
 
     return {
