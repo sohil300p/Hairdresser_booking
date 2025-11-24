@@ -5,7 +5,7 @@ import { validateIranianPhoneNumber, normalizePhoneNumber } from '../utils/valid
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
 import { sendOTPSMS } from '../SMS/melipayamak.service';
 
-const OTP_EXPIRY_SECONDS = 60; // 60 seconds
+const OTP_EXPIRY_SECONDS = 60; // 1 minute (60 seconds)
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
 
 /**
@@ -134,7 +134,7 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
     // We don't create user here to avoid creating accounts for invalid OTP requests
 
     // Send OTP via MeliPayamak SMS service
-    const smsResult = await sendOTPSMS(phone, otp);
+    const smsResult = await sendOTPSMS(phone, otp, OTP_EXPIRY_SECONDS);
     
     if (!smsResult.success) {
       console.error(`❌ Failed to send OTP SMS to ${phone}:`, smsResult.message);
@@ -187,13 +187,18 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     };
   }
 
-  // Validate OTP format (should be 4 digits)
-  if (!otp || !/^\d{4}$/.test(otp)) {
+  // Validate OTP format (should be exactly 4 digits, no whitespace)
+  const trimmedOtp = String(otp).trim();
+  if (!trimmedOtp || !/^\d{4}$/.test(trimmedOtp)) {
+    console.warn(`⚠️ Invalid OTP format attempted for phone: ${phone}, OTP: ${otp}`);
     return {
       success: false,
-      message: 'کد OTP باید 4 رقم باشد',
+      message: 'کد OTP باید دقیقاً 4 رقم باشد',
     };
   }
+
+  // Use trimmed OTP for verification
+  otp = trimmedOtp;
 
   if (!isRedisConnected()) {
     return {
@@ -207,25 +212,32 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     const storedOtp = await safeRedisOperation(
       async (client) => {
         const otpKey = getOtpKey(phone);
-        return await client.get(otpKey);
+        const otpValue = await client.get(otpKey);
+        // Ensure OTP is trimmed and normalized
+        return otpValue ? String(otpValue).trim() : null;
       },
       null // fallback
     );
 
     if (!storedOtp) {
+      console.warn(`⚠️ OTP not found or expired for phone: ${phone}`);
       return {
         success: false,
         message: 'کد OTP یافت نشد یا منقضی شده است. لطفاً OTP جدید درخواست دهید',
       };
     }
 
-    // Verify OTP
+    // Verify OTP with strict comparison (case-sensitive, exact match)
+    // Both values are already trimmed
     if (storedOtp !== otp) {
+      console.warn(`⚠️ Invalid OTP attempt for phone: ${phone}. Expected: ${storedOtp}, Received: ${otp}`);
       return {
         success: false,
         message: 'کد OTP نامعتبر است',
       };
     }
+
+    console.log(`✅ OTP verified successfully for phone: ${phone}`);
 
     // OTP is valid - delete it from Redis
     await safeRedisOperation(
@@ -249,11 +261,8 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         data: {
           phone,
           role: 'customer', // Default role
-          phoneVerified: true as any,
-          lastLogin: BigInt(Date.now()) as any,
-          created: BigInt(Date.now()) as any,
-          updated: BigInt(Date.now()) as any,
-        } as any,
+          lastLoginAt: new Date(),
+        },
       });
       isNewUser = true;
       console.log(`✅ New user account created for phone: ${phone} (ID: ${user.id})`);
@@ -262,17 +271,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       user = await prisma.customer.update({
         where: { phone },
         data: {
-          phoneVerified: true as any,
-          lastLogin: BigInt(Date.now()) as any,
-          updated: BigInt(Date.now()) as any,
-        } as any,
+          lastLoginAt: new Date(),
+        },
       });
       console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
     }
 
     // Check if user is a barber
     const barber = await prisma.barber.findFirst({
-      where: { userRefId: user.id } as any,
+      where: { userRefId: user.id },
     });
 
     // Generate JWT tokens

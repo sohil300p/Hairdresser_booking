@@ -107,34 +107,17 @@ enum PackageType {
 // --------------------------
 
 model Customer {
-  id              Int     @id @default(autoincrement())
-  fullName        String? @map("full_name")
-  email           String? @unique
-  phone           String  @unique
-  passwordHash    String? @map("password_hash") // hashed password (bcrypt/argon2)
-  passwordSalt    String? @map("password_salt") // optional
-  avatar          String? @map("avatar")
-  gender          Gender? @map("gender")
-  role            Role    @default(customer)
-  emailVerifiedAt BigInt? @map("email_verified_at") @db.BigInt
-  phoneVerified   Boolean @default(false) @map("phone_verified")
-
-  // Authentication recovery / OTP
-  otp        String? @map("otp")
-  otpExpires BigInt? @map("otp_expires") @db.BigInt
-
-  // Wallet cache (derived from internal transactions; keep for speed)
-  walletBalance   Decimal @default(0) @map("wallet_balance") @db.Decimal(20, 2)
-  transactionCode String? @map("transaction_code")
-
-  // Metadata
-  publicMeta  Json? @map("public_meta")
-  privateMeta Json? @map("private_meta")
-
-  // Timestamps (ms)
-  lastLogin BigInt? @map("last_login") @db.BigInt
-  created   BigInt  @default(0) @map("created") @db.BigInt
-  updated   BigInt  @default(0) @map("updated") @db.BigInt
+  id        Int      @id @default(autoincrement())
+  fullName  String?  @map("full_name")
+  phone     String   @unique
+  password  String?  // hashed password (bcrypt/argon2)
+  avatar    String?
+  publicMeta Json?   @map("public_meta")
+  privateMeta Json?  @map("private_meta")
+  role      Role     @default(customer)
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   barber           Barber?           @relation("CustomerBarber")
@@ -145,9 +128,8 @@ model Customer {
   packagePurchases PackagePurchase[]
   transactions     Transaction[]     @relation("CustomerTransactions")
 
-  @@index([email])
   @@index([phone])
-  @@map("customers")
+  @@map("customer")
 }
 
 model Barber {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../shared/components/Button';
 import { Logo } from '../shared/components/Logo';
 import { authService } from '../user/services/auth.service';
@@ -15,19 +15,62 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context, onLoginSuccess })
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        };
+    }, []);
+
+    // Timer effect
+    useEffect(() => {
+        if (timeRemaining > 0) {
+            timerRef.current = setInterval(() => {
+                setTimeRemaining((prev) => {
+                    if (prev <= 1) {
+                        if (timerRef.current) {
+                            clearInterval(timerRef.current);
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        }
+
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+        };
+    }, [timeRemaining]);
 
     const handleSendOtp = async () => {
-        if (phone.length < 11) {
+        // Trim phone number
+        const trimmedPhone = phone.trim();
+        
+        if (trimmedPhone.length < 11) {
             context.showToast('شماره موبایل باید ۱۱ رقمی باشد.', 'error');
             return;
         }
 
         setLoading(true);
         try {
-            const result = await authService.sendOtp(phone);
+            const result = await authService.sendOtp(trimmedPhone);
             if (result.success) {
                 setOtpSent(true);
                 setStep(2);
+                // Start countdown timer (default 60 seconds if expiresIn not provided)
+                setTimeRemaining(result.expiresIn || 60);
                 context.showToast(result.message || 'کد تایید ارسال شد', 'success');
             } else {
                 context.showToast(result.message || 'خطا در ارسال کد تایید', 'error');
@@ -40,14 +83,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context, onLoginSuccess })
     };
 
     const handleVerifyOtp = async () => {
-        if (otp.length < 4) {
-            context.showToast('کد تایید باید ۴ رقمی باشد.', 'error');
+        // Trim and validate OTP
+        const trimmedOtp = otp.trim();
+        
+        if (trimmedOtp.length !== 4) {
+            context.showToast('کد تایید باید دقیقاً ۴ رقمی باشد.', 'error');
+            return;
+        }
+
+        // Validate that OTP contains only digits
+        if (!/^\d{4}$/.test(trimmedOtp)) {
+            context.showToast('کد تایید باید فقط شامل اعداد باشد.', 'error');
             return;
         }
 
         setLoading(true);
         try {
-            const result = await authService.verifyOtp(phone, otp);
+            const result = await authService.verifyOtp(phone.trim(), trimmedOtp);
             if (result.success && result.user) {
                 const userData: User = {
                     id: result.user.id,
@@ -75,7 +127,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context, onLoginSuccess })
                 context.showToast(result.message || 'کد وارد شده صحیح نیست', 'error');
             }
         } catch (error: any) {
-            context.showToast(error.response?.data?.message || 'خطا در تایید کد', 'error');
+            console.error('OTP verification error:', error);
+            const errorMessage = error.response?.data?.message || error.message || 'خطا در تایید کد';
+            context.showToast(errorMessage, 'error');
         } finally {
             setLoading(false);
         }
@@ -109,16 +163,34 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context, onLoginSuccess })
                     <>
                          <label htmlFor="otp" className="block text-sm font-medium text-gray-700 text-right mb-1">کد تایید</label>
                         <input
-                            type="text"
+                            type="tel"
                             id="otp"
                             value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
+                            onChange={(e) => {
+                                // Only allow digits
+                                const value = e.target.value.replace(/\D/g, '');
+                                if (value.length <= 4) {
+                                    setOtp(value);
+                                }
+                            }}
                             placeholder="کد ۴ رقمی"
                             className="form-input text-center tracking-[1em]"
                             maxLength={4}
+                            pattern="[0-9]{4}"
+                            inputMode="numeric"
                             disabled={loading}
                         />
                         <p className="text-xs text-center text-gray-500 mt-2">کد ۴ رقمی ارسال شده را وارد کنید.</p>
+                        
+                        {/* OTP Expiry Timer */}
+                        {timeRemaining > 0 && (
+                            <div className="text-center mt-2 mb-2">
+                                <p className="text-sm text-gray-600">
+                                    زمان باقیمانده: <span className="font-bold text-[var(--md-sys-color-primary)]">{timeRemaining}</span> ثانیه
+                                </p>
+                            </div>
+                        )}
+
                         <Button className="mt-4" onClick={handleVerifyOtp} disabled={otp.length < 4 || loading}>
                             {loading ? 'در حال تایید...' : 'ورود'}
                         </Button>
@@ -127,9 +199,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context, onLoginSuccess })
                             <Button 
                                 className="mt-2 bg-transparent border-2 text-[var(--md-sys-color-primary)] border border-[var(--md-sys-color-primary)] hover:bg-blue-50"
                                 onClick={handleSendOtp}
-                                disabled={loading}
+                                disabled={loading || timeRemaining > 0}
                             >
-                                ارسال مجدد کد
+                                {timeRemaining > 0 ? `ارسال مجدد (${timeRemaining} ثانیه)` : 'ارسال مجدد کد'}
                             </Button>
                         )}
                     </>

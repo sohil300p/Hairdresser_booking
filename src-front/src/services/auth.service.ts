@@ -42,12 +42,26 @@ export interface VerifyTokenResponse {
 
 export const authService = {
   async sendOtp(phone: string): Promise<SendOtpResponse> {
-    const response = await api.post<SendOtpResponse>('/otp/send', { phone });
+    // Sanitize phone: trim and ensure it's a string
+    const sanitizedPhone = String(phone).trim();
+    const response = await api.post<SendOtpResponse>('/otp/send', { phone: sanitizedPhone });
     return response.data;
   },
 
   async verifyOtp(phone: string, otp: string): Promise<VerifyOtpResponse> {
-    const response = await api.post<VerifyOtpResponse>('/otp/verify', { phone, otp });
+    // Sanitize inputs: trim and ensure they're strings
+    const sanitizedPhone = String(phone).trim();
+    const sanitizedOtp = String(otp).trim();
+    
+    // Validate OTP format (should be exactly 4 digits)
+    if (!/^\d{4}$/.test(sanitizedOtp)) {
+      throw new Error('کد OTP باید دقیقاً ۴ رقم باشد');
+    }
+    
+    const response = await api.post<VerifyOtpResponse>('/otp/verify', { 
+      phone: sanitizedPhone, 
+      otp: sanitizedOtp 
+    });
     if (response.data.success && response.data.token && response.data.refreshToken) {
       tokenService.setTokens(response.data.token, response.data.refreshToken);
     }

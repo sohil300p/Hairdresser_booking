@@ -52,15 +52,15 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
     }
 
     // Validate file types if files are uploaded
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     
     if (profileImageFile && !allowedMimeTypes.includes(profileImageFile.mimetype)) {
-      res.status(400).json({
-        success: false,
+        res.status(400).json({
+          success: false,
         message: 'فرمت فایل عکس پروفایل نامعتبر است. فقط تصاویر (JPEG, PNG, GIF, WebP) مجاز هستند',
-      });
-      return;
-    }
+        });
+        return;
+      }
 
     if (backgroundImageFile && !allowedMimeTypes.includes(backgroundImageFile.mimetype)) {
       res.status(400).json({

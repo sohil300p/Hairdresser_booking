@@ -9,7 +9,22 @@ import { SendOtpRequest, VerifyOtpRequest } from './otp.type';
 export async function sendOtpController(req: Request, res: Response): Promise<void> {
   try {
     const data: SendOtpRequest = req.body;
-    const result = await sendOtpService(data);
+
+    // Input validation
+    if (!data.phone || typeof data.phone !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'شماره تلفن الزامی است',
+      });
+      return;
+    }
+
+    // Sanitize input: trim whitespace
+    const sanitizedData: SendOtpRequest = {
+      phone: String(data.phone).trim(),
+    };
+
+    const result = await sendOtpService(sanitizedData);
 
     if (result.success) {
       res.status(200).json(result);
@@ -33,7 +48,42 @@ export async function sendOtpController(req: Request, res: Response): Promise<vo
 export async function verifyOtpController(req: Request, res: Response): Promise<void> {
   try {
     const data: VerifyOtpRequest = req.body;
-    const result = await verifyOtpService(data);
+
+    // Input validation and sanitization
+    if (!data.phone || typeof data.phone !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'شماره تلفن الزامی است',
+      });
+      return;
+    }
+
+    if (!data.otp || typeof data.otp !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'کد OTP الزامی است',
+      });
+      return;
+    }
+
+    // Sanitize inputs: trim whitespace and ensure string type
+    const sanitizedData: VerifyOtpRequest = {
+      phone: String(data.phone).trim(),
+      otp: String(data.otp).trim(),
+      userType: data.userType,
+      gender: data.gender,
+    };
+
+    // Additional validation: OTP must be exactly 4 digits
+    if (!/^\d{4}$/.test(sanitizedData.otp)) {
+      res.status(400).json({
+        success: false,
+        message: 'کد OTP باید دقیقاً 4 رقم باشد',
+      });
+      return;
+    }
+
+    const result = await verifyOtpService(sanitizedData);
 
     if (result.success) {
       res.status(200).json(result);
