@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import type { AppContextType } from '../types';
-import { Button } from '../components/Button';
-import { Logo } from '../components/Logo';
-import { authService } from '../src/services/auth.service';
+import { Button } from '../shared/components/Button';
+import { Logo } from '../shared/components/Logo';
+import { authService } from '../user/services/auth.service';
+import type { User } from '../shared/types/common';
 
 interface BarberLoginPageProps {
-    context: AppContextType;
+    context: any;
+    onLoginSuccess?: (user: User, role: string) => void;
 }
 
-export const BarberLoginPage: React.FC<BarberLoginPageProps> = ({ context }) => {
+export const BarberLoginPage: React.FC<BarberLoginPageProps> = ({ context, onLoginSuccess }) => {
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1);
@@ -48,7 +49,8 @@ export const BarberLoginPage: React.FC<BarberLoginPageProps> = ({ context }) => 
         try {
             const result = await authService.verifyOtp(phone, otp);
             if (result.success && result.user) {
-                const userData = {
+                const userData: User = {
+                    id: result.user.id,
                     name: result.user.firstName && result.user.lastName
                         ? `${result.user.firstName} ${result.user.lastName}`
                         : result.user.firstName || result.user.lastName || result.user.phone,
@@ -56,10 +58,19 @@ export const BarberLoginPage: React.FC<BarberLoginPageProps> = ({ context }) => 
                     walletBalance: 0,
                     bankCards: [],
                     avatarUrl: result.user.profileImage || undefined,
+                    role: result.user.role,
                 };
-                await context.login(userData);
-                context.setCurrentPage('home');
-                context.showToast('ورود با موفقیت انجام شد', 'success');
+                if (onLoginSuccess) {
+                    onLoginSuccess(userData, result.user.role);
+                } else if (context && context.login) {
+                    await context.login(userData);
+                    if (context.setCurrentPage) {
+                        context.setCurrentPage('home');
+                    }
+                }
+                if (context && context.showToast) {
+                    context.showToast('ورود با موفقیت انجام شد', 'success');
+                }
             } else {
                 context.showToast(result.message || 'کد وارد شده صحیح نیست', 'error');
             }
@@ -125,6 +136,23 @@ export const BarberLoginPage: React.FC<BarberLoginPageProps> = ({ context }) => 
             </div>
             <button className="mt-8 text-sm text-gray-500 hover:text-[var(--primary)]" onClick={() => context.setCurrentPage('login')}>
                 ورود به عنوان مشتری
+            </button>
+            <button className="mt-4 text-sm text-gray-500 hover:text-[var(--primary)]" onClick={() => {
+                const mockUser: User = {
+                    id: 0,
+                    name: 'کاربر مهمان',
+                    phone: '09000000000',
+                    walletBalance: 0,
+                    bankCards: [],
+                    role: 'CUSTOMER',
+                };
+                if (onLoginSuccess) {
+                    onLoginSuccess(mockUser, 'CUSTOMER');
+                } else if (context && context.login) {
+                    context.login(mockUser);
+                }
+            }}>
+                فعلا نمیخواد
             </button>
         </div>
     )

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import type { ToastType } from '../shared/types/common';
+import type { ToastType } from '../../shared/types/common';
 
 interface ToastProps {
   message: string;

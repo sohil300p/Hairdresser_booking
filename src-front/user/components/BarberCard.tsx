@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Barber } from '../shared/types/common';
-import { Icon } from './Icon';
+import type { Barber } from '../../shared/types/common';
+import { Icon } from '../../shared/components/Icon';
 
 interface BarberCardProps {
   barber: Barber;

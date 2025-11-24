@@ -1,5 +1,5 @@
-import type { Barber, Service, Booking, Transaction, Notification, Discount, User, BankCard } from './shared/types/common';
-import { BookingStatus } from './shared/types/common';
+import type { Barber, Service, Booking, Transaction, Notification, Discount, User, BankCard } from '../shared/types/common';
+import { BookingStatus } from '../shared/types/common';
 
 export const SERVICES: Service[] = [
   { id: 1, name: 'کوتاهی مو', duration: 30, price: 150000 },
