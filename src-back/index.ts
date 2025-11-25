@@ -2,10 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
-import prisma from './config/prisma';
-import { getRedisClient, isRedisConnected } from './config/redis';
-import { ensureMinioInitialized, testMinioConnection } from './config/minio';
-import routes from './routes/routes';
+import prisma from './All_Utils/config/prisma';
+import { getRedisClient, isRedisConnected } from './All_Utils/config/redis';
+import { ensureMinioInitialized, testMinioConnection } from './All_Utils/config/minio';
+import routes from './All_Utils/routes/routes';
 
 const redisClient = getRedisClient();
 

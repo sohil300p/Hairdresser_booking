@@ -5,6 +5,13 @@ const soap = require('soap');
 
 dotenv.config();
 
+// Clear proxy settings that might be interfering with local development
+// This addresses the ECONNRESET error when a local proxy (like v2ray at 127.0.0.1:10809) is active but not handling the connection correctly for this request.
+delete process.env.HTTP_PROXY;
+delete process.env.HTTPS_PROXY;
+delete process.env.http_proxy;
+delete process.env.https_proxy;
+
 // Support both naming conventions
 const MELIPAYAMAK_USERNAME = process.env.MELIPAYAMAK_USERNAME || process.env.MELLI_USERNAME || '';
 const MELIPAYAMAK_PASSWORD = process.env.MELIPAYAMAK_PASSWORD || process.env.MELLI_PASSWORD || '';
@@ -32,6 +39,8 @@ async function createSoapClient() {
  * Send simple SMS via MeliPayamak using SOAP
  */
 export async function sendSimpleSMS(data: SendSMSRequest): Promise<SendSMSResponse> {
+  // Note: OTP Service is configured to ONLY use pattern SMS.
+  // This function remains for other non-OTP notifications if needed.
   try {
     if (!MELIPAYAMAK_USERNAME || !MELIPAYAMAK_PASSWORD || !MELIPAYAMAK_FROM) {
       console.warn('⚠️ MeliPayamak credentials not configured. SMS will not be sent.');
@@ -177,18 +186,26 @@ export async function sendPatternSMS(
       .sort() // Sort keys to ensure consistent order
       .map((key) => patternParams[key]);
 
+    // Note for MeliPayamak SOAP + node-soap:
+    // Sometimes single-element arrays need to be wrapped carefully or passed as part of an object structure
+    // that node-soap can interpret correctly as an array of strings.
+    // However, based on common issues with SOAP array serialization:
+    
     const client = await createSoapClient();
     
+    // Use SendByBaseNumber as per documentation: https://www.melipayamak.com/api/sendbybasenumber/
+    // Parameters: username, password, text (array), to, bodyId
     const args = {
         username: MELIPAYAMAK_USERNAME,
         password: MELIPAYAMAK_PASSWORD,
+        text: { string: paramValues }, // Wrap array in object with 'string' key for SOAP array of strings serialization
         to,
         bodyId: patternId,
-        args: paramValues, // Array of parameter values for pattern placeholders {0}, {1}, etc.
     };
 
     return new Promise<SendSMSResponse>((resolve) => {
-      client.SendByBaseNumber2(args, (err: any, result: any) => {
+      // Use SendByBaseNumber instead of SendByBaseNumber2
+      client.SendByBaseNumber(args, (err: any, result: any) => {
         if (err) {
           console.error('Error sending pattern SMS via MeliPayamak SOAP:', err);
           resolve({
@@ -198,7 +215,8 @@ export async function sendPatternSMS(
           return;
         }
 
-        const response = result?.SendByBaseNumber2Result;
+        // Result field is usually SendByBaseNumberResult
+        const response = result?.SendByBaseNumberResult;
         
         // MeliPayamak returns response as string or number
         const responseValue = typeof response === 'string' ? parseInt(response, 10) : response;
@@ -270,41 +288,32 @@ export async function sendPatternSMS(
 }
 
 /**
- * Send OTP SMS (uses pattern if configured, otherwise simple SMS)
+ * Send OTP SMS (uses pattern ONLY)
  * For pattern SMS: MeliPayamak pattern should have placeholders like {0} for OTP code
  * Example pattern: "کد تایید شما: {0}\nاین کد تا 2 دقیقه معتبر است."
  */
 export async function sendOTPSMS(phone: string, otp: string, expirySeconds: number = 120): Promise<SendSMSResponse> {
-  // Try pattern-based SMS first if pattern ID is configured
-  if (MELIPAYAMAK_AUTH_PATTERN_ID) {
-    try {
-      // Pattern parameters: {0} = OTP code
-      // If pattern has multiple parameters, add them in order: {0}, {1}, {2}, etc.
-      const patternResult = await sendPatternSMS(phone, parseInt(MELIPAYAMAK_AUTH_PATTERN_ID), {
-        '0': otp, // First parameter {0} = OTP code
-      });
-      
-      if (patternResult.success) {
-        return patternResult;
-      }
-      // Fallback to simple SMS if pattern fails
-      console.warn('Pattern SMS failed, falling back to simple SMS');
-    } catch (error) {
-      console.warn('Pattern SMS failed, falling back to simple SMS:', error);
-    }
+  // Ensure pattern ID is configured
+  if (!MELIPAYAMAK_AUTH_PATTERN_ID) {
+    console.error('⚠️ MeliPayamak pattern ID not configured for OTP.');
+    return {
+      success: false,
+      message: 'الگوی پیامک تایید پیکربندی نشده است',
+    };
   }
 
-  // Use simple SMS as fallback
-  // Convert seconds to minutes for display
-  const minutes = Math.floor(expirySeconds / 60);
-  const seconds = expirySeconds % 60;
-  const timeText = minutes > 0 
-    ? `${minutes} دقیقه${seconds > 0 ? ` و ${seconds} ثانیه` : ''}`
-    : `${seconds} ثانیه`;
-  
-  const message = `کد تایید شما: ${otp}\n\nاین کد تا ${timeText} معتبر است.`;
-  return await sendSimpleSMS({
-    to: phone,
-    message,
-  });
+  try {
+    // Pattern parameters: {0} = OTP code
+    // If pattern has multiple parameters, add them in order: {0}, {1}, {2}, etc.
+    // Use only the OTP code as argument
+    return await sendPatternSMS(phone, parseInt(MELIPAYAMAK_AUTH_PATTERN_ID), {
+      '0': otp, 
+    });
+  } catch (error: any) {
+    console.error('Pattern SMS failed:', error);
+    return {
+      success: false,
+      message: `خطا در ارسال پیامک: ${error.message || 'خطای نامشخص'}`,
+    };
+  }
 }

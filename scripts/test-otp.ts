@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
-import { sendOtpService } from '../src-back/OTP/otp.service';
+import { sendOtpService } from '../src-back/User_Side/OTP/otp.service';
 
 dotenv.config();
 
 async function testOTP() {
-  const phoneNumber = '09386971963';
+  const phoneNumber = process.env.PHONE_NUMBER_TEST || '09172233241';
   
   console.log(`📱 Testing OTP send to: ${phoneNumber}`);
   console.log('⏳ Sending OTP...\n');
