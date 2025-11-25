@@ -4,7 +4,7 @@
   "description": "Backend API for barber shop appointment booking system",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "node scripts/kill-port.js 3000 && ts-node-dev --respawn --transpile-only src-back/index.ts",
+    "dev": "node scripts/kill-port.js 3000 && ts-node-dev --respawn --transpile-only src-back/All_Utils/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
@@ -38,11 +38,13 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
+    "form-data": "^4.0.5",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "minio": "^7.1.3",
     "multer": "^1.4.5-lts.1",
     "redis": "^4.7.1",
+    "soap": "^1.6.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "uuid": "^9.0.1"
