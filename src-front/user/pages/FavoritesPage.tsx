@@ -1,11 +1,10 @@
 import React from 'react';
-import type { UserContextType } from '../types';
-import type { Barber } from '../../shared/types/common';
-import { Icon } from '../../shared/components/Icon';
+import type { AppContextType, Barber } from '../types';
+import { Icon } from '../components/Icon';
 import { BarberCard } from '../components/BarberCard';
 
 interface FavoritesPageProps {
-  context: UserContextType;
+  context: AppContextType;
   barbers: Barber[];
 }
 

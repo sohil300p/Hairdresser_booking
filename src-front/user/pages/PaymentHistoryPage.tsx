@@ -1,10 +1,10 @@
 import React from 'react';
-import type { UserContextType } from '../types';
+import type { AppContextType } from '../types';
 import { TRANSACTIONS } from '../constants';
-import { Icon } from '../../shared/components/Icon';
+import { Icon } from '../components/Icon';
 
 interface PaymentHistoryPageProps {
-  context: UserContextType;
+  context: AppContextType;
 }
 
 export const PaymentHistoryPage: React.FC<PaymentHistoryPageProps> = ({ context }) => {

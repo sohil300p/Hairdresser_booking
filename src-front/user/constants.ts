@@ -1,5 +1,5 @@
-import type { Barber, Service, Booking, Transaction, Notification, Discount, User, BankCard } from '../shared/types/common';
-import { BookingStatus } from '../shared/types/common';
+import type { Barber, Service, Booking, Transaction, Notification, Discount, User, BankCard } from './types';
+import { BookingStatus } from './types';
 
 export const SERVICES: Service[] = [
   { id: 1, name: 'کوتاهی مو', duration: 30, price: 150000 },
@@ -115,5 +115,3 @@ export const TIME_SLOTS = [
     '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
     '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
 ];
-
-export const MAPIR_API_KEY = import.meta.env.VITE_MAPIR_API_KEY ?? '';

@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import type { UserContextType } from '../types';
-import type { BankCard } from '../../shared/types/common';
-import { Icon } from '../../shared/components/Icon';
-import { Button } from '../../shared/components/Button';
+import type { AppContextType, BankCard } from '../types';
+import { Icon } from '../components/Icon';
+import { Button } from '../components/Button';
 
-export const WalletWithdrawPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const WalletWithdrawPage: React.FC<{ context: AppContextType }> = ({ context }) => {
     const { user, showToast, updateUser, setCurrentPage } = context;
     const [amount, setAmount] = useState('');
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);

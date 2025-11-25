@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { UserContextType } from '../types';
-import { Icon } from '../../shared/components/Icon';
+import type { AppContextType } from '../types';
+import { Icon } from '../components/Icon';
 
 const FAQ_DATA = [
     {
@@ -43,7 +43,7 @@ const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ questi
     );
 };
 
-export const FaqPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const FaqPage: React.FC<{ context: AppContextType }> = ({ context }) => {
     return (
         <div className="bg-gray-50 min-h-screen" dir="rtl">
             <header className="sticky top-0 bg-gray-50 z-10 flex items-center p-4 mb-4">

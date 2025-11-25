@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import type { UserContextType } from '../types';
-import type { Barber } from '../../shared/types/common';
+import type { AppContextType, Barber } from '../types';
 import { BARBERS } from '../constants';
 import { BarberCard } from '../components/BarberCard';
-import { Icon } from '../../shared/components/Icon';
+import { Icon } from '../components/Icon';
 
 type SortType = 'distance' | 'rating' | 'price_asc';
 
-export const SearchPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const SearchPage: React.FC<{ context: AppContextType }> = ({ context }) => {
    const [sortType, setSortType] = useState<SortType>('distance');
 
    const sortedBarbers = useMemo(() => {

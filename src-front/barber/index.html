@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CutChee - پنل آرایشگر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['IRANSansX', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+            },
+            colors: {
+              primary: {
+                50: '#E8F2FB',
+                100: '#D0E4F7',
+                200: '#A0C8F0',
+                300: '#64A4E3',
+                400: '#3E8DD9',
+                500: '#1976C4',
+                600: '#1766A9',
+                700: '#145694',
+                800: '#0F4D78',
+                900: '#0A3A5C',
+              },
+              'primary-container': '#D0E4F7',
+              'on-primary-container': '#0A3A5C',
+              'on-primary': '#FFFFFF',
+              accent: {
+                100: '#FEF3D0',
+                200: '#FCEAA8',
+                300: '#FCD578',
+                400: '#FBBF54',
+                500: '#F7B13D',
+                600: '#F59E0B',
+                700: '#D97D0D',
+              },
+              success: {
+                50: '#E6F7ED',
+                100: '#CCEDCD',
+                200: '#99DCB9',
+                300: '#66CAA5',
+                400: '#33B891',
+                500: '#00A67D',
+                600: '#00966F',
+                700: '#008060',
+                800: '#006752',
+                900: '#004D3D',
+              },
+              warning: {
+                50: '#FFFBEB',
+                100: '#FEF3C7',
+                200: '#FDE68A',
+                300: '#FCD34D',
+                400: '#FBBF24',
+                500: '#F59E0B',
+                600: '#DC6A1F',
+                700: '#C2410C',
+                800: '#9A3412',
+                900: '#7C2D12',
+              },
+              error: {
+                50: '#FEF2F2',
+                100: '#FEE2E2',
+                200: '#FECACA',
+                300: '#FCA5A5',
+                400: '#F87171',
+                500: '#EF4444',
+                600: '#DC2626',
+                700: '#B91C1C',
+                800: '#991B1B',
+                900: '#7F1D1D',
+              },
+              info: {
+                  50: '#EFF6FF',
+                  100: '#DBEAFE',
+                  200: '#BFDBFE',
+                  300: '#93C5FD',
+                  400: '#60A5FA',
+                  500: '#3B82F6',
+                  600: '#2563EB',
+                  700: '#1D4ED8',
+                  800: '#1E40AF',
+                  900: '#1E3A8A',
+              },
+              gray: {
+                50: '#F9FAFB',
+                100: '#F3F4F6',
+                200: '#E5E7EB',
+                300: '#D1D5DB',
+                400: '#9CA3AF',
+                500: '#6B7280',
+                600: '#4B5563',
+                700: '#374151',
+                800: '#1F2937',
+                900: '#0F1419',
+                950: '#0A0F14',
+              },
+              'brand-black': '#282828',
+              'surface-0': '#FFFFFF',
+              'surface-1': '#F9FAFB', // Lightest gray, for page backgrounds
+              'surface-2': '#F3F4F6', // For inputs, subtle cards
+              'surface-3': '#E5E7EB', // For borders, dividers
+              'surface-container': '#FFFFFF', // For main cards
+              'on-surface': '#0F1419', // Main text color
+              'on-surface-variant': '#4B5563', // Secondary text color
+            },
+            boxShadow: {
+              xs: '0 1px 2px rgba(15, 20, 25, 0.06), 0 1px 3px rgba(15, 20, 25, 0.04)',
+              sm: '0 2px 4px rgba(15, 20, 25, 0.06), 0 4px 6px rgba(15, 20, 25, 0.04)',
+              md: '0 4px 8px rgba(15, 20, 25, 0.08), 0 6px 12px rgba(15, 20, 25, 0.06)',
+              lg: '0 8px 16px rgba(15, 20, 25, 0.1), 0 12px 24px rgba(15, 20, 25, 0.08)',
+              xl: '0 16px 32px rgba(15, 20, 25, 0.12), 0 24px 48px rgba(15, 20, 25, 0.1)',
+              '2xl': '0 24px 48px rgba(15, 20, 25, 0.16), 0 32px 64px rgba(15, 20, 25, 0.12)',
+              primary: '0 4px 12px rgba(23, 102, 169, 0.15), 0 8px 16px rgba(23, 102, 169, 0.1)',
+              'primary-lg': '0 8px 20px rgba(23, 102, 169, 0.2), 0 12px 28px rgba(23, 102, 169, 0.15)',
+              inner: 'inset 0 2px 4px rgba(15, 20, 25, 0.06)',
+            },
+            borderRadius: {
+              none: '0px',
+              sm: '4px',  // Inputs
+              md: '8px',  // Buttons
+              lg: '12px', // Cards
+              xl: '16px',
+              '2xl': '20px',
+              '3xl': '24px',
+              full: '9999px',
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.553.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.2",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

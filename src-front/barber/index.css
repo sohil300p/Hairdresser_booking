@@ -1,0 +1,233 @@
+/* IRANSansX - Modern Persian Typeface */
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 100;
+  src: url('/fonts/IRANSansX-Thin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 200;
+  src: url('/fonts/IRANSansX-UltraLight.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 300;
+  src: url('/fonts/IRANSansX-Light.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/IRANSansX-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/fonts/IRANSansX-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/fonts/IRANSansX-DemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/fonts/IRANSansX-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 800;
+  src: url('/fonts/IRANSansX-ExtraBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 900;
+  src: url('/fonts/IRANSansX-Black.woff2') format('woff2');
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'IRANSansX', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- KEYFRAME ANIMATIONS --- */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInScale {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes input-shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* --- ANIMATION UTILITY CLASSES --- */
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.animate-fade-in-scale { animation: fadeInScale 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+.animate-slide-down { animation: slide-down 0.4s ease-out forwards; }
+.animate-slide-in-left { animation: slide-in-left 0.4s ease-out forwards; }
+.animate-slide-in-right { animation: slide-in-right 0.4s ease-out forwards; }
+.animate-input-shake { animation: input-shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+
+
+/* --- COMPONENT STYLES --- */
+.shimmer {
+  background: linear-gradient(to right, #e5e7eb 8%, #f3f4f6 18%, #e5e7eb 33%);
+  background-size: 2000px 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+
+/* Accessibility: Large Font Scaling */
+.text-scaling {
+  /* Increases base font size from 16px to 18px, scaling all rem units */
+  font-size: 112.5%;
+}
+
+/* Accessibility: High Contrast Theme */
+[data-theme="high-contrast"] {
+  --color-primary: #00529B;
+  --color-text-primary: #FFFFFF;
+  --color-text-default: #000000;
+  --color-text-muted: #111111;
+  --color-bg-default: #FFFFFF;
+  --color-border-default: #000000;
+  --color-surface-1: #F0F0F0;
+  --color-surface-2: #E0E0E0;
+  --color-disabled-bg: #9E9E9E;
+  --color-disabled-text: #424242;
+  --color-success: #006400;
+  --color-error: #B22222;
+}
+
+[data-theme="high-contrast"] body {
+  background-color: var(--color-bg-default);
+  color: var(--color-text-default);
+}
+
+[data-theme="high-contrast"] .bg-primary-600,
+[data-theme="high-contrast"] .peer:checked ~ .peer-checked\\:bg-primary-600 {
+  background-color: var(--color-primary) !important;
+  color: var(--color-text-primary) !important;
+}
+[data-theme="high-contrast"] .bg-success-500 {
+   background-color: var(--color-success) !important;
+   color: var(--color-text-primary) !important;
+}
+[data-theme="high-contrast"] .bg-error-500 {
+    background-color: var(--color-error) !important;
+    color: var(--color-text-primary) !important;
+}
+
+[data-theme="high-contrast"] .text-primary-600 {
+  color: var(--color-primary) !important;
+}
+
+[data-theme="high-contrast"] .bg-white,
+[data-theme="high-contrast"] .bg-surface-0,
+[data-theme="high-contrast"] .bg-surface-1 {
+  background-color: var(--color-bg-default) !important;
+}
+[data-theme="high-contrast"] .bg-surface-1 {
+  background-color: var(--color-surface-1) !important;
+}
+
+[data-theme="high-contrast"] .text-gray-900,
+[data-theme="high-contrast"] .text-gray-800,
+[data-theme="high-contrast"] .text-gray-700 {
+  color: var(--color-text-default) !important;
+}
+
+[data-theme="high-contrast"] .text-gray-600,
+[data-theme="high-contrast"] .text-gray-500 {
+  color: var(--color-text-muted) !important;
+}
+
+[data-theme="high-contrast"] .border,
+[data-theme="high-contrast"] .border-t,
+[data-theme="high-contrast"] .border-b,
+[data-theme="high-contrast"] .border-gray-100,
+[data-theme="high-contrast"] .border-gray-200,
+[data-theme="high-contrast"] .border-gray-300 {
+  border-color: var(--color-border-default) !important;
+}
+
+[data-theme="high-contrast"] .ring-white {
+    --tw-ring-color: var(--color-border-default) !important;
+}
+
+[data-theme="high-contrast"] button:disabled,
+[data-theme="high-contrast"] .disabled\\:bg-gray-300 {
+  background-color: var(--color-disabled-bg) !important;
+  color: var(--color-disabled-text) !important;
+}
+
+/* Utility to hide scrollbar */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Fix for browser autofill styles overriding text and background color */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover, 
+textarea:-webkit-autofill:focus, 
+textarea:-webkit-autofill:active {
+    -webkit-text-fill-color: #0F1419 !important; /* text-gray-900 */
+    box-shadow: 0 0 0 30px #F3F4F6 inset !important; /* bg-surface-2 */
+}

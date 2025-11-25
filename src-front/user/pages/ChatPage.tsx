@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { UserContextType } from '../types';
-import { Icon } from '../../shared/components/Icon';
-import { Button } from '../../shared/components/Button';
+import type { AppContextType } from '../types';
+import { Icon } from '../components/Icon';
+import { Button } from '../components/Button';
 
 interface Message {
     id: number;
@@ -16,7 +16,7 @@ const QUICK_REPLIES = [
     'Hi — I want to book Keratin. Available slots this week?'
 ];
 
-export const ChatPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const ChatPage: React.FC<{ context: AppContextType }> = ({ context }) => {
   const { selectedBarber: barber } = context;
   const [messages, setMessages] = useState<Message[]>([
     { id: 2, text: 'سلام، وقتتون بخیر. میخواستم در مورد سرویس کراتینه سوال بپرسم.', sender: 'user', status: 'sent' },

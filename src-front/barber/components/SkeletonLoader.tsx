@@ -6,6 +6,7 @@ const SkeletonLoader: React.FC<{ className?: string }> = ({ className }) => {
 
 export const HomeScreenSkeleton: React.FC = () => (
     <div className="p-4">
+        {/* Header placeholder */}
         <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
                 <SkeletonLoader className="w-12 h-12 rounded-full" />
@@ -17,8 +18,10 @@ export const HomeScreenSkeleton: React.FC = () => (
             <SkeletonLoader className="w-10 h-10 rounded-full" />
         </div>
         
+        {/* Filter placeholder */}
         <SkeletonLoader className="h-10 w-full rounded-lg mb-6" />
 
+        {/* Insights cards placeholder */}
         <div className="grid grid-cols-2 gap-4 mb-6">
             <SkeletonLoader className="h-32 rounded-lg" />
             <SkeletonLoader className="h-32 rounded-lg" />
@@ -27,6 +30,7 @@ export const HomeScreenSkeleton: React.FC = () => (
             </div>
         </div>
 
+        {/* Appointments list placeholder */}
         <div>
             <div className="flex justify-between items-center mb-4">
               <SkeletonLoader className="h-6 w-48 rounded-md" />
@@ -41,4 +45,3 @@ export const HomeScreenSkeleton: React.FC = () => (
 );
 
 export default SkeletonLoader;
-

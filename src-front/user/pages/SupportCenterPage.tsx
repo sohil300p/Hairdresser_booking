@@ -1,8 +1,8 @@
 import React from 'react';
-import type { UserContextType } from '../types';
-import { Icon, IconName } from '../../shared/components/Icon';
+import type { AppContextType } from '../types';
+import { Icon, IconName } from '../components/Icon';
 
-export const SupportCenterPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const SupportCenterPage: React.FC<{ context: AppContextType }> = ({ context }) => {
     
   const SupportMenuItem: React.FC<{ icon: IconName; label: string; description: string; onClick: () => void; }> = ({ icon, label, description, onClick }) => (
     <button onClick={onClick} className="flex items-center w-full p-4 bg-white rounded-lg border border-gray-200 mb-3 text-right transition-transform transform active:scale-95">

@@ -1,0 +1,7 @@
+{
+  "name": "CutChee - Barber Panel",
+  "description": "A comprehensive application for barbers and hairdressers to manage their bookings, clients, income, and business efficiently. Designed with a user-friendly interface and accessibility in mind.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

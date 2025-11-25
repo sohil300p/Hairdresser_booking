@@ -73,4 +73,3 @@ const MaterialInput: React.FC<MaterialInputProps> = ({ label, id, multiline = fa
 };
 
 export default MaterialInput;
-

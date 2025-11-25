@@ -1,8 +1,8 @@
 import React from 'react';
-import type { UserContextType } from '../types';
-import { Icon } from '../../shared/components/Icon';
+import type { AppContextType } from '../types';
+import { Icon } from '../components/Icon';
 
-export const NotificationsPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const NotificationsPage: React.FC<{ context: AppContextType }> = ({ context }) => {
   return (
     <div className="bg-gray-50 min-h-screen" dir="rtl">
       <header className="sticky top-0 bg-gray-50 z-10 flex items-center p-4 mb-4">

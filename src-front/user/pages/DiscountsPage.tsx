@@ -1,8 +1,8 @@
 import React from 'react';
-import type { UserContextType } from '../types';
-import { Icon } from '../../shared/components/Icon';
+import type { AppContextType } from '../types';
+import { Icon } from '../components/Icon';
 
-export const DiscountsPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const DiscountsPage: React.FC<{ context: AppContextType }> = ({ context }) => {
 
     const handleCopy = (code: string) => {
         navigator.clipboard.writeText(code);

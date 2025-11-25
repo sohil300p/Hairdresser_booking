@@ -1,3 +1,4 @@
+
 import React, { ReactNode, useEffect } from 'react';
 import { X } from 'lucide-react';
 
@@ -69,4 +70,3 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title, child
 };
 
 export default BottomSheet;
-

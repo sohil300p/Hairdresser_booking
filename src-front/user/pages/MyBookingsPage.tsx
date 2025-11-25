@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import type { UserContextType } from '../types';
-import type { Booking } from '../../shared/types/common';
-import { BookingStatus } from '../../shared/types/common';
-import { Button } from '../../shared/components/Button';
+import type { AppContextType, Booking } from '../types';
+import { BookingStatus } from '../types';
+import { Button } from '../components/Button';
 
-export const MyBookingsPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const MyBookingsPage: React.FC<{ context: AppContextType }> = ({ context }) => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'canceled'>('upcoming');
 
   const upcomingBookings = context.bookings.filter(b => b.status === BookingStatus.Confirmed);

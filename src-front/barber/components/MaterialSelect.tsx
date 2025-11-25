@@ -46,4 +46,3 @@ const MaterialSelect: React.FC<MaterialSelectProps> = ({ label, id, children, va
 };
 
 export default MaterialSelect;
-

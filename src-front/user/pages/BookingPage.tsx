@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import type { UserContextType } from '../types';
-import type { Barber, Service } from '../../shared/types/common';
-import { Icon, IconName } from '../../shared/components/Icon';
-import { Button } from '../../shared/components/Button';
+import type { AppContextType, Barber, Service } from '../types';
+import { Icon, IconName } from '../components/Icon';
+import { Button } from '../components/Button';
 import { Calendar } from '../components/Calendar';
 import { TIME_SLOTS } from '../constants';
 
@@ -42,7 +41,7 @@ const initializeGapiClient = async (): Promise<void> => {
     });
 };
 
-const handleAddToGoogleCalendar = async (bookingData: BookingData, showToast: UserContextType['showToast']) => {
+const handleAddToGoogleCalendar = async (bookingData: BookingData, showToast: AppContextType['showToast']) => {
     try {
         await initializeGapiClient();
         const gapi = (window as any).gapi;
@@ -133,7 +132,7 @@ const handleDownloadIcs = (bookingData: BookingData) => {
 const BookingSuccessModalContent: React.FC<{
     bookingId: string;
     bookingData: BookingData;
-    context: UserContextType;
+    context: AppContextType;
 }> = ({ bookingId, bookingData, context }) => {
     
     const onAddToCalendar = () => {
@@ -166,7 +165,7 @@ const BookingSuccessModalContent: React.FC<{
 };
 
 
-export const BookingPage: React.FC<{ context: UserContextType }> = ({ context }) => {
+export const BookingPage: React.FC<{ context: AppContextType }> = ({ context }) => {
   const { selectedBarber: barber, selectedService: service, user } = context;
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
