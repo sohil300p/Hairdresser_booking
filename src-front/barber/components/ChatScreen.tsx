@@ -137,7 +137,7 @@ const ChatDetail: React.FC<{ chat: Chat; onBack: () => void }> = ({ chat, onBack
                 style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
             >
                  <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-                    {['🙏 ممنون', '✓ تایید شد', '⏰ در راهم'].map(text => 
+                    {['🙏 ممنون', '✓ تایید شد', '⏰ در راهم'].map(text => (
                         <button 
                             key={text}
                             type="button"

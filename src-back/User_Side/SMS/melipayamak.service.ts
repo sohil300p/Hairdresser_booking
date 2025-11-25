@@ -18,7 +18,7 @@ const MELIPAYAMAK_WSDL_URL = 'http://api.payamak-panel.com/post/send.asmx?wsdl';
  */
 async function createSoapClient() {
   return new Promise<any>((resolve, reject) => {
-    soap.createClient(MELIPAYAMAK_WSDL_URL, (err, client) => {
+    soap.createClient(MELIPAYAMAK_WSDL_URL, (err: any, client: any) => {
       if (err) {
         reject(err);
       } else {
@@ -127,14 +127,14 @@ export async function sendSimpleSMS(data: SendSMSRequest): Promise<SendSMSRespon
               message: errorMessages[parsed] || `خطای کد ${parsed}`,
               statusCode: parsed,
             });
-    } else {
+          } else {
             // It's a text error message
             resolve({
         success: false,
               message: `ارسال پیامک با خطا مواجه شد: ${response}`,
               statusCode: 0,
             });
-    }
+          }
         } else {
           resolve({
         success: false,
@@ -244,13 +244,13 @@ export async function sendPatternSMS(
               message: errorMessages[parsed] || `خطای کد ${parsed}`,
               statusCode: parsed,
             });
-    } else {
+          } else {
             resolve({
         success: false,
               message: `ارسال پیامک با خطا مواجه شد: ${response}`,
               statusCode: 0,
             });
-    }
+          }
         } else {
           resolve({
         success: false,
