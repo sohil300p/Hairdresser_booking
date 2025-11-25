@@ -208,19 +208,17 @@ export async function editProfileService(
       where: { id: userId },
       data: {
         ...updateData,
-        updated: BigInt(Date.now()),
+        updatedAt: new Date(),
       },
       select: {
         id: true,
         fullName: true,
         phone: true,
-        email: true,
         avatar: true,
         publicMeta: true,
         role: true,
-        gender: true,
-        created: true,
-        updated: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -236,13 +234,11 @@ export async function editProfileService(
         firstName: updatedCustomer.fullName?.split(' ')[0] || null,
         lastName: updatedCustomer.fullName?.split(' ').slice(1).join(' ') || null,
         phone: updatedCustomer.phone,
-        email: updatedCustomer.email,
         profileImage: updatedCustomer.avatar,
         backgroundImage,
         role: updatedCustomer.role as any,
-        gender: updatedCustomer.gender as any,
-        createdAt: Number(updatedCustomer.created),
-        updatedAt: Number(updatedCustomer.updated),
+        createdAt: updatedCustomer.createdAt.toISOString(),
+        updatedAt: updatedCustomer.updatedAt.toISOString(),
       },
     };
   } catch (error) {
