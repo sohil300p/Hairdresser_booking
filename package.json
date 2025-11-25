@@ -11,10 +11,13 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "install:all": "npm install && cd src-front && npm install --legacy-peer-deps",
-    "dev:frontend": "cd src-front && npm run dev",
+    "install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install",
     "dev:backend": "npm run dev",
-    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\"",
+    "dev:user": "node scripts/kill-port.js 3001 && cd src-front/user && npm run dev",
+    "dev:barber": "node scripts/kill-port.js 3002 && cd src-front/barber && npm run dev",
+    "dev:admin": "node scripts/kill-port.js 3003 && cd src-front/admin && npm run dev",
+    "dev:frontend": "concurrently \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"USER,BARBER,ADMIN\" --prefix-colors \"magenta,cyan,yellow\"",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"BACKEND,USER,BARBER,ADMIN\" --prefix-colors \"blue,magenta,cyan,yellow\"",
     "test:otp": "ts-node scripts/test-otp.ts"
   },
   "keywords": [
