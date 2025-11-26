@@ -100,6 +100,7 @@ export async function editProfileService(
       select: {
         id: true,
         fullName: true,
+        gender: true,
         avatar: true,
         publicMeta: true,
       },
@@ -112,9 +113,30 @@ export async function editProfileService(
       };
     }
 
+    // Check if profile is already completed (name and gender exist)
+    const isProfileCompleted = existingCustomer.fullName && existingCustomer.gender;
+
+    // If profile is completed, prevent changes to name and gender
+    if (isProfileCompleted) {
+      if (data.firstName !== undefined || data.lastName !== undefined) {
+        return {
+          success: false,
+          message: 'امکان تغییر نام پس از تکمیل پروفایل وجود ندارد',
+        };
+      }
+      
+      if (data.gender !== undefined) {
+        return {
+          success: false,
+          message: 'امکان تغییر جنسیت پس از تکمیل پروفایل وجود ندارد',
+        };
+      }
+    }
+
     // Prepare update data
     const updateData: {
       fullName?: string | null;
+      gender?: 'male' | 'female' | null;
       avatar?: string | null;
       publicMeta?: any;
     } = {};
@@ -128,6 +150,11 @@ export async function editProfileService(
       const lastName = data.lastName?.trim() || '';
       const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
       updateData.fullName = fullName === '' ? null : fullName;
+    }
+
+    // Update gender if provided
+    if (data.gender !== undefined) {
+      updateData.gender = data.gender || null;
     }
 
     // Handle profile image upload if file is provided
@@ -215,6 +242,7 @@ export async function editProfileService(
         fullName: true,
         phone: true,
         avatar: true,
+        gender: true,
         publicMeta: true,
         role: true,
         createdAt: true,

@@ -14,8 +14,9 @@ export interface SendOtpResponse {
 export interface VerifyOtpRequest {
   phone: string;
   otp: string;
-  userType?: 'customer' | 'barber'; // required on first registration
-  gender?: 'male' | 'female' | 'other'; // required on first registration
+  userType?: 'customer' | 'barber';
+  gender?: 'male' | 'female';
+  fullName?: string;
 }
 
 export interface VerifyOtpResponse {

@@ -6,14 +6,111 @@ import { Button } from '../components/Button';
 export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context }) => {
     const { user, updateUser } = context;
     const [name, setName] = useState(user?.name || '');
+    const [gender, setGender] = useState<'male' | 'female' | ''>('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [profileCompleted, setProfileCompleted] = useState(false);
+
+    // Fetch current profile data on component mount
+    React.useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+
+                const response = await fetch('http://localhost:3000/api/profile', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const { firstName, lastName, gender: userGender } = data.data;
+                    
+                    // Set existing data
+                    if (firstName || lastName) {
+                        const fullName = [firstName, lastName].filter(Boolean).join(' ');
+                        setName(fullName);
+                    }
+                    
+                    if (userGender) {
+                        setGender(userGender);
+                    }
+
+                    // Check if profile is already completed
+                    const isCompleted = !!(firstName || lastName) && !!userGender;
+                    setProfileCompleted(isCompleted);
+                }
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+            }
+        };
+
+        fetchProfile();
+    }, []);
     
-    const handleSave = () => {
-        if (name.trim().length >= 3) {
-            updateUser({ name });
-            context.setCurrentPage('profile');
-        } else {
+    const handleSave = async () => {
+        // Validate name
+        if (!name.trim() || name.trim().length < 3) {
             setError('نام باید حداقل ۳ حرف باشد.');
+            return;
+        }
+        
+        // Validate gender (mandatory for profile completion)
+        if (!gender) {
+            setError('لطفاً جنسیت خود را انتخاب کنید.');
+            return;
+        }
+        
+        setError('');
+        setLoading(true);
+        
+        try {
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                context.showToast('لطفاً دوباره وارد شوید', 'error');
+                context.logout();
+                return;
+            }
+
+            // Split name into firstName and lastName
+            const nameParts = name.trim().split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
+            // Send API request to update user profile
+            const response = await fetch('http://localhost:3000/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    firstName,
+                    lastName,
+                    gender,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Update local user state
+                updateUser({ name: name.trim() });
+                context.showToast('پروفایل شما با موفقیت تکمیل شد!', 'success');
+                context.setCurrentPage('profile');
+            } else {
+                setError(data.message || 'خطا در به‌روزرسانی پروفایل');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            setError('خطا در برقراری ارتباط با سرور');
+        } finally {
+            setLoading(false);
         }
     };
     
@@ -55,11 +152,40 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                         id="name"
                         value={name}
                         onChange={handleNameChange}
-                        className="form-input text-right"
+                            disabled={profileCompleted}
+                            className={`form-input text-right ${profileCompleted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                     <p className="text-xs text-right mt-2 h-4" style={{ color: error ? 'var(--danger)' : 'var(--muted)'}}>
                         {error || 'نام کامل خود را وارد کنید.'}
                     </p>
+                </div>
+                
+                <div className="w-full mt-4">
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">جنسیت</label>
+                    <div className="flex gap-4 justify-end">
+                        <label className="flex items-center cursor-pointer">
+                            <span className="mr-2">خانم</span>
+                            <input
+                                type="radio"
+                                name="gender"
+                                checked={gender === 'female'}
+                                onChange={() => setGender('female')}
+                                disabled={profileCompleted}
+                                className="ml-2"
+                            />
+                        </label>
+                        <label className="flex items-center cursor-pointer">
+                            <span className="mr-2">آقا</span>
+                            <input
+                                type="radio"
+                                name="gender"
+                                checked={gender === 'male'}
+                                onChange={() => setGender('male')}
+                                disabled={profileCompleted}
+                                className="ml-2"
+                            />
+                        </label>
+                    </div>
                 </div>
                 
                 <div className="w-full mt-4">
@@ -73,8 +199,29 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                     />
                 </div>
                 
-                <div className="w-full mt-8">
-                    <Button onClick={handleSave} disabled={!!error}>ذخیره تغییرات</Button>
+                <div className="w-full mt-6">
+                    {!profileCompleted && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                            <p className="text-xs text-yellow-800 text-right">
+                                ⚠️ توجه: پس از تکمیل پروفایل، امکان تغییر نام و جنسیت وجود نخواهد داشت.
+                            </p>
+                        </div>
+                    )}
+                    
+                    {profileCompleted && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                            <p className="text-xs text-red-800 text-right">
+                                🚫 پروفایل شما تکمیل شده است. امکان تغییر نام و جنسیت وجود ندارد.
+                            </p>
+                        </div>
+                    )}
+                    
+                    <Button 
+                        onClick={handleSave} 
+                        style={{ display: (profileCompleted || !name.trim() || name.trim().length < 3 || !gender || loading) ? 'block' : 'none' }}
+                    >
+                        {loading ? 'در حال ذخیره...' : profileCompleted ? 'پروفایل تکمیل شده' : 'تکمیل پروفایل'}
+                    </Button>
                 </div>
             </div>
         </div>

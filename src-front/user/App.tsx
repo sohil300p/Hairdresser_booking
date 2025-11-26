@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { AppContextType, Page, Booking, Notification, User, Discount, BankCard, ToastType } from './types';
 import { BookingStatus } from './types';
 
@@ -30,9 +30,19 @@ import { Modal } from './components/Modal';
 import { BOOKINGS, NOTIFICATIONS, LOGGED_IN_USER, DISCOUNTS, BARBERS } from './constants';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('login');
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    // Check if user is logged in (has both user data and token)
+    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('token');
+    return (savedUser && savedToken) ? 'home' : 'login';
+  });
+  
   const [pageParams, setPageParams] = useState<any>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>(BOOKINGS);
   const [notifications, setNotifications] = useState<Notification[]>(NOTIFICATIONS);
   const [discounts, setDiscounts] = useState<Discount[]>(DISCOUNTS);
@@ -42,14 +52,33 @@ const App: React.FC = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [modalPosition, setModalPosition] = useState<'center' | 'bottom'>('center');
 
+  // Check for incomplete profile on load/login
+  useEffect(() => {
+    if (user && (!user.name || user.name === 'کاربر' || !user.name.trim())) {
+       // Redirect to profile completion for new users
+       showToast('لطفاً پروفایل خود را تکمیل کنید تا بتوانید از تمام امکانات استفاده کنید.', 'error');
+       setCurrentPage('edit-profile');
+    }
+  }, [user]);
+
   const handleSetCurrentPage = useCallback((page: Page, params: any = null) => {
     setCurrentPage(page);
     setPageParams(params);
     window.scrollTo(0, 0);
   }, []);
 
-  const login = () => { setUser(LOGGED_IN_USER); };
-  const logout = () => { setUser(null); setCurrentPage('login'); };
+  const login = (userData: User, token: string) => { 
+    setUser(userData);
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const logout = () => { 
+    setUser(null); 
+    setCurrentPage('login');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  };
   
   const updateUser = (updatedUserData: Partial<User>) => {
     if (user) {

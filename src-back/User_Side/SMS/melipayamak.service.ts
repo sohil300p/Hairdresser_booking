@@ -91,17 +91,20 @@ export async function sendSimpleSMS(data: SendSMSRequest): Promise<SendSMSRespon
         // MeliPayamak returns response as string or number
         const responseValue = typeof response === 'string' ? parseInt(response, 10) : response;
         
+        // Check if response is a valid number (Message ID) or an error code
+        // Error codes are typically small numbers (11-17), while Message IDs are large
         if (typeof responseValue === 'number' && !isNaN(responseValue)) {
-          if (responseValue > 0 && responseValue < 10) {
+          // If response value is large (e.g., > 1000), it's a Message ID => Success
+          if (responseValue > 1000) { 
             // Success - message ID returned
             resolve({
-        success: true,
-        message: 'پیامک با موفقیت ارسال شد',
+              success: true,
+              message: 'پیامک با موفقیت ارسال شد',
               messageId: responseValue.toString(),
               statusCode: 1,
             });
           } else {
-            // Error code
+            // Error codes are typically small numbers (1-17)
             const errorMessages: Record<number, string> = {
               11: 'نام کاربری یا رمز عبور اشتباه است',
               12: 'اعتبار حساب کافی نیست',
@@ -120,7 +123,7 @@ export async function sendSimpleSMS(data: SendSMSRequest): Promise<SendSMSRespon
         } else if (typeof response === 'string' && response.length > 0) {
           // Try to parse as number
           const parsed = parseInt(response, 10);
-          if (!isNaN(parsed)) {
+          if (!isNaN(parsed) && parsed > 1000) {
             // It's a numeric string, handle as error code
             const errorMessages: Record<number, string> = {
               11: 'نام کاربری یا رمز عبور اشتباه است',

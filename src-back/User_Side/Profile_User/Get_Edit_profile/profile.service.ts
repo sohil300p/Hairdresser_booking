@@ -3,23 +3,31 @@ import { GetProfileResponse } from './profile.type';
 
 /**
  * Get user profile service
+ * SECURITY: Only returns profile data for the authenticated user (userId from JWT token)
  */
 export async function getProfileService(userId: number): Promise<GetProfileResponse> {
   try {
-    // Find customer by ID
+    // SECURITY CHECK: Validate userId is a positive integer
+    if (!userId || userId <= 0 || !Number.isInteger(userId)) {
+      return {
+        success: false,
+        message: 'شناسه کاربر نامعتبر است',
+      };
+    }
+
+    // Find customer by ID (ONLY the authenticated user's ID from JWT)
     const customer = await prisma.customer.findUnique({
       where: { id: userId },
       select: {
         id: true,
         fullName: true,
         phone: true,
-        email: true,
         avatar: true,
         publicMeta: true,
         role: true,
         gender: true,
-        created: true,
-        updated: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
@@ -47,15 +55,15 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         firstName: customer.fullName?.split(' ')[0] || null,
         lastName: customer.fullName?.split(' ').slice(1).join(' ') || null,
         phone: customer.phone,
-        email: customer.email,
+        email: null, // Customer model doesn't have email field
         profileImage: customer.avatar,
         backgroundImage,
         role: customer.role as any,
         gender: customer.gender as any,
         userType: barber ? 'barber' : 'customer',
         barberId: barber?.id,
-        createdAt: Number(customer.created),
-        updatedAt: Number(customer.updated),
+        createdAt: Number(customer.createdAt),
+        updatedAt: Number(customer.updatedAt),
       },
     };
   } catch (error) {

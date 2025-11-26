@@ -116,7 +116,7 @@ export type AppContextType = {
   selectedBarber: Barber | null;
   selectedService: Service | null;
   user: User | null;
-  login: () => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   updateUser: (updatedUser: Partial<User>) => void;
   bookings: Booking[];

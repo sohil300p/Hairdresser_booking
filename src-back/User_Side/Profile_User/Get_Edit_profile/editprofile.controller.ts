@@ -30,6 +30,7 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
     const editData: EditProfileRequest = {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
+      gender: req.body.gender,
     };
 
     // Get files from request (using req.files for multiple files)
@@ -41,12 +42,13 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
     if (
       (editData.firstName === undefined || editData.firstName === '') &&
       (editData.lastName === undefined || editData.lastName === '') &&
+      (editData.gender === undefined || editData.gender === '') &&
       !profileImageFile &&
       !backgroundImageFile
     ) {
       res.status(400).json({
         success: false,
-        message: 'حداقل یکی از فیلدها (نام، نام خانوادگی، عکس پروفایل یا عکس بک‌گراند) باید ارسال شود',
+        message: 'حداقل یکی از فیلدها (نام، نام خانوادگی، جنسیت، عکس پروفایل یا عکس بک‌گراند) باید ارسال شود',
       });
       return;
     }

@@ -4,8 +4,8 @@ import { generateAccessToken, generateRefreshToken } from '../../All_Utils/utils
 import { validateIranianPhoneNumber, normalizePhoneNumber } from '../../All_Utils/utils/validator';
 import { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse } from './otp.type';
 import { sendOTPSMS } from '../SMS/melipayamak.service';
-
-const OTP_EXPIRY_SECONDS = 60; // 1 minute (60 seconds)
+import { Gender, Role } from '@prisma/client';
+const OTP_EXPIRY_SECONDS = 300; // 5 minutes (300 seconds)
 const MAX_OTP_PER_DAY = 5; // Maximum 5 OTP requests per day per phone
 
 /**
@@ -237,16 +237,20 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       };
     }
 
-    console.log(`✅ OTP verified successfully for phone: ${phone}`);
+    console.log(`✅ OTP verified successfully for phone: ${phone}. Stored OTP: ${storedOtp}, Received OTP: ${otp}`);
 
-    // OTP is valid - delete it from Redis
-    await safeRedisOperation(
-      async (client) => {
-        const otpKey = getOtpKey(phone);
-        await client.del(otpKey);
-      },
-      undefined // fallback
-    );
+    // OTP is valid - delete it from Redis ONLY if we are successfully creating/logging in the user
+    // OR if we are returning isNewUser for the first time?
+    // Problem: If we return isNewUser: true (without token), we need the OTP to verify the NEXT request (with name/gender).
+    // BUT the next request comes with the same OTP code.
+    // So we should NOT delete the OTP if we are just asking for more info.
+    
+    // Logic:
+    // 1. Check if user exists.
+    // 2. If user exists -> Delete OTP, Login.
+    // 3. If user does NOT exist:
+    //    a. If details provided -> Delete OTP, Create User, Login.
+    //    b. If details MISSING -> DO NOT DELETE OTP, Return isNewUser: true.
 
     // Check if user exists or is new
     let user = await prisma.customer.findUnique({
@@ -256,26 +260,37 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     let isNewUser = false;
 
     if (!user) {
-      // User is new - create new account
+      // User is new - create a minimal account
+      // We will prompt for full name and gender later in the app
       user = await prisma.customer.create({
         data: {
           phone,
-          role: 'customer', // Default role
-          lastLoginAt: new Date(),
+          role: 'customer' as Role,
+          lastLoginAt: new Date().toISOString(),
+          // fullName and gender will be null initially
         },
       });
       isNewUser = true;
-      console.log(`✅ New user account created for phone: ${phone} (ID: ${user.id})`);
+      console.log(`✅ New minimal user created: ${phone} (ID: ${user.id})`);
     } else {
-      // User exists - update last login time
+      // User exists - update last login time AND delete OTP
       user = await prisma.customer.update({
         where: { phone },
         data: {
-          lastLoginAt: new Date(),
+          lastLoginAt: new Date().toISOString(),
         },
       });
       console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
     }
+
+    // OTP is valid and user exists/created - delete it from Redis
+    await safeRedisOperation(
+      async (client) => {
+        const otpKey = getOtpKey(phone);
+        await client.del(otpKey);
+      },
+      undefined // fallback
+    );
 
     // Check if user is a barber
     const barber = await prisma.barber.findFirst({

@@ -22,7 +22,8 @@ export interface GetProfileResponse {
 
 export interface EditProfileRequest {
   firstName?: string;
-  lastName?: string ;
+  lastName?: string;
+  gender?: 'male' | 'female';
   profileImage?: string;
 }
 

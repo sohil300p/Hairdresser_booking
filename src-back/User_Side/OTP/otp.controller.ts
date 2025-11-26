@@ -72,6 +72,7 @@ export async function verifyOtpController(req: Request, res: Response): Promise<
       otp: String(data.otp).trim(),
       userType: data.userType,
       gender: data.gender,
+      fullName: data.fullName
     };
 
     // Additional validation: OTP must be exactly 4 digits

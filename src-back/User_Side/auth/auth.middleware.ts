@@ -17,9 +17,13 @@ export interface AuthRequest extends Request {
  */
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
+  console.log('🔍 Auth header received:', authHeader);
+  
   const token = extractTokenFromHeader(authHeader);
+  console.log('🎫 Extracted token:', token ? `${token.substring(0, 20)}...` : 'null');
 
   if (!token) {
+    console.log('❌ No token found in request');
     res.status(401).json({
       success: false,
       message: 'Access token الزامی است',
@@ -28,8 +32,10 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
   }
 
   const payload = verifyAccessToken(token);
+  console.log('🔓 Token payload:', payload);
 
   if (!payload) {
+    console.log('❌ Token verification failed');
     res.status(401).json({
       success: false,
       message: 'Token نامعتبر یا منقضی شده است',
@@ -44,6 +50,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     role: payload.role,
   };
 
+  console.log('✅ User authenticated:', { id: payload.sub, phone: payload.phone });
   next();
 }
 
