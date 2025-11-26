@@ -82,7 +82,7 @@ export const WalletPage: React.FC<{ context: AppContextType }> = ({ context }) =
     if (!user) return null;
 
     return (
-        <div className="bg-gray-50 min-h-screen" dir="rtl">
+        <div className="bg-gray-50 min-h-screen flex flex-col" dir="rtl">
             <header className="sticky top-0 bg-gray-50 z-10 flex items-center p-4 mb-4">
                 <button onClick={() => context.setCurrentPage('profile')} className="absolute right-0">
                     <Icon name="chevronRight" className="w-6 h-6 text-gray-800" />
@@ -90,7 +90,7 @@ export const WalletPage: React.FC<{ context: AppContextType }> = ({ context }) =
                 <h1 className="text-xl font-bold text-center w-full text-[var(--md-sys-color-on-surface)]">کیف پول</h1>
             </header>
 
-            <div className="px-4">
+            <div className="px-4 flex-1 flex flex-col">
                 <div className="bg-gradient-to-br from-[var(--md-sys-color-primary)] to-[var(--md-sys-color-on-surface)] text-white p-6 rounded-2xl shadow-lg text-center">
                     <p className="opacity-80">موجودی کیف پول</p>
                     <p className="text-4xl font-bold font-mono my-2">{user.walletBalance.toLocaleString('en-US')}</p>
@@ -142,9 +142,9 @@ export const WalletPage: React.FC<{ context: AppContextType }> = ({ context }) =
                             <input value={bankName} onChange={e => setBankName(e.target.value)} type="text" className="form-input mb-3" placeholder="مثلا بانک ملی"/>
                             <label className="text-sm">شماره کارت</label>
                             <input value={cardNumber} onChange={e => setCardNumber(e.target.value)} type="text" maxLength={16} className="form-input mb-4 font-mono" placeholder="6037..." />
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 mt-auto">
                                 <Button variant="secondary" onClick={() => setShowAddCard(false)}>لغو</Button>
-                                <Button onClick={handleAddCard}>افزودن</Button>
+                                <Button onClick={handleAddCard} sticky={true}>افزودن</Button>
                             </div>
                         </div>
                     )}

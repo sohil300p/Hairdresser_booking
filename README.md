@@ -21,7 +21,9 @@ This backend system enables customers of a barber shop to reserve appointments f
 - **Database**: MySQL 8.0
 - **ORM**: Prisma
 - **Authentication**: JWT (JSON Web Tokens)
-- **Object Storage**: MinIO
+- **Object Storage**: MinIO (S3-compatible storage)
+- **Cache**: Redis
+- **SMS Service**: MeliPayamak integration
 - **API Testing**: Postman & Swagger
 - **Containerization**: Docker & Docker Compose
 
@@ -102,7 +104,47 @@ The migration will create the following tables:
 - `barbers` - Barber profiles
 - `appointments` - Appointment bookings
 
-### 5. Start the Development Server
+### 5. MinIO Object Storage Setup
+
+MinIO is used for storing uploaded files (avatars, images, etc.). The Docker Compose setup includes MinIO with the following configuration:
+
+#### Access MinIO Console
+- **URL**: http://localhost:9001
+- **Username**: `minioadmin`
+- **Password**: `minioadmin`
+
+#### MinIO Configuration in `.env`
+```env
+# MinIO Object Storage Configuration
+MINIO_ENDPOINT=localhost
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=barber-uploads
+MINIO_USE_SSL=false
+MINIO_REGION=us-east-1
+MINIO_CONSOLE_URL=http://localhost:9001
+MINIO_PUBLIC_URL=http://localhost:9000
+```
+
+#### Production MinIO Setup
+For production, update the MinIO configuration:
+```env
+MINIO_ENDPOINT=your-minio-server.com
+MINIO_PORT=443
+MINIO_ACCESS_KEY=your-production-access-key
+MINIO_SECRET_KEY=your-production-secret-key
+MINIO_USE_SSL=true
+MINIO_PUBLIC_URL=https://your-minio-server.com
+```
+
+#### MinIO Features
+- **Automatic bucket creation**: The `barber-uploads` bucket is created automatically
+- **Public read policy**: Uploaded files are publicly accessible via URL
+- **File validation**: Supports JPG, PNG, WebP formats with size limits
+- **Avatar upload**: Drag & drop interface with preview functionality
+
+### 6. Start the Development Server
 
 ```bash
 npm run dev

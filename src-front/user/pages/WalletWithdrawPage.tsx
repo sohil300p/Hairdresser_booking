@@ -50,7 +50,7 @@ export const WalletWithdrawPage: React.FC<{ context: AppContextType }> = ({ cont
     if (!user) return null;
 
     return (
-        <div className="bg-gray-50 min-h-screen" dir="rtl">
+        <div className="bg-gray-50 min-h-screen flex flex-col" dir="rtl">
             <header className="sticky top-0 bg-gray-50 z-10 flex items-center p-4 mb-4">
                 <button onClick={() => context.setCurrentPage('wallet')} className="absolute right-0">
                     <Icon name="chevronRight" className="w-6 h-6 text-gray-800" />
@@ -58,7 +58,7 @@ export const WalletWithdrawPage: React.FC<{ context: AppContextType }> = ({ cont
                 <h1 className="text-xl font-bold text-center w-full text-[var(--md-sys-color-on-surface)]">برداشت از کیف پول</h1>
             </header>
 
-            <div className="p-4 space-y-6">
+            <div className="p-4 space-y-6 flex-1 flex flex-col">
                 <div className="bg-white p-4 rounded-lg border border-gray-200 text-right">
                     <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">مبلغ برداشت (تومان)</label>
                     <input
@@ -103,7 +103,7 @@ export const WalletWithdrawPage: React.FC<{ context: AppContextType }> = ({ cont
                     )}
                 </div>
                 
-                <Button onClick={handleWithdraw} disabled={!!error || verifiedCards.length === 0}>
+                <Button onClick={handleWithdraw} disabled={!!error || verifiedCards.length === 0} sticky={true}>
                     تایید و برداشت
                 </Button>
             </div>

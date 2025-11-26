@@ -86,6 +86,7 @@ export interface User {
     avatarUrl?: string;
     walletBalance: number;
     bankCards: BankCard[];
+    gender?: 'male' | 'female';
 }
 
 

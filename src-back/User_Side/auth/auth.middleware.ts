@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, extractTokenFromHeader } from '../../All_Utils/utils/jwt';
+import prisma from '../../All_Utils/config/prisma';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,7 +16,7 @@ export interface AuthRequest extends Request {
  * Authentication Middleware
  * Verifies JWT token and attaches user info to request
  */
-export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): void {
+export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   console.log('🔍 Auth header received:', authHeader);
   
@@ -43,33 +44,82 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     return;
   }
 
-  // Attach user info to request
-  req.user = {
-    id: payload.sub,
-    phone: payload.phone,
-    role: payload.role,
-  };
+  try {
+    // CRITICAL SECURITY CHECK: Verify user still exists in database
+    const customer = await prisma.customer.findUnique({
+      where: { id: payload.sub },
+    });
 
-  console.log('✅ User authenticated:', { id: payload.sub, phone: payload.phone });
-  next();
+    if (!customer) {
+      console.log('❌ User not found in database:', { id: payload.sub, phone: payload.phone });
+      res.status(401).json({
+        success: false,
+        message: 'کاربر یافت نشد - لطفاً مجدداً وارد شوید',
+      });
+      return;
+    }
+
+    // Check if user is a barber
+    const barber = await prisma.barber.findFirst({
+      where: { userRefId: customer.id },
+    });
+
+    // Attach user info to request
+    req.user = {
+      id: customer.id,
+      phone: customer.phone,
+      role: customer.role,
+      userType: barber ? 'barber' : 'customer',
+      barberId: barber?.id,
+    };
+
+    console.log('✅ User authenticated and verified in DB:', { id: customer.id, phone: customer.phone });
+    next();
+  } catch (error) {
+    console.error('❌ Database error during authentication:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطای داخلی سرور',
+    });
+    return;
+  }
 }
 
 /**
  * Optional Authentication Middleware
  * Tries to authenticate but doesn't fail if token is missing
  */
-export function optionalAuthenticateToken(req: AuthRequest, res: Response, next: NextFunction): void {
+export async function optionalAuthenticateToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   const token = extractTokenFromHeader(authHeader);
 
   if (token) {
     const payload = verifyAccessToken(token);
     if (payload) {
-      req.user = {
-        id: payload.sub,
-        phone: payload.phone,
-        role: payload.role,
-      };
+      try {
+        // Verify user still exists in database
+        const customer = await prisma.customer.findUnique({
+          where: { id: payload.sub },
+        });
+
+        if (customer) {
+          // Check if user is a barber
+          const barber = await prisma.barber.findFirst({
+            where: { userRefId: customer.id },
+          });
+
+          req.user = {
+            id: customer.id,
+            phone: customer.phone,
+            role: customer.role,
+            userType: barber ? 'barber' : 'customer',
+            barberId: barber?.id,
+          };
+        }
+      } catch (error) {
+        console.error('❌ Database error during optional authentication:', error);
+        // Don't fail the request, just don't set user
+      }
     }
   }
 

@@ -1,6 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import type { AppContextType, Page, Booking, Notification, User, Discount, BankCard, ToastType } from './types';
 import { BookingStatus } from './types';
+import './index.css'; // Import global CSS with fonts
+import { 
+  checkLocalProfileCompleteness, 
+  validateProfileFromServer, 
+  getProfileAction, 
+  pageRequiresCompleteProfile, 
+  pageRequiresBasicProfile 
+} from './utils/profileValidation';
 
 // New Pages
 import { HomePage } from './pages/HomePage';
@@ -28,6 +36,9 @@ import { Modal } from './components/Modal';
 
 // Constants
 import { BOOKINGS, NOTIFICATIONS, LOGGED_IN_USER, DISCOUNTS, BARBERS } from './constants';
+
+// API Client
+import { apiClient } from './utils/api';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(() => {
@@ -78,7 +89,13 @@ const App: React.FC = () => {
     setCurrentPage('login');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    showToast('شما از سیستم خارج شدید.', 'warning');
   };
+
+  // Initialize API client with logout handler
+  useEffect(() => {
+    apiClient.setUnauthorizedHandler(logout);
+  }, []);
   
   const updateUser = (updatedUserData: Partial<User>) => {
     if (user) {
@@ -246,13 +263,13 @@ const App: React.FC = () => {
             {modalContent}
         </Modal>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-        <main className={showNav ? "pb-20" : ""}>{renderPage()}</main>
+        <main className={showNav ? "/pb-20" : ""}>{renderPage()}</main>
         {showNav && (
-             <footer className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around h-16 items-center" dir="rtl">
-                 <NavItem page="home" icon="home" label="خانه" />
-                 <NavItem page="my-bookings" icon="clock" label="رزروها" />
-                 <NavItem page="profile" icon="user" label="پروفایل" />
-             </footer>
+          <footer className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around h-16 items-center" dir="rtl">
+              <NavItem page="home" icon="home" label="خانه" />
+              <NavItem page="my-bookings" icon="clock" label="رزروها" />
+              <NavItem page="profile" icon="user" label="پروفایل" />
+          </footer>
         )}
     </div>
   );

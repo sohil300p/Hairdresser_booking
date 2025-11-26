@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install",
@@ -18,7 +20,9 @@
     "dev:admin": "node scripts/kill-port.js 3003 && cd src-front/admin && npm run dev",
     "dev:frontend": "concurrently \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"USER,BARBER,ADMIN\" --prefix-colors \"magenta,cyan,yellow\"",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"BACKEND,USER,BARBER,ADMIN\" --prefix-colors \"blue,magenta,cyan,yellow\"",
-    "test:otp": "ts-node scripts/test-otp.ts"
+    "test:otp": "ts-node scripts/test-otp.ts",
+    "test:sms": "ts-node scripts/test-sms.ts",
+    "test:simple-sms": "ts-node scripts/test-simple-sms.ts"
   },
   "keywords": [
     "barber",

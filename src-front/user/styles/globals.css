@@ -1,0 +1,89 @@
+/* Import IRANSansX Font */
+@import url('../assets/fonts/IRANSansX.css');
+
+/* Global font application */
+* {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+}
+
+/* Base styles */
+html {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+  direction: rtl;
+}
+
+body {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+  direction: rtl;
+  font-feature-settings: "kern" on, "liga" on, "calt" on;
+  -webkit-font-feature-settings: "kern" on, "liga" on, "calt" on;
+  -moz-font-feature-settings: "kern" on, "liga" on, "calt" on;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography elements */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+  font-weight: 600;
+}
+
+p, span, div, a, button {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+}
+
+/* Form elements */
+input, textarea, select, option {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+}
+
+/* Button elements */
+button, .btn {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+  font-weight: 500;
+}
+
+/* Persian number support */
+.persian-numbers {
+  font-feature-settings: "tnum" on;
+  -webkit-font-feature-settings: "tnum" on;
+  -moz-font-feature-settings: "tnum" on;
+}
+
+/* English text (LTR) */
+.english-text {
+  direction: ltr;
+  text-align: left;
+  font-family: 'IRANSansX', 'Arial', sans-serif;
+}
+
+/* Font weight utilities */
+.font-thin { font-weight: 100; }
+.font-ultralight { font-weight: 200; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-demibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+
+/* Responsive font sizes */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1025px) {
+  html {
+    font-size: 16px;
+  }
+}

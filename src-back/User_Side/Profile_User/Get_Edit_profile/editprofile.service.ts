@@ -1,6 +1,6 @@
 import prisma from '../../../All_Utils/config/prisma';
 import { EditProfileResponse, EditProfileRequest } from './profile.type';
-import { minioClient, DEFAULT_BUCKET } from '../../../All_Utils/config/minio';
+import { minioClient, DEFAULT_BUCKET, minioConfig } from '../../../All_Utils/config/minio';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -16,7 +16,7 @@ async function uploadFileService(file: Express.Multer.File, folder?: string): Pr
       'Content-Type': file.mimetype,
     });
 
-    const fileUrl = `${process.env.MINIO_ENDPOINT || 'http://localhost'}:${process.env.MINIO_PORT || '9000'}/${DEFAULT_BUCKET}/${objectName}`;
+    const fileUrl = `${minioConfig.publicUrl}/${DEFAULT_BUCKET}/${objectName}`;
 
     return {
       success: true,

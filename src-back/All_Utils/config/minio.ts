@@ -10,6 +10,8 @@ const minioConfig = {
   useSSL: process.env.MINIO_USE_SSL === 'true',
   accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
   secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+  region: process.env.MINIO_REGION || 'us-east-1',
+  publicUrl: process.env.MINIO_PUBLIC_URL || `http${process.env.MINIO_USE_SSL === 'true' ? 's' : ''}://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
 };
 
 // Create MinIO client
@@ -30,7 +32,7 @@ async function initializeBucket(): Promise<void> {
     const bucketExists = await minioClient.bucketExists(DEFAULT_BUCKET);
     
     if (!bucketExists) {
-      await minioClient.makeBucket(DEFAULT_BUCKET, 'us-east-1');
+      await minioClient.makeBucket(DEFAULT_BUCKET, minioConfig.region);
       console.log(`✅ MinIO bucket '${DEFAULT_BUCKET}' created successfully`);
       
       // Set bucket policy to public read (optional - adjust based on your needs)
@@ -105,6 +107,6 @@ export async function ensureMinioInitialized(): Promise<void> {
 }
 
 // Export MinIO client and utilities
-export { minioClient, DEFAULT_BUCKET, testMinioConnection, getMinioStatus };
+export { minioClient, DEFAULT_BUCKET, testMinioConnection, minioConfig };
 export default minioClient;
 
