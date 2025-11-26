@@ -112,7 +112,6 @@ model Customer {
   phone     String   @unique
   password  String?  // hashed password (bcrypt/argon2)
   avatar    String?
-  gender    Gender?
   publicMeta Json?   @map("public_meta")
   privateMeta Json?  @map("private_meta")
   role      Role     @default(customer)

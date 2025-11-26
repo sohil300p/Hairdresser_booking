@@ -105,6 +105,6 @@ export async function ensureMinioInitialized(): Promise<void> {
 }
 
 // Export MinIO client and utilities
-export { minioClient, DEFAULT_BUCKET, testMinioConnection };
+export { minioClient, DEFAULT_BUCKET, testMinioConnection, getMinioStatus };
 export default minioClient;
 
