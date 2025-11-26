@@ -264,7 +264,7 @@ export const BookingPage: React.FC<{ context: AppContextType }> = ({ context }) 
   );
 
   return (
-    <div className="bg-gray-50 min-h-screen" dir="rtl">
+    <div className="bg-gray-50 min-h-screen flex flex-col" dir="rtl">
        <header className="sticky top-0 bg-white z-10 flex items-center p-4 shadow-sm">
         <button onClick={() => context.setCurrentPage('barber', { barber })} className="absolute right-4">
           <Icon name="chevronRight" className="w-6 h-6 text-[var(--md-sys-color-on-surface)]" />
@@ -272,7 +272,7 @@ export const BookingPage: React.FC<{ context: AppContextType }> = ({ context }) 
         <h1 className="text-xl font-bold text-center w-full text-[var(--md-sys-color-on-surface)]">رزرو وقت</h1>
       </header>
 
-      <div className="p-4 pb-32 space-y-4">
+      <div className="p-4 space-y-4 flex-1 flex flex-col">
         <div className="bg-white p-4 rounded-2xl border border-gray-200 flex items-center">
             <img src={barber.avatarUrl} alt={barber.name} className="w-16 h-16 rounded-lg ml-4 object-cover" />
             <div className="text-right">
@@ -345,8 +345,8 @@ export const BookingPage: React.FC<{ context: AppContextType }> = ({ context }) 
         </div>
       </div>
       
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t rounded-t-2xl shadow-[0_-4px_16px_rgba(0,0,0,0.08)] max-w-md mx-auto z-10">
-        <Button onClick={handleConfirmBooking} disabled={!selectedTime || isWalletDisabled}>
+      <div className="mt-auto p-4">
+        <Button onClick={handleConfirmBooking} disabled={!selectedTime || isWalletDisabled} sticky={true}>
             تایید و تکمیل رزرو
         </Button>
       </div>

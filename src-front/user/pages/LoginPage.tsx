@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { AppContextType, User } from '../types';
+import { apiClient, ApiError } from '../utils/api';
 
 interface LoginPageProps {
     context: AppContextType;
@@ -11,8 +12,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
     const [step, setStep] = useState(1); // 1: Phone, 2: OTP
     const [loading, setLoading] = useState(false);
 
-    const API_URL = 'http://localhost:3000/api';
-
     const handleSendOtp = async () => {
         if (phone.length < 11) {
             context.showToast('شماره موبایل نامعتبر است', 'error');
@@ -21,15 +20,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/otp/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ phone }),
-            });
-
-            const data = await response.json();
+            const data = await apiClient.postPublic('/otp/send', { phone });
 
             if (data.success) {
                 context.showToast(data.message || 'کد تایید ارسال شد', 'success');
@@ -39,7 +30,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
             }
         } catch (error) {
             console.error('Error sending OTP:', error);
-            context.showToast('خطا در برقراری ارتباط با سرور', 'error');
+            if (error instanceof ApiError) {
+                context.showToast(error.message, 'error');
+            } else {
+                context.showToast('خطا در برقراری ارتباط با سرور', 'error');
+            }
         } finally {
             setLoading(false);
         }
@@ -53,19 +48,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/auth/login/otp`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    phone, 
-                    otp,
-                    userType: 'customer',
-                 }),
+            const data = await apiClient.postPublic('/auth/login/otp', { 
+                phone, 
+                otp,
+                userType: 'customer',
             });
-
-            const data = await response.json();
 
             if (data.success) {
                 // Success login - existing or new minimal user
@@ -93,18 +80,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);
-            context.showToast('خطا در برقراری ارتباط با سرور', 'error');
+            if (error instanceof ApiError) {
+                context.showToast(error.message, 'error');
+            } else {
+                context.showToast('خطا در برقراری ارتباط با سرور', 'error');
+            }
         } finally {
             setLoading(false);
         }
     };
     
     return (
-        <div className="h-screen bg-white flex flex-col justify-center items-center p-8">
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">LocalBarber</h1>
-            <p className="text-gray-500 mt-2">به اپلیکیشن رزرو آرایشگر خوش آمدید</p>
-            
-            <div className="w-full mt-12">
+        <div className="min-h-screen bg-white flex flex-col justify-center items-center p-8">
+            <div className="flex-1 flex flex-col justify-center items-center w-full">
+                <h1 className="text-3xl font-bold text-[var(--text-primary)]">LocalBarber</h1>
+                <p className="text-gray-500 mt-2">به اپلیکیشن رزرو آرایشگر خوش آمدید</p>
+                
+                <div className="w-full mt-12">
                 {step === 1 ? (
                     <>
                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 text-right mb-1">شماره موبایل</label>
@@ -122,13 +114,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             className="w-full p-3 border border-gray-300 rounded-lg text-left direction-ltr mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
                         />
                         <p className="text-xs text-gray-500 mt-2 text-right">شماره موبایل ۱۱ رقمی خود را وارد کنید.</p>
-                        <button 
-                            className="w-full bg-blue-600 text-white p-3 rounded-lg mt-4 font-medium disabled:bg-gray-300"
-                            onClick={handleSendOtp} 
-                            disabled={phone.length < 11 || loading}
-                        >
-                            {loading ? 'در حال ارسال...' : 'دریافت کد تایید'}
-                        </button>
+                        <div className="mt-auto">
+                            <button 
+                                className="w-full bg-blue-600 text-white p-3 rounded-lg mt-4 font-medium disabled:bg-gray-300 min-h-[44px] mb-6"
+                                onClick={handleSendOtp} 
+                                disabled={phone.length < 11 || loading}
+                            >
+                                {loading ? 'در حال ارسال...' : 'دریافت کد تایید'}
+                            </button>
+                        </div>
                     </>
                 ) : (
                     <>
@@ -148,22 +142,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                             maxLength={4}
                         />
                         <p className="text-xs text-gray-500 mt-2 text-right">کد ۴ رقمی ارسال شده را وارد کنید.</p>
-                        <button 
-                            className="w-full bg-blue-600 text-white p-3 rounded-lg mt-4 font-medium disabled:bg-gray-300"
-                            onClick={handleVerifyOtp} 
-                            disabled={otp.length < 4 || loading}
-                        >
-                           {loading ? 'در حال بررسی...' : 'ورود'}
-                        </button>
-                        <button 
-                            className="w-full text-blue-600 p-2 mt-2 text-sm"
-                            onClick={() => setStep(1)}
-                            disabled={loading}
-                        >
-                            تغییر شماره
-                        </button>
+                        <div className="mt-auto">
+                            <button 
+                                className="w-full bg-blue-600 text-white p-3 rounded-lg mt-4 font-medium disabled:bg-gray-300 min-h-[44px]"
+                                onClick={handleVerifyOtp} 
+                                disabled={otp.length < 4 || loading}
+                            >
+                               {loading ? 'در حال بررسی...' : 'ورود'}
+                            </button>
+                            <button 
+                                className="w-full text-blue-600 p-2 mt-2 text-sm mb-6"
+                                onClick={() => setStep(1)}
+                                disabled={loading}
+                            >
+                                تغییر شماره
+                            </button>
+                        </div>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );

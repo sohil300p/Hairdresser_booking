@@ -134,6 +134,19 @@ export async function sendOtpService(data: SendOtpRequest): Promise<SendOtpRespo
     // We don't create user here to avoid creating accounts for invalid OTP requests
 
     // Send OTP via MeliPayamak SMS service
+    // In development mode, skip SMS and just log to console
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📱 [DEV MODE] OTP for ${phone}: ${otp} (expires in ${OTP_EXPIRY_SECONDS} seconds)`);
+      console.log(`📧 [DEV MODE] SMS sending skipped in development mode`);
+      
+      return {
+        success: true,
+        message: 'کد OTP ارسال شد (حالت توسعه - SMS غیرفعال)',
+        expiresIn: OTP_EXPIRY_SECONDS,
+        remainingAttempts: limitCheck.remaining - 1,
+      };
+    }
+    
     const smsResult = await sendOTPSMS(phone, otp, OTP_EXPIRY_SECONDS);
     
     if (!smsResult.success) {

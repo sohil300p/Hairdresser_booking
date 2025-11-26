@@ -7,6 +7,7 @@ type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost';
   className?: string;
   disabled?: boolean;
+  sticky?: boolean;
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -15,8 +16,9 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   className = '',
   disabled = false,
+  sticky = false,
 }) => {
-  const baseClasses = 'w-full text-center py-3 px-4 rounded-lg font-bold transition-transform transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = `w-full text-center py-3 px-4 rounded-lg font-bold transition-transform transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${sticky ? 'mt-auto mb-6' : ''}`;
 
   const variantClasses = {
     primary: 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] hover:bg-opacity-90',

@@ -1,0 +1,124 @@
+/**
+ * IRANSansX Font Family
+ * Persian/Farsi font optimized for web usage
+ */
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 100;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Thin.woff2') format('woff2'),
+       url('./woff/IRANSansX-Thin.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-UltraLight.woff2') format('woff2'),
+       url('./woff/IRANSansX-UltraLight.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Light.woff2') format('woff2'),
+       url('./woff/IRANSansX-Light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Regular.woff2') format('woff2'),
+       url('./woff/IRANSansX-Regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Medium.woff2') format('woff2'),
+       url('./woff/IRANSansX-Medium.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-DemiBold.woff2') format('woff2'),
+       url('./woff/IRANSansX-DemiBold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Bold.woff2') format('woff2'),
+       url('./woff/IRANSansX-Bold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-ExtraBold.woff2') format('woff2'),
+       url('./woff/IRANSansX-ExtraBold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'IRANSansX';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./woff2/IRANSansX-Black.woff2') format('woff2'),
+       url('./woff/IRANSansX-Black.woff') format('woff');
+}
+
+/* Variable Font Support */
+@font-face {
+  font-family: 'IRANSansXV';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./woff2/IRANSansXV.woff2') format('woff2-variations'),
+       url('./woff/IRANSansXV.woff') format('woff-variations');
+}
+
+/* Font utility classes */
+.font-thin { font-weight: 100; }
+.font-ultralight { font-weight: 200; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-demibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-black { font-weight: 900; }
+
+/* Persian text optimization */
+.persian-text {
+  font-family: 'IRANSansX', 'Tahoma', sans-serif;
+  direction: rtl;
+  text-align: right;
+  font-feature-settings: "kern" on, "liga" on, "calt" on;
+  -webkit-font-feature-settings: "kern" on, "liga" on, "calt" on;
+  -moz-font-feature-settings: "kern" on, "liga" on, "calt" on;
+}
+
+/* Variable font class for modern browsers */
+@supports (font-variation-settings: normal) {
+  .font-variable {
+    font-family: 'IRANSansXV', 'IRANSansX', 'Tahoma', sans-serif;
+    font-variation-settings: "wght" 400;
+  }
+}

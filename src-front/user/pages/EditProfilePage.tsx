@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { AppContextType } from '../types';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
+import { AvatarUpload } from '../components/AvatarUpload';
+import { apiClient, ApiError } from '../utils/api';
 
 export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context }) => {
     const { user, updateUser } = context;
@@ -18,14 +20,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 const token = localStorage.getItem('token');
                 if (!token) return;
 
-                const response = await fetch('http://localhost:3000/api/profile', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    },
-                });
-
-                const data = await response.json();
+                const data = await apiClient.get('/profile');
                 
                 if (data.success && data.data) {
                     const { firstName, lastName, gender: userGender } = data.data;
@@ -46,11 +41,17 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 }
             } catch (error) {
                 console.error('Error fetching profile:', error);
+                if (error instanceof ApiError && error.status === 401) {
+                    // 401 is already handled by apiClient, just log
+                    console.log('User was logged out due to invalid token');
+                } else {
+                    context.showToast('خطا در دریافت اطلاعات پروفایل', 'error');
+                }
             }
         };
 
         fetchProfile();
-    }, []);
+    }, [context]);
     
     const handleSave = async () => {
         // Validate name
@@ -69,7 +70,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
         setLoading(true);
         
         try {
-            // Get token from localStorage
+            // Check if token exists
             const token = localStorage.getItem('token');
             if (!token) {
                 context.showToast('لطفاً دوباره وارد شوید', 'error');
@@ -83,20 +84,11 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
             const lastName = nameParts.slice(1).join(' ') || '';
 
             // Send API request to update user profile
-            const response = await fetch('http://localhost:3000/api/profile', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    gender,
-                }),
+            const data = await apiClient.put('/profile', {
+                firstName,
+                lastName,
+                gender,
             });
-
-            const data = await response.json();
 
             if (data.success) {
                 // Update local user state
@@ -108,7 +100,14 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
             }
         } catch (error) {
             console.error('Error updating profile:', error);
-            setError('خطا در برقراری ارتباط با سرور');
+            if (error instanceof ApiError && error.status === 401) {
+                // 401 is already handled by apiClient, just log
+                console.log('User was logged out due to invalid token');
+            } else if (error instanceof ApiError) {
+                setError(error.message);
+            } else {
+                setError('خطا در برقراری ارتباط با سرور');
+            }
         } finally {
             setLoading(false);
         }
@@ -125,7 +124,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
     }
 
     return (
-        <div className="bg-gray-50 min-h-screen" dir="rtl">
+        <div className="bg-gray-50 min-h-screen flex flex-col" dir="rtl">
             <header className="sticky top-0 bg-gray-50 z-10 flex items-center p-4 mb-4">
                 <button onClick={() => context.setCurrentPage('profile')} className="absolute right-0">
                 <Icon name="chevronRight" className="w-6 h-6 text-gray-800" />
@@ -133,17 +132,19 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 <h1 className="text-xl font-bold text-center w-full text-[var(--text-primary)]">ویرایش پروفایل</h1>
             </header>
             
-            <div className="p-4 flex flex-col items-center">
-                <div className="relative w-24 h-24 rounded-full bg-gray-300 mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                    {user?.avatarUrl ? (
-                        <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                    ) : (
-                        <Icon name="user" className="w-12 h-12 text-gray-500" />
-                    )}
-                    <button className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    </button>
-                </div>
+            <div className="p-4 flex flex-col items-center flex-1">
+                <AvatarUpload
+                    currentAvatarUrl={user?.avatarUrl}
+                    onUploadSuccess={(avatarUrl) => {
+                        updateUser({ avatarUrl });
+                        context.showToast('تصویر پروفایل با موفقیت به‌روزرسانی شد', 'success');
+                    }}
+                    onUploadError={(error) => {
+                        context.showToast(error, 'error');
+                    }}
+                    disabled={loading}
+                    size="lg"
+                />
                 
                 <div className="w-full mt-8">
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right mb-1">نام و نام خانوادگی</label>
@@ -161,30 +162,47 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 </div>
                 
                 <div className="w-full mt-4">
-                    <label className="block text-sm font-medium text-gray-700 text-right mb-2">جنسیت</label>
-                    <div className="flex gap-4 justify-end">
-                        <label className="flex items-center cursor-pointer">
-                            <span className="mr-2">خانم</span>
-                            <input
-                                type="radio"
-                                name="gender"
-                                checked={gender === 'female'}
-                                onChange={() => setGender('female')}
-                                disabled={profileCompleted}
-                                className="ml-2"
+                    <label className="block text-sm font-medium text-gray-700 text-right mb-3">جنسیت</label>
+                    <div className="flex gap-6 justify-center">
+                        {/* Female Option */}
+                        <button
+                            type="button"
+                            onClick={() => !profileCompleted && setGender('female')}
+                            disabled={profileCompleted}
+                            className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 min-h-[60px] min-w-[80px] touch-manipulation focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 ${
+                                gender === 'female'
+                                    ? 'border-pink-500 bg-pink-50 text-pink-600'
+                                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-pink-300 hover:bg-pink-25'
+                            } ${profileCompleted ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                            <Icon 
+                                name="female" 
+                                className={`w-10 h-10 mb-2`}
+                                selected={gender === 'female'}
+                                color={gender === 'female' ? 'pink' : undefined}
                             />
-                        </label>
-                        <label className="flex items-center cursor-pointer">
-                            <span className="mr-2">آقا</span>
-                            <input
-                                type="radio"
-                                name="gender"
-                                checked={gender === 'male'}
-                                onChange={() => setGender('male')}
-                                disabled={profileCompleted}
-                                className="ml-2"
+                            <span className="text-sm font-medium w-16">خانم</span>
+                        </button>
+
+                        {/* Male Option */}
+                        <button
+                            type="button"
+                            onClick={() => !profileCompleted && setGender('male')}
+                            disabled={profileCompleted}
+                            className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 min-h-[60px] min-w-[80px] touch-manipulation focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                gender === 'male'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-600'
+                                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-blue-300 hover:bg-blue-25'
+                            } ${profileCompleted ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                            <Icon 
+                                name="male" 
+                                className={`w-10 h-10 mb-2`}
+                                selected={gender === 'male'}
+                                color={gender === 'male' ? 'blue' : undefined}
                             />
-                        </label>
+                            <span className="text-sm font-medium w-16">آقا</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -199,7 +217,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                     />
                 </div>
                 
-                <div className="w-full mt-6">
+                <div className="w-full mt-auto mb-10">
                     {!profileCompleted && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                             <p className="text-xs text-yellow-800 text-right">
@@ -209,19 +227,23 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                     )}
                     
                     {profileCompleted && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                            <p className="text-xs text-red-800 text-right">
-                                🚫 پروفایل شما تکمیل شده است. امکان تغییر نام و جنسیت وجود ندارد.
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                            <p className="text-xs text-blue-800 text-right">
+                                ℹ️ پروفایل شما تکمیل شده است. فقط تصویر پروفایل قابل تغییر است.
                             </p>
                         </div>
                     )}
                     
-                    <Button 
-                        onClick={handleSave} 
-                        style={{ display: (profileCompleted || !name.trim() || name.trim().length < 3 || !gender || loading) ? 'block' : 'none' }}
-                    >
-                        {loading ? 'در حال ذخیره...' : profileCompleted ? 'پروفایل تکمیل شده' : 'تکمیل پروفایل'}
-                    </Button>
+                    {!profileCompleted && (
+                        <Button 
+                            onClick={handleSave} 
+                            disabled={!name.trim() || name.trim().length < 3 || !gender || loading}
+                            variant="primary"
+                            sticky={true}
+                        >
+                            {loading ? 'در حال ذخیره...' : 'تکمیل پروفایل'}
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
