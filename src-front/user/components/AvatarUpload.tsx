@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Icon } from './Icon';
-import { apiClient, ApiError } from '../utils/api';
+import { api } from '../utils/api';
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string;
@@ -71,32 +71,22 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       const formData = new FormData();
       formData.append('profileImage', file);
 
-      // Upload to backend
-      const response = await fetch('http://localhost:3000/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
+      // Upload to backend using API client
+      const result = await api.upload<{ success: boolean; message?: string; data?: { avatarUrl: string } }>(
+        '/profile',
+        formData
+      );
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        onUploadSuccess(data.data?.avatar || '');
+      if (result.success && result.data?.avatarUrl) {
+        onUploadSuccess(result.data.avatarUrl);
         setPreviewUrl(null);
       } else {
-        throw new Error(data.message || 'خطا در آپلود تصویر');
+        throw new Error(result.message || 'خطا در آپلود تصویر');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Avatar upload error:', error);
       setPreviewUrl(null);
-      
-      if (error instanceof ApiError) {
-        onUploadError(error.message);
-      } else {
-        onUploadError('خطا در آپلود تصویر. لطفاً دوباره تلاش کنید.');
-      }
+      onUploadError(error.message || 'خطا در آپلود تصویر. لطفاً دوباره تلاش کنید.');
     } finally {
       setIsUploading(false);
     }

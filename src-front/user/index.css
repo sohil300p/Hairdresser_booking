@@ -1,5 +1,27 @@
-/* Import local IRANSansX fonts */
+/* Import local IRANSansX fonts FIRST */
 @import url('./assets/fonts/IRANSansX.css');
+
+/* Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* Material Design 3 Color Variables */
+:root {
+  --md-sys-color-primary: #1976d2;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e3f2fd;
+  --md-sys-color-on-primary-container: #0d47a1;
+  --md-sys-color-secondary: #03dac6;
+  --md-sys-color-on-secondary: #000000;
+  --md-sys-color-tertiary: #4caf50;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-error: #f44336;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-surface-variant: #f5f5f5;
+  --md-sys-color-on-surface-variant: #757575;
+  --md-sys-color-outline: #e0e0e0;
+}
 
 /* Global font application */
 * {
@@ -9,6 +31,13 @@
 html, body {
   font-family: 'IRANSansX', 'IRANSansXV', 'IranSansX', 'Tahoma', 'Arial', sans-serif !important;
   direction: rtl;
+}
+
+input {
+  @apply w-full p-3 border-2 border-gray-300 rounded-lg transition-colors duration-300;
+}
+input:focus {
+  @apply border-blue-500 ring-2 ring-blue-200 outline-none;
 }
 
 /* Override any existing font declarations */

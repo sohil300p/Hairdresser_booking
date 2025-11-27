@@ -1,170 +1,63 @@
-/**
- * Centralized API utility with automatic 401 handling
- * Automatically logs out users when tokens are invalid or user doesn't exist in DB
- */
+import { AppContextType } from '../types';
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  [key: string]: any;
-}
+let logoutHandler: AppContextType['logout'] | null = null;
+let showToastHandler: AppContextType['showToast'] | null = null;
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public response?: ApiResponse
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
+export const setAuthHandlers = (logout: AppContextType['logout'], showToast: AppContextType['showToast']) => {
+  logoutHandler = logout;
+  showToastHandler = showToast;
+};
 
-export class ApiClient {
-  private baseUrl: string;
-  private onUnauthorized?: () => void;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
-  constructor(baseUrl: string = 'http://localhost:3000/api') {
-    this.baseUrl = baseUrl;
+export const api = {
+  get: async <T>(path: string): Promise<T> => request('GET', path),
+  post: async <T>(path: string, body: any): Promise<T> => request('POST', path, body),
+  put: async <T>(path: string, body: any): Promise<T> => request('PUT', path, body),
+  delete: async <T>(path: string): Promise<T> => request('DELETE', path),
+  upload: async <T>(path: string, formData: FormData): Promise<T> => request('POST', path, formData, true),
+};
+
+async function request<T>(method: string, path: string, body?: any, isFormData: boolean = false): Promise<T> {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  /**
-   * Set callback function to handle 401 responses (usually logout)
-   */
-  setUnauthorizedHandler(handler: () => void) {
-    this.onUnauthorized = handler;
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
   }
 
-  /**
-   * Get authorization headers with token from localStorage
-   */
-  private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('token');
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  const config: RequestInit = {
+    method,
+    headers,
+  };
+
+  if (body) {
+    config.body = isFormData ? body : JSON.stringify(body);
   }
 
-  /**
-   * Handle API response and check for errors
-   */
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    let data: ApiResponse<T>;
-    
-    try {
-      data = await response.json();
-    } catch (error) {
-      throw new ApiError('Invalid JSON response', response.status);
-    }
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, config);
 
-    // Handle 401 Unauthorized - token invalid or user not found in DB
     if (response.status === 401) {
-      console.warn('🚨 401 Unauthorized - Token invalid or user not found in database');
-      
-      // Clear stored tokens
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Call logout handler if set
-      if (this.onUnauthorized) {
-        this.onUnauthorized();
+      if (logoutHandler && showToastHandler) {
+        showToastHandler('جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید', 'error');
+        logoutHandler();
       }
-      
-      throw new ApiError(
-        data.message || 'کاربر یافت نشد - لطفاً مجدداً وارد شوید',
-        401,
-        data
-      );
+      throw new Error('Unauthorized - Session expired');
     }
 
-    // Handle other HTTP errors
     if (!response.ok) {
-      throw new ApiError(
-        data.message || `HTTP Error ${response.status}`,
-        response.status,
-        data
-      );
+      const errorData = await response.json();
+      throw new Error(errorData.message || `API Error: ${response.statusText}`);
     }
 
-    return data;
-  }
-
-  /**
-   * Make GET request
-   */
-  async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-    });
-
-    return this.handleResponse<T>(response);
-  }
-
-  /**
-   * Make POST request
-   */
-  async post<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    return this.handleResponse<T>(response);
-  }
-
-  /**
-   * Make PUT request
-   */
-  async put<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    return this.handleResponse<T>(response);
-  }
-
-  /**
-   * Make DELETE request
-   */
-  async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-      },
-    });
-
-    return this.handleResponse<T>(response);
-  }
-
-  /**
-   * Make request without automatic auth headers (for login/register)
-   */
-  async postPublic<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    return this.handleResponse<T>(response);
+    return await response.json();
+  } catch (error: any) {
+    console.error(`API Request Failed (${method} ${path}):`, error);
+    throw error;
   }
 }
-
-// Create singleton instance
-export const apiClient = new ApiClient();

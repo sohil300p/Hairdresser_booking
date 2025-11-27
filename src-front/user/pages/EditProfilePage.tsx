@@ -3,7 +3,7 @@ import type { AppContextType } from '../types';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { AvatarUpload } from '../components/AvatarUpload';
-import { apiClient, ApiError } from '../utils/api';
+import { api } from '../utils/api';
 
 export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context }) => {
     const { user, updateUser } = context;
@@ -20,10 +20,10 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 const token = localStorage.getItem('token');
                 if (!token) return;
 
-                const data = await apiClient.get('/profile');
+                const result = await api.get<{ success: boolean; data: { firstName: string; lastName: string; gender: 'male' | 'female'; avatar: string } }>('/profile');
                 
-                if (data.success && data.data) {
-                    const { firstName, lastName, gender: userGender } = data.data;
+                if (result.success && result.data) {
+                    const { firstName, lastName, gender: userGender } = result.data;
                     
                     // Set existing data
                     if (firstName || lastName) {
@@ -41,12 +41,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 }
             } catch (error) {
                 console.error('Error fetching profile:', error);
-                if (error instanceof ApiError && error.status === 401) {
-                    // 401 is already handled by apiClient, just log
-                    console.log('User was logged out due to invalid token');
-                } else {
-                    context.showToast('خطا در دریافت اطلاعات پروفایل', 'error');
-                }
+                context.showToast('خطا در بارگذاری پروفایل', 'error');
             }
         };
 
@@ -84,32 +79,24 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
             const lastName = nameParts.slice(1).join(' ') || '';
 
             // Send API request to update user profile
-            const data = await apiClient.put('/profile', {
+            const result = await api.put<{ success: boolean; message?: string }>('/profile', {
                 firstName,
                 lastName,
                 gender,
             });
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (result.success) {
                 // Update local user state
                 updateUser({ name: name.trim() });
                 context.showToast('پروفایل شما با موفقیت تکمیل شد!', 'success');
                 context.setCurrentPage('profile');
             } else {
-                setError(data.message || 'خطا در به‌روزرسانی پروفایل');
+                setError(result.message || 'خطا در به‌روزرسانی پروفایل');
             }
         } catch (error) {
             console.error('Error updating profile:', error);
-            if (error instanceof ApiError && error.status === 401) {
-                // 401 is already handled by apiClient, just log
-                console.log('User was logged out due to invalid token');
-            } else if (error instanceof ApiError) {
-                setError(error.message);
-            } else {
-                setError('خطا در برقراری ارتباط با سرور');
-            }
+            console.error('Error updating profile:', error);
+            setError(error.message || 'خطا در برقراری ارتباط با سرور');
         } finally {
             setLoading(false);
         }
@@ -149,7 +136,7 @@ export const EditProfilePage: React.FC<{ context: AppContextType }> = ({ context
                 />
                 
                 <div className="w-full mt-8">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right mb-1">نام و نام خانوادگی</label>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-right mb-1 w-full">نام و نام خانوادگی</label>
                     <input
                         type="text"
                         id="name"

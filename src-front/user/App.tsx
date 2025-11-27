@@ -38,7 +38,7 @@ import { Modal } from './components/Modal';
 import { BOOKINGS, NOTIFICATIONS, LOGGED_IN_USER, DISCOUNTS, BARBERS } from './constants';
 
 // API Client
-import { apiClient } from './utils/api';
+// API client is now handled in utils/api.ts
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(() => {
@@ -63,20 +63,61 @@ const App: React.FC = () => {
   const [modalContent, setModalContent] = useState<React.ReactNode>(null);
   const [modalPosition, setModalPosition] = useState<'center' | 'bottom'>('center');
 
-  // Check for incomplete profile on load/login
+  // Smart profile validation - only check once per session
+  const [profileChecked, setProfileChecked] = useState(false);
+  
   useEffect(() => {
-    if (user && (!user.name || user.name === 'کاربر' || !user.name.trim())) {
-       // Redirect to profile completion for new users
-       showToast('لطفاً پروفایل خود را تکمیل کنید تا بتوانید از تمام امکانات استفاده کنید.', 'error');
-       setCurrentPage('edit-profile');
+    if (user && !profileChecked) {
+      setProfileChecked(true);
+      
+      // Check if this is a completely new user (no name at all)
+      const isNewUser = !user.name || user.name === 'کاربر' || user.name.trim().length < 2;
+      
+      if (isNewUser) {
+        // Only redirect new users to profile completion
+        showToast('خوش آمدید! لطفاً پروفایل خود را تکمیل کنید.', 'info');
+        setCurrentPage('edit-profile');
+      } else {
+        // For existing users, validate profile from server in background
+        validateProfileFromServer().then(result => {
+          if (result.success && result.completeness) {
+            const action = getProfileAction(result.completeness);
+            
+            // Only show gentle warnings for existing users, don't force redirect
+            if (action.action === 'warn' && currentPage === 'home') {
+              showToast(action.message || 'برای استفاده کامل از امکانات، پروفایل خود را تکمیل کنید.', 'warning');
+            }
+          }
+        }).catch(error => {
+          console.log('Profile validation failed silently:', error);
+          // Don't show error to user, just log it
+        });
+      }
     }
-  }, [user]);
+  }, [user, profileChecked, currentPage]);
 
   const handleSetCurrentPage = useCallback((page: Page, params: any = null) => {
+    // Smart page access validation - only block critical features
+    if (user && (page === 'booking' || page === 'wallet' || page === 'wallet-withdraw')) {
+      const completeness = checkLocalProfileCompleteness(user);
+      
+      if (!completeness.hasBasicInfo) {
+        showToast('برای رزرو نوبت، ابتدا نام خود را وارد کنید.', 'error');
+        setCurrentPage('edit-profile');
+        return;
+      }
+      
+      if (page === 'booking' && !completeness.hasGender) {
+        showToast('برای رزرو نوبت، لطفاً جنسیت خود را انتخاب کنید.', 'warning');
+        setCurrentPage('edit-profile');
+        return;
+      }
+    }
+    
     setCurrentPage(page);
     setPageParams(params);
     window.scrollTo(0, 0);
-  }, []);
+  }, [user]);
 
   const login = (userData: User, token: string) => { 
     setUser(userData);
@@ -94,7 +135,7 @@ const App: React.FC = () => {
 
   // Initialize API client with logout handler
   useEffect(() => {
-    apiClient.setUnauthorizedHandler(logout);
+    // API client unauthorized handler is now set in utils/api.ts
   }, []);
   
   const updateUser = (updatedUserData: Partial<User>) => {
@@ -221,24 +262,31 @@ const App: React.FC = () => {
   };
 
   const renderPage = () => {
-    switch (currentPage) {
-      case 'home': return <HomePage context={context} />;
-      case 'barber': return <BarberProfilePage context={context} />;
-      case 'booking': return <BookingPage context={context} />;
-      case 'my-bookings': return <MyBookingsPage context={context} />;
-      case 'profile': return <ProfilePage context={context} />;
-      case 'edit-profile': return <EditProfilePage context={context} />;
-      case 'wallet': return <WalletPage context={context} />;
-      case 'wallet-withdraw': return <WalletWithdrawPage context={context} />;
-      case 'discounts': return <DiscountsPage context={context} />;
-      case 'favorites': return <FavoritesPage context={context} barbers={BARBERS.filter(b => favorites.includes(b.id))} />;
-      case 'payment-history': return <PaymentHistoryPage context={context} />;
-      case 'notifications': return <NotificationsPage context={context} />;
-      case 'search': return <SearchPage context={context} />;
-      case 'support-center': return <SupportCenterPage context={context} />;
-      case 'chat': return <ChatPage context={context} />;
-      case 'faq': return <FaqPage context={context} />;
-      case 'login': default: return <LoginPage context={context} />;
+    console.log('Rendering page:', currentPage, 'User:', user ? 'logged in' : 'not logged in');
+    
+    try {
+      switch (currentPage) {
+        case 'home': return <HomePage context={context} />;
+        case 'barber': return <BarberProfilePage context={context} />;
+        case 'booking': return <BookingPage context={context} />;
+        case 'my-bookings': return <MyBookingsPage context={context} />;
+        case 'profile': return <ProfilePage context={context} />;
+        case 'edit-profile': return <EditProfilePage context={context} />;
+        case 'wallet': return <WalletPage context={context} />;
+        case 'wallet-withdraw': return <WalletWithdrawPage context={context} />;
+        case 'discounts': return <DiscountsPage context={context} />;
+        case 'favorites': return <FavoritesPage context={context} barbers={BARBERS.filter(b => favorites.includes(b.id))} />;
+        case 'payment-history': return <PaymentHistoryPage context={context} />;
+        case 'notifications': return <NotificationsPage context={context} />;
+        case 'search': return <SearchPage context={context} />;
+        case 'support-center': return <SupportCenterPage context={context} />;
+        case 'chat': return <ChatPage context={context} />;
+        case 'faq': return <FaqPage context={context} />;
+        case 'login': default: return <LoginPage context={context} />;
+      }
+    } catch (error) {
+      console.error('Error rendering page:', error);
+      return <div className="p-4 text-center text-red-500">خطا در بارگذاری صفحه</div>;
     }
   };
 
@@ -263,7 +311,7 @@ const App: React.FC = () => {
             {modalContent}
         </Modal>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-        <main className={showNav ? "/pb-20" : ""}>{renderPage()}</main>
+        <main className={showNav ? "" : ""}>{renderPage()}</main>
         {showNav && (
           <footer className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around h-16 items-center" dir="rtl">
               <NavItem page="home" icon="home" label="خانه" />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { AppContextType, User } from '../types';
-import { apiClient, ApiError } from '../utils/api';
+import { api } from '../utils/api';
 
 interface LoginPageProps {
     context: AppContextType;
@@ -20,7 +20,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
 
         setLoading(true);
         try {
-            const data = await apiClient.postPublic('/otp/send', { phone });
+            const data = await api.post<{ success: boolean; message?: string }>('/otp/send', { phone });
 
             if (data.success) {
                 context.showToast(data.message || 'کد تایید ارسال شد', 'success');
@@ -28,13 +28,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
             } else {
                 context.showToast(data.message || 'خطا در ارسال کد تایید', 'error');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error sending OTP:', error);
-            if (error instanceof ApiError) {
-                context.showToast(error.message, 'error');
-            } else {
-                context.showToast('خطا در برقراری ارتباط با سرور', 'error');
-            }
+            context.showToast(error.message || 'خطا در برقراری ارتباط با سرور', 'error');
         } finally {
             setLoading(false);
         }
@@ -48,7 +44,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
 
         setLoading(true);
         try {
-            const data = await apiClient.postPublic('/auth/login/otp', { 
+            const data = await api.post<{ success: boolean; message?: string; user: any; token: string; isNewUser?: boolean }>('/auth/login/otp', { 
                 phone, 
                 otp,
                 userType: 'customer',
@@ -78,13 +74,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
             } else {
                 context.showToast(data.message || 'کد تایید نادرست است', 'error');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error verifying OTP:', error);
-            if (error instanceof ApiError) {
-                context.showToast(error.message, 'error');
-            } else {
-                context.showToast('خطا در برقراری ارتباط با سرور', 'error');
-            }
+            context.showToast(error.message || 'خطا در برقراری ارتباط با سرور', 'error');
         } finally {
             setLoading(false);
         }
