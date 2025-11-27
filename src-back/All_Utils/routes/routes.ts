@@ -49,6 +49,8 @@ import {
   rescheduleAppointmentController,
 } from '../../User_Side/Appointment/appointment.controller';
 import { getMyReservationsController, cancelMyReservationController } from '../../User_Side/My_Reservations/my-reservations.controller';
+import { getBarberProfileController, createBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/profile.controller';
+import { editBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/editprofile.controller';
 
 const router = Router();
 
@@ -89,6 +91,17 @@ router.put('/profile', authenticateToken, upload.fields([
   { name: 'profileImage', maxCount: 1 },
   { name: 'backgroundImage', maxCount: 1 }
 ]), editProfileController);
+
+// Barber Profile Routes (Protected - Barber only)
+router.get('/barber/profile', authenticateToken, getBarberProfileController);
+router.post('/barber/profile', authenticateToken, upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'backgroundImage', maxCount: 1 }
+]), createBarberProfileController);
+router.put('/barber/profile', authenticateToken, upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'backgroundImage', maxCount: 1 }
+]), editBarberProfileController);
 
 // Payment History Routes (Protected)
 router.get('/payment-history', authenticateToken, getPaymentHistoryController);

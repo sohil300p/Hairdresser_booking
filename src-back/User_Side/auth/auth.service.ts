@@ -18,6 +18,11 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
   // Verify customer still exists
   const customer = await prisma.customer.findUnique({
     where: { id: payload.sub },
+    select: {
+      id: true,
+      phone: true,
+      role: true,
+    },
   });
 
   if (!customer) {
@@ -30,6 +35,10 @@ export async function refreshTokenService(refreshToken: string): Promise<Refresh
   // Check if user is a barber
   const barber = await prisma.barber.findFirst({
     where: { userRefId: customer.id },
+    select: {
+      id: true,
+      userRefId: true,
+    },
   });
 
   // Generate new tokens
@@ -68,6 +77,11 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
   // Verify customer still exists
   const customer = await prisma.customer.findUnique({
     where: { id: payload.sub },
+    select: {
+      id: true,
+      phone: true,
+      role: true,
+    },
   });
 
   if (!customer) {
@@ -80,6 +94,10 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
   // Check if user is a barber
   const barber = await prisma.barber.findFirst({
     where: { userRefId: customer.id },
+    select: {
+      id: true,
+      userRefId: true,
+    },
   });
 
   return {

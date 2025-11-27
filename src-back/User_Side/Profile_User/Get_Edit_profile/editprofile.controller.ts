@@ -8,8 +8,7 @@ import { EditProfileRequest } from './profile.type';
  * PUT /api/profile
  * 
  * Request Body (multipart/form-data):
- * - firstName?: string
- * - lastName?: string
+ * - fullName?: string
  * - profileImage?: File (image file)
  * - backgroundImage?: File (image file)
  */
@@ -28,8 +27,7 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
 
     // Extract data from request body
     const editData: EditProfileRequest = {
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
+      fullName: req.body.fullName,
       gender: req.body.gender,
     };
 
@@ -40,15 +38,14 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
 
     // Validate that at least one field is provided
     if (
-      (editData.firstName === undefined || editData.firstName === '') &&
-      (editData.lastName === undefined || editData.lastName === '') &&
+      (editData.fullName === undefined || editData.fullName === '') &&
       (editData.gender === undefined || editData.gender === '') &&
       !profileImageFile &&
       !backgroundImageFile
     ) {
       res.status(400).json({
         success: false,
-        message: 'حداقل یکی از فیلدها (نام، نام خانوادگی، جنسیت، عکس پروفایل یا عکس بک‌گراند) باید ارسال شود',
+        message: 'حداقل یکی از فیلدها (نام کامل، جنسیت، عکس پروفایل یا عکس بک‌گراند) باید ارسال شود',
       });
       return;
     }
@@ -72,19 +69,11 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
       return;
     }
 
-    // Validate firstName and lastName if provided
-    if (editData.firstName !== undefined && editData.firstName.trim().length > 20) {
+    // Validate fullName if provided
+    if (editData.fullName !== undefined && editData.fullName.trim().length > 100) {
       res.status(400).json({
         success: false,
-        message: 'نام نمی‌تواند بیشتر از 20 کاراکتر باشد',
-      });
-      return;
-    }
-
-    if (editData.lastName !== undefined && editData.lastName.trim().length > 20) {
-      res.status(400).json({
-        success: false,
-        message: 'نام خانوادگی نمی‌تواند بیشتر از 20 کاراکتر باشد',
+        message: 'نام کامل نمی‌تواند بیشتر از 100 کاراکتر باشد',
       });
       return;
     }
@@ -98,10 +87,15 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
     }
   } catch (error) {
     console.error('Error in editProfileController:', error);
-    res.status(500).json({
-      success: false,
-      message: 'خطای داخلی سرور',
-    });
+    
+    // Ensure we always return JSON, not HTML
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'خطای داخلی سرور',
+        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
+      });
+    }
   }
 }
 

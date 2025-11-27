@@ -28,6 +28,35 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api', routes);
 
+// 404 handler (must be after routes)
+app.use((req: express.Request, res: express.Response) => {
+  res.status(404).json({
+    success: false,
+    message: 'مسیر یافت نشد',
+  });
+});
+
+// Error handler for multer and other errors (must be last)
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Multer errors
+  if (error && error.name === 'MulterError') {
+    return res.status(400).json({
+      success: false,
+      message: `خطا در آپلود فایل: ${error.message}`,
+    });
+  }
+  
+  // Other errors
+  console.error('Unhandled error:', error);
+  if (!res.headersSent) {
+    res.status(500).json({
+      success: false,
+      message: 'خطای داخلی سرور',
+      error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
+    });
+  }
+});
+
 // Root route
 app.get('/', (req, res) => {
   res.json({

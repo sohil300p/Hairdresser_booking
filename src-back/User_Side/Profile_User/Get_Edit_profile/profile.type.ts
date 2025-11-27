@@ -5,8 +5,7 @@ export interface GetProfileResponse {
   message: string;
   data?: {
     id: number;
-    firstName: string | null;
-    lastName: string | null;
+    fullName: string | null;
     phone: string;
     email: string | null;
     profileImage: string | null;
@@ -21,8 +20,7 @@ export interface GetProfileResponse {
 }
 
 export interface EditProfileRequest {
-  firstName?: string;
-  lastName?: string;
+  fullName?: string;
   gender?: 'male' | 'female';
   profileImage?: string;
 }
@@ -32,8 +30,7 @@ export interface EditProfileResponse {
   message: string;
   data?: {
     id: number;
-    firstName: string | null;
-    lastName: string | null;
+    fullName: string | null;
     phone: string;
     email: string | null;
     profileImage: string | null;

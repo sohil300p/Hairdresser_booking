@@ -48,6 +48,11 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     // CRITICAL SECURITY CHECK: Verify user still exists in database
     const customer = await prisma.customer.findUnique({
       where: { id: payload.sub },
+      select: {
+        id: true,
+        phone: true,
+        role: true,
+      },
     });
 
     if (!customer) {
@@ -62,6 +67,10 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     // Check if user is a barber
     const barber = await prisma.barber.findFirst({
       where: { userRefId: customer.id },
+      select: {
+        id: true,
+        userRefId: true,
+      },
     });
 
     // Attach user info to request
@@ -100,12 +109,21 @@ export async function optionalAuthenticateToken(req: AuthRequest, res: Response,
         // Verify user still exists in database
         const customer = await prisma.customer.findUnique({
           where: { id: payload.sub },
+          select: {
+            id: true,
+            phone: true,
+            role: true,
+          },
         });
 
         if (customer) {
           // Check if user is a barber
           const barber = await prisma.barber.findFirst({
             where: { userRefId: customer.id },
+            select: {
+              id: true,
+              userRefId: true,
+            },
           });
 
           req.user = {

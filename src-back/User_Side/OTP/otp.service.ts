@@ -255,6 +255,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     // Check if user exists or is new
     let user = await prisma.customer.findUnique({
       where: { phone },
+      select: {
+        id: true,
+        phone: true,
+        fullName: true,
+        role: true,
+        lastLoginAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     let isNewUser = false;
@@ -266,8 +275,17 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         data: {
           phone,
           role: 'customer' as Role,
-          lastLoginAt: new Date().toISOString(),
+          lastLoginAt: new Date(),
           // fullName and gender will be null initially
+        },
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          role: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
       isNewUser = true;
@@ -277,7 +295,16 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       user = await prisma.customer.update({
         where: { phone },
         data: {
-          lastLoginAt: new Date().toISOString(),
+          lastLoginAt: new Date(),
+        },
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          role: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
       console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
@@ -295,6 +322,10 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     // Check if user is a barber
     const barber = await prisma.barber.findFirst({
       where: { userRefId: user.id },
+      select: {
+        id: true,
+        userRefId: true,
+      },
     });
 
     // Generate JWT tokens

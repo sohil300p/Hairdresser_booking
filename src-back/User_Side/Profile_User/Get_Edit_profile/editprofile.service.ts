@@ -8,25 +8,38 @@ import { v4 as uuidv4 } from 'uuid';
  */
 async function uploadFileService(file: Express.Multer.File, folder?: string): Promise<{ success: boolean; fileUrl?: string; message?: string }> {
   try {
-    const fileExtension = file.originalname.split('.').pop();
+    // Validate file
+    if (!file || !file.buffer || !file.originalname) {
+      console.error('Invalid file object:', { hasFile: !!file, hasBuffer: !!file?.buffer, hasOriginalName: !!file?.originalname });
+      return {
+        success: false,
+        message: 'فایل نامعتبر است',
+      };
+    }
+
+    const fileExtension = file.originalname.split('.').pop() || 'jpg';
     const fileName = `${uuidv4()}.${fileExtension}`;
     const objectName = folder ? `${folder}/${fileName}` : fileName;
 
+    console.log(`📤 Uploading file to MinIO: ${objectName} (${file.size} bytes)`);
+
     await minioClient.putObject(DEFAULT_BUCKET, objectName, file.buffer, file.size, {
-      'Content-Type': file.mimetype,
+      'Content-Type': file.mimetype || 'image/jpeg',
     });
 
     const fileUrl = `${minioConfig.publicUrl}/${DEFAULT_BUCKET}/${objectName}`;
+    console.log(`✅ File uploaded successfully: ${fileUrl}`);
 
     return {
       success: true,
       fileUrl,
     };
   } catch (error) {
-    console.error('Error uploading file to MinIO:', error);
+    console.error('❌ Error uploading file to MinIO:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      message: 'خطا در آپلود فایل',
+      message: `خطا در آپلود فایل: ${errorMessage}`,
     };
   }
 }
@@ -34,22 +47,21 @@ async function uploadFileService(file: Express.Multer.File, folder?: string): Pr
 /**
  * Delete file from MinIO
  */
-async function deleteFileService(fileName: string, folder?: string): Promise<void> {
+async function deleteFileService(objectName: string): Promise<void> {
   try {
-    const objectName = folder ? `${folder}/${fileName}` : fileName;
     await minioClient.removeObject(DEFAULT_BUCKET, objectName);
   } catch (error) {
     console.error('Error deleting file from MinIO:', error);
-    throw error;
+    // Don't throw - just log the error
   }
 }
 
 /**
- * Extract file name from MinIO URL
+ * Extract object name from MinIO URL
  * URL format: http://localhost:9000/bucket-name/folder/file-name.ext
- * Returns: folder/file-name.ext or file-name.ext
+ * Returns: folder/file-name.ext or file-name.ext (object name in MinIO)
  */
-function extractFileNameFromUrl(url: string): string | null {
+function extractObjectNameFromUrl(url: string): string | null {
   try {
     if (!url) return null;
     
@@ -69,11 +81,11 @@ function extractFileNameFromUrl(url: string): string | null {
     
     return null;
   } catch (error) {
-    console.error('Error extracting file name from URL:', error);
+    console.error('Error extracting object name from URL:', error);
     // Fallback: try simple string split
     try {
       const urlParts = url.split('/');
-      const bucketIndex = urlParts.findIndex(part => part.includes('barber') || part.includes('uploads'));
+      const bucketIndex = urlParts.findIndex(part => part === DEFAULT_BUCKET || part.includes('barber') || part.includes('uploads'));
       if (bucketIndex !== -1 && urlParts[bucketIndex + 1]) {
         return urlParts.slice(bucketIndex + 1).join('/');
       }
@@ -100,7 +112,6 @@ export async function editProfileService(
       select: {
         id: true,
         fullName: true,
-        gender: true,
         avatar: true,
         publicMeta: true,
       },
@@ -113,22 +124,15 @@ export async function editProfileService(
       };
     }
 
-    // Check if profile is already completed (name and gender exist)
-    const isProfileCompleted = existingCustomer.fullName && existingCustomer.gender;
+    // Check if profile is already completed (name exists)
+    const isProfileCompleted = existingCustomer.fullName;
 
-    // If profile is completed, prevent changes to name and gender
+    // If profile is completed, prevent changes to name
     if (isProfileCompleted) {
-      if (data.firstName !== undefined || data.lastName !== undefined) {
+      if (data.fullName !== undefined) {
         return {
           success: false,
           message: 'امکان تغییر نام پس از تکمیل پروفایل وجود ندارد',
-        };
-      }
-      
-      if (data.gender !== undefined) {
-        return {
-          success: false,
-          message: 'امکان تغییر جنسیت پس از تکمیل پروفایل وجود ندارد',
         };
       }
     }
@@ -136,7 +140,6 @@ export async function editProfileService(
     // Prepare update data
     const updateData: {
       fullName?: string | null;
-      gender?: 'male' | 'female' | null;
       avatar?: string | null;
       publicMeta?: any;
     } = {};
@@ -144,18 +147,12 @@ export async function editProfileService(
     // Get existing publicMeta
     const existingPublicMeta = (existingCustomer.publicMeta || {}) as any;
 
-    // Update fullName if firstName or lastName provided
-    if (data.firstName !== undefined || data.lastName !== undefined) {
-      const firstName = data.firstName?.trim() || '';
-      const lastName = data.lastName?.trim() || '';
-      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    // Update fullName if provided
+    if (data.fullName !== undefined) {
+      const fullName = data.fullName.trim();
       updateData.fullName = fullName === '' ? null : fullName;
     }
 
-    // Update gender if provided
-    if (data.gender !== undefined) {
-      updateData.gender = data.gender || null;
-    }
 
     // Handle profile image upload if file is provided
     if (profileImageFile) {
@@ -170,18 +167,9 @@ export async function editProfileService(
 
       // Delete old profile image if exists
       if (existingCustomer.avatar) {
-        try {
-          const oldFileName = extractFileNameFromUrl(existingCustomer.avatar);
-          if (oldFileName) {
-            // Extract folder name (profiles)
-            const folder = oldFileName.includes('/') ? oldFileName.split('/')[0] : undefined;
-            const fileName = oldFileName.includes('/') ? oldFileName.split('/').slice(1).join('/') : oldFileName;
-            
-            await deleteFileService(fileName, folder);
-          }
-        } catch (error) {
-          console.error('Error deleting old profile image:', error);
-          // Continue with update even if deletion fails
+        const oldObjectName = extractObjectNameFromUrl(existingCustomer.avatar);
+        if (oldObjectName) {
+          await deleteFileService(oldObjectName);
         }
       }
 
@@ -201,17 +189,9 @@ export async function editProfileService(
 
       // Delete old background image if exists
       if (existingPublicMeta.backgroundImage) {
-        try {
-          const oldFileName = extractFileNameFromUrl(existingPublicMeta.backgroundImage);
-          if (oldFileName) {
-            const folder = oldFileName.includes('/') ? oldFileName.split('/')[0] : undefined;
-            const fileName = oldFileName.includes('/') ? oldFileName.split('/').slice(1).join('/') : oldFileName;
-            
-            await deleteFileService(fileName, folder);
-          }
-        } catch (error) {
-          console.error('Error deleting old background image:', error);
-          // Continue with update even if deletion fails
+        const oldObjectName = extractObjectNameFromUrl(existingPublicMeta.backgroundImage);
+        if (oldObjectName) {
+          await deleteFileService(oldObjectName);
         }
       }
 
@@ -242,7 +222,6 @@ export async function editProfileService(
         fullName: true,
         phone: true,
         avatar: true,
-        gender: true,
         publicMeta: true,
         role: true,
         createdAt: true,
@@ -259,8 +238,7 @@ export async function editProfileService(
       message: 'پروفایل با موفقیت به‌روزرسانی شد',
       data: {
         id: updatedCustomer.id,
-        firstName: updatedCustomer.fullName?.split(' ')[0] || null,
-        lastName: updatedCustomer.fullName?.split(' ').slice(1).join(' ') || null,
+        fullName: updatedCustomer.fullName,
         phone: updatedCustomer.phone,
         profileImage: updatedCustomer.avatar,
         backgroundImage,
