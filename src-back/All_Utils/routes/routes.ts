@@ -51,6 +51,11 @@ import {
 import { getMyReservationsController, cancelMyReservationController } from '../../User_Side/My_Reservations/my-reservations.controller';
 import { getBarberProfileController, createBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/profile.controller';
 import { editBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/editprofile.controller';
+import { logoutBarberController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/logout.controller';
+import { getServicesController, createServiceController, editServiceController } from '../../Barber_Side/Profile_barber/Get_Edit_Service/service.controller';
+import { getWorkingHoursController, createWorkingHoursController, editWorkingHoursController } from '../../Barber_Side/Profile_barber/Get_Edit_workingHours/workinghour.controller';
+import { getCouponsController, createCouponController, editCouponController, sendCouponSMSController } from '../../Barber_Side/Profile_barber/Get_Edit_coupon/coupon.controller';
+import { getCommentsController } from '../../Barber_Side/Profile_barber/Get_commentsCustomer/comment.controller';
 
 const router = Router();
 
@@ -102,6 +107,32 @@ router.put('/barber/profile', authenticateToken, upload.fields([
   { name: 'profileImage', maxCount: 1 },
   { name: 'backgroundImage', maxCount: 1 }
 ]), editBarberProfileController);
+router.post('/barber/logout', authenticateToken, logoutBarberController);
+
+// Barber Services Routes (Protected - Barber only)
+router.get('/barber/services', authenticateToken, getServicesController);
+router.post('/barber/services', authenticateToken, upload.fields([
+  { name: 'avatar', maxCount: 1 },
+  { name: 'sampleImages', maxCount: 10 }
+]), createServiceController);
+router.put('/barber/services/:id', authenticateToken, upload.fields([
+  { name: 'avatar', maxCount: 1 },
+  { name: 'sampleImages', maxCount: 10 }
+]), editServiceController);
+
+// Barber Working Hours Routes (Protected - Barber only)
+router.get('/barber/working-hours', authenticateToken, getWorkingHoursController);
+router.post('/barber/working-hours', authenticateToken, createWorkingHoursController);
+router.put('/barber/working-hours', authenticateToken, editWorkingHoursController);
+
+// Barber Coupons Routes (Protected - Barber only)
+router.get('/barber/coupons', authenticateToken, getCouponsController);
+router.post('/barber/coupons', authenticateToken, createCouponController);
+router.put('/barber/coupons/:id', authenticateToken, editCouponController);
+router.post('/barber/coupons/:id/send-sms', authenticateToken, sendCouponSMSController);
+
+// Barber Comments Routes (Protected - Barber only)
+router.get('/barber/comments', authenticateToken, getCommentsController);
 
 // Payment History Routes (Protected)
 router.get('/payment-history', authenticateToken, getPaymentHistoryController);
