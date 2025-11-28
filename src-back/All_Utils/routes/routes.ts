@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { healthCheck } from '../Helth/healthController';
-import { sendOtpController, verifyOtpController } from '../../User_Side/OTP/otp.controller';
+import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../../User_Side/auth/auth.controller';
 import { loginWithPasswordController } from '../../User_Side/auth/login.controller';
 import { authenticateToken } from '../../User_Side/auth/auth.middleware';
@@ -56,6 +56,15 @@ import { getServicesController, createServiceController, editServiceController }
 import { getWorkingHoursController, createWorkingHoursController, editWorkingHoursController } from '../../Barber_Side/Profile_barber/Get_Edit_workingHours/workinghour.controller';
 import { getCouponsController, createCouponController, editCouponController, sendCouponSMSController } from '../../Barber_Side/Profile_barber/Get_Edit_coupon/coupon.controller';
 import { getCommentsController } from '../../Barber_Side/Profile_barber/Get_commentsCustomer/comment.controller';
+import {
+  getWalletBalanceController as getBarberWalletBalanceController,
+  depositController as barberDepositController,
+  withdrawController as barberWithdrawController,
+  transferController as barberTransferController,
+  getTransactionHistoryController as getBarberTransactionHistoryController,
+  lockFundsController as barberLockFundsController,
+} from '../../Barber_Side/Profile_barber/barber_wallet/Transaction/transaction.controller';
+import { getPaymentHistoryController as getBarberPaymentHistoryController } from '../../Barber_Side/Profile_barber/barber_wallet/Payment_History/payment-history.controller';
 
 const router = Router();
 
@@ -133,6 +142,15 @@ router.post('/barber/coupons/:id/send-sms', authenticateToken, sendCouponSMSCont
 
 // Barber Comments Routes (Protected - Barber only)
 router.get('/barber/comments', authenticateToken, getCommentsController);
+
+// Barber Wallet Routes (Protected - Barber only)
+router.get('/barber/wallet/balance', authenticateToken, getBarberWalletBalanceController);
+router.post('/barber/wallet/deposit', authenticateToken, barberDepositController);
+router.post('/barber/wallet/withdraw', authenticateToken, barberWithdrawController);
+router.post('/barber/wallet/transfer', authenticateToken, barberTransferController);
+router.get('/barber/wallet/history', authenticateToken, getBarberTransactionHistoryController);
+router.post('/barber/wallet/lock', authenticateToken, barberLockFundsController);
+router.get('/barber/wallet/payment-history', authenticateToken, getBarberPaymentHistoryController);
 
 // Payment History Routes (Protected)
 router.get('/payment-history', authenticateToken, getPaymentHistoryController);

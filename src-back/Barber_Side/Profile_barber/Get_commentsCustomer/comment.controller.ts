@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getCommentsService } from './comment.service';
+import prisma from '../../../All_Utils/config/prisma';
 
 /**
  * Get Comments Controller
@@ -16,7 +17,6 @@ export async function getCommentsController(req: AuthRequest, res: Response): Pr
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {

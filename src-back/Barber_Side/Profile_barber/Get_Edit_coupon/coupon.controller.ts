@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getCouponsService, createCouponService, editCouponService, sendCouponSMSService } from './coupon.service';
 import { CreateCouponRequest, EditCouponRequest, SendCouponSMSRequest } from './coupon.type';
+import prisma from '../../../All_Utils/config/prisma';
 
 /**
  * Get Coupons Controller
@@ -17,7 +18,6 @@ export async function getCouponsController(req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -67,7 +67,6 @@ export async function createCouponController(req: AuthRequest, res: Response): P
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -153,7 +152,6 @@ export async function editCouponController(req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -238,7 +236,6 @@ export async function sendCouponSMSController(req: AuthRequest, res: Response): 
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {

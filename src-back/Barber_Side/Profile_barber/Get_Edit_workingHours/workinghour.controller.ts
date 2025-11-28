@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getWorkingHoursService, createWorkingHoursService, editWorkingHoursService } from './workinghour.service';
 import { CreateWorkingHoursRequest, EditWorkingHoursRequest } from './workinghour.type';
+import prisma from '../../../All_Utils/config/prisma';
 
 /**
  * Get Working Hours Controller
@@ -17,7 +18,6 @@ export async function getWorkingHoursController(req: AuthRequest, res: Response)
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -67,7 +67,6 @@ export async function createWorkingHoursController(req: AuthRequest, res: Respon
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -143,7 +142,6 @@ export async function editWorkingHoursController(req: AuthRequest, res: Response
       return;
     }
 
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {

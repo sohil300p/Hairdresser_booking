@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getServicesService, createServiceService, editServiceService } from './service.service';
 import { CreateServiceRequest, EditServiceRequest } from './service.type';
+import prisma from '../../../All_Utils/config/prisma';
 
 /**
  * Get Services Controller
@@ -18,7 +19,7 @@ export async function getServicesController(req: AuthRequest, res: Response): Pr
     }
 
     // Get barbershop ID from barber
-    const barber = await require('../../../../All_Utils/config/prisma').default.barber.findUnique({
+    const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
         ownedBarbershops: {
@@ -68,7 +69,6 @@ export async function createServiceController(req: AuthRequest, res: Response): 
     }
 
     // Get barbershop ID
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {
@@ -193,7 +193,6 @@ export async function editServiceController(req: AuthRequest, res: Response): Pr
     }
 
     // Get barbershop ID
-    const prisma = require('../../../../All_Utils/config/prisma').default;
     const barber = await prisma.barber.findUnique({
       where: { id: req.user.barberId },
       select: {

@@ -10,7 +10,7 @@ import {
   SendCouponSMSResponse
 } from './coupon.type';
 import { Decimal } from '@prisma/client/runtime/library';
-import { sendSimpleSMS } from '../../../User_Side/SMS/melipayamak.service';
+import { sendSimpleSMS } from '../../../All_Utils/SMS/melipayamak.service';
 import { validateIranianPhoneNumber, normalizePhoneNumber } from '../../../All_Utils/utils/validator';
 
 /**
