@@ -319,7 +319,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       undefined // fallback
     );
 
-    // Check if user is a barber
+    // Check if user is a barber (either existing or newly created)
     const barber = await prisma.barber.findFirst({
       where: { userRefId: user.id },
       select: {

@@ -16,6 +16,7 @@ import {
   GetTransactionHistoryRequest,
   LockFundsRequest,
 } from './transaction.type';
+import { ensureBarberRecord } from '../../utils/barber.utils';
 
 /**
  * Get Wallet Balance Controller for Barber
@@ -23,20 +24,23 @@ import {
  */
 export async function getWalletBalanceController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: GetWalletBalanceRequest = {
       ownerType: req.query.ownerType as any || 'barber',
       ownerId: req.query.ownerId ? parseInt(req.query.ownerId as string) : undefined,
     };
 
-    const result = await getWalletBalanceService(data, req.user.barberId);
+    const result = await getWalletBalanceService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -58,13 +62,16 @@ export async function getWalletBalanceController(req: AuthRequest, res: Response
  */
 export async function depositController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: DepositRequest = req.body;
 
@@ -76,7 +83,7 @@ export async function depositController(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const result = await depositService(data, req.user.barberId);
+    const result = await depositService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -98,13 +105,16 @@ export async function depositController(req: AuthRequest, res: Response): Promis
  */
 export async function withdrawController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: WithdrawRequest = req.body;
 
@@ -116,7 +126,7 @@ export async function withdrawController(req: AuthRequest, res: Response): Promi
       return;
     }
 
-    const result = await withdrawService(data, req.user.barberId);
+    const result = await withdrawService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -138,13 +148,16 @@ export async function withdrawController(req: AuthRequest, res: Response): Promi
  */
 export async function transferController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: TransferRequest = req.body;
 
@@ -156,7 +169,7 @@ export async function transferController(req: AuthRequest, res: Response): Promi
       return;
     }
 
-    const result = await transferService(data, req.user.barberId);
+    const result = await transferService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -178,13 +191,16 @@ export async function transferController(req: AuthRequest, res: Response): Promi
  */
 export async function getTransactionHistoryController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: GetTransactionHistoryRequest = {
       ownerType: req.query.ownerType as any || 'barber',
@@ -194,7 +210,7 @@ export async function getTransactionHistoryController(req: AuthRequest, res: Res
       type: req.query.type as any || 'all',
     };
 
-    const result = await getTransactionHistoryService(data, req.user.barberId);
+    const result = await getTransactionHistoryService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);
@@ -216,13 +232,16 @@ export async function getTransactionHistoryController(req: AuthRequest, res: Res
  */
 export async function lockFundsController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
+
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     const data: LockFundsRequest = req.body;
 
@@ -234,7 +253,7 @@ export async function lockFundsController(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const result = await lockFundsForAppointmentService(data, req.user.barberId);
+    const result = await lockFundsForAppointmentService(data, barberId);
 
     if (result.success) {
       res.status(200).json(result);

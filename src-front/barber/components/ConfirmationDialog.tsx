@@ -64,10 +64,10 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
                 {children}
             </div>
         </div>
-        <div className="bg-gray-50 px-4 py-3 sm:px-6 flex flex-row-reverse gap-3 rounded-b-lg">
+        <div className="bg-gray-50 px-2 py-2 flex flex-row-reverse justify-center gap-3 rounded-b-lg">
           <button
             type="button"
-            className={`w-full justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium sm:ml-3 sm:w-auto sm:text-sm transition ${confirmButtonClass}`}
+            className={`w-full flex-grow justify-center rounded-md border border-transparent shadow-sm px-2 py-2 text-base font-medium sm:w-auto sm:text-sm transition ${confirmButtonClass}`}
             onClick={() => { onConfirm(); onClose(); }}
           >
             {confirmText}

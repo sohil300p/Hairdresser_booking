@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../User_Side/auth/auth.middleware';
 import { editBarberProfileService } from './editprofile.service';
 import { EditBarberProfileRequest } from './editprofile.type';
+import { ensureBarberRecord } from '../utils/barber.utils';
 
 /**
  * Edit Barber Profile Controller
@@ -26,16 +27,8 @@ export async function editBarberProfileController(req: AuthRequest, res: Respons
       return;
     }
 
-    // Check if user is a barber
-    if (req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
-        success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
-      });
-      return;
-    }
-
-    const barberId = req.user.barberId;
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     // Extract data from request body
     const editData: EditBarberProfileRequest = {

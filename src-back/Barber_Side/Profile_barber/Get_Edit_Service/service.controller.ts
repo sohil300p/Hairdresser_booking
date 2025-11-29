@@ -3,6 +3,7 @@ import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getServicesService, createServiceService, editServiceService } from './service.service';
 import { CreateServiceRequest, EditServiceRequest } from './service.type';
 import prisma from '../../../All_Utils/config/prisma';
+import { ensureBarberRecord } from '../utils/barber.utils';
 
 /**
  * Get Services Controller
@@ -10,17 +11,20 @@ import prisma from '../../../All_Utils/config/prisma';
  */
 export async function getServicesController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     // Get barbershop ID from barber
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },
@@ -60,17 +64,20 @@ export async function getServicesController(req: AuthRequest, res: Response): Pr
  */
 export async function createServiceController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     // Get barbershop ID
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },
@@ -175,10 +182,10 @@ export async function createServiceController(req: AuthRequest, res: Response): 
  */
 export async function editServiceController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
@@ -192,9 +199,12 @@ export async function editServiceController(req: AuthRequest, res: Response): Pr
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     // Get barbershop ID
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },

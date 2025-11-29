@@ -224,13 +224,34 @@ export async function sendPatternSMS(
         // MeliPayamak returns response as string or number
         const responseValue = typeof response === 'string' ? parseInt(response, 10) : response;
         
-        if (typeof responseValue === 'number' && !isNaN(responseValue)) {
-          if (responseValue > 0 && responseValue < 10) {
+        // Check if response is a valid number (Message ID) or an error code
+        // For SendByBaseNumber, success returns a long numeric string (Message ID)
+        // Error codes are typically small numbers (11-30)
+
+        const isLargeNumber = (val: any) => {
+            if (typeof val === 'string' && val.length > 5) return true;
+            if (typeof val === 'number' && val > 100) return true;
+            return false;
+        };
+        
+        if (isLargeNumber(response)) {
             resolve({
-        success: true,
-        message: 'پیامک با موفقیت ارسال شد',
-              messageId: responseValue.toString(),
-              statusCode: 1,
+                success: true,
+                message: 'پیامک با موفقیت ارسال شد',
+                messageId: String(response),
+                statusCode: 1,
+            });
+            return;
+        }
+
+        if (typeof responseValue === 'number' && !isNaN(responseValue)) {
+          if (responseValue > 100) {
+             // Should be covered by isLargeNumber but just in case parsed int is large
+             resolve({
+                success: true,
+                message: 'پیامک با موفقیت ارسال شد',
+                messageId: responseValue.toString(),
+                statusCode: 1,
             });
           } else {
             const errorMessages: Record<number, string> = {
@@ -248,36 +269,13 @@ export async function sendPatternSMS(
               statusCode: responseValue,
             });
           }
-        } else if (typeof response === 'string' && response.length > 0) {
-          const parsed = parseInt(response, 10);
-          if (!isNaN(parsed)) {
-            const errorMessages: Record<number, string> = {
-              11: 'نام کاربری یا رمز عبور اشتباه است',
-              12: 'اعتبار حساب کافی نیست',
-              13: 'شماره فرستنده نامعتبر است',
-              14: 'شماره گیرنده نامعتبر است',
-              15: 'متن پیام خالی است',
-              16: 'نام کاربری یا رمز عبور خالی است',
-              17: 'خطای سیستم',
-            };
-            resolve({
+        } else {
+          // Fallback for non-numeric strings that weren't caught by isLargeNumber
+           resolve({
               success: false,
-              message: errorMessages[parsed] || `خطای کد ${parsed}`,
-              statusCode: parsed,
-            });
-          } else {
-            resolve({
-        success: false,
               message: `ارسال پیامک با خطا مواجه شد: ${response}`,
               statusCode: 0,
             });
-          }
-        } else {
-          resolve({
-        success: false,
-            message: 'پاسخ نامعتبر از سرویس پیامک',
-            statusCode: 0,
-          });
         }
       });
     });

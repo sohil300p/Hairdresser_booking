@@ -2,17 +2,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scissors, ArrowLeft } from 'lucide-react';
 import MaterialInput from './MaterialInput';
+import { api } from '../utils/api';
 
 interface LoginScreenProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (token: string) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
-  const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
+  const [otp, setOtp] = useState<string[]>(new Array(4).fill(''));
   const [timer, setTimer] = useState(120);
+  const [loading, setLoading] = useState(false);
 
   const otpInputs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -25,14 +27,32 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   }, [step, timer]);
 
-  const handlePhoneSubmit = (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.length === 11 && /^\d+$/.test(phone)) {
-      setPhoneError('');
-      setStep('otp');
-      setTimer(120);
-    } else {
-        setPhoneError('شماره موبایل باید ۱۱ رقم عددی باشد.')
+    if (phone.length !== 11 || !/^\d+$/.test(phone)) {
+      setPhoneError('شماره موبایل باید ۱۱ رقم عددی باشد.');
+      return;
+    }
+
+    setLoading(true);
+    setPhoneError('');
+    try {
+      const data = await api.post<{ success: boolean; message?: string }>('/otp/send', { phone });
+
+      if (data.success) {
+        setStep('otp');
+        setTimer(120);
+        if (window.showToast) {
+          window.showToast(data.message || 'کد تایید ارسال شد', 'success');
+        }
+      } else {
+        setPhoneError(data.message || 'خطا در ارسال کد تایید');
+      }
+    } catch (error: any) {
+      console.error('Error sending OTP:', error);
+      setPhoneError(error.message || 'خطا در برقراری ارتباط با سرور');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,7 +62,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     newOtp[index] = value.slice(-1); // Only take the last character
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    if (value && index < 3) {
       otpInputs.current[index + 1]?.focus();
     }
   };
@@ -53,8 +73,60 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
   
-  const handleOtpSubmit = () => {
-    onLoginSuccess();
+  const handleOtpSubmit = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 4) {
+      if (window.showToast) {
+        window.showToast('لطفاً کد تایید ۴ رقمی را کامل وارد کنید', 'error');
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await api.post<{ 
+        success: boolean; 
+        message?: string; 
+        user: any; 
+        token: string; 
+        isNewUser?: boolean;
+        refreshToken?: string;
+      }>('/auth/login/otp', { 
+        phone, 
+        otp: otpCode,
+        userType: 'barber',
+      });
+
+      if (data.success) {
+        // Store token in localStorage
+        localStorage.setItem('token', data.token);
+        if (data.refreshToken) {
+          localStorage.setItem('refreshToken', data.refreshToken);
+        }
+
+        if (window.showToast) {
+          if (data.isNewUser) {
+            window.showToast('خوش آمدید! لطفاً پروفایل خود را تکمیل کنید.', 'success');
+          } else {
+            window.showToast('خوش آمدید', 'success');
+          }
+        }
+
+        // Call onLoginSuccess with token
+        onLoginSuccess(data.token);
+      } else {
+        if (window.showToast) {
+          window.showToast(data.message || 'کد تایید نادرست است', 'error');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error verifying OTP:', error);
+      if (window.showToast) {
+        window.showToast(error.message || 'خطا در برقراری ارتباط با سرور', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   const formattedTime = `${String(Math.floor(timer / 60)).padStart(2, '0')}:${String(timer % 60).padStart(2, '0')}`;
@@ -98,10 +170,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     />
                     <button
                       type="submit"
-                      disabled={phone.length !== 11}
+                      disabled={phone.length !== 11 || loading}
                       className="w-full h-12 bg-primary-600 text-white font-bold p-3 rounded-md disabled:bg-gray-300 disabled:text-gray-500 transition duration-200 ease-in-out shadow-sm hover:bg-primary-700 hover:shadow-primary active:bg-primary-800 active:shadow-none active:translate-y-px"
                     >
-                      دریافت کد تایید
+                      {loading ? 'در حال ارسال...' : 'دریافت کد تایید'}
                     </button>
                   </form>
             </div>
@@ -126,16 +198,39 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     </div>
                      <button
                       onClick={handleOtpSubmit}
-                      disabled={otp.join('').length !== 6}
+                      disabled={otp.join('').length !== 4 || loading}
                       className="w-full h-12 bg-success-500 text-white font-bold p-3 rounded-md disabled:bg-gray-300 disabled:text-gray-500 transition hover:bg-success-600"
                     >
-                      تایید و ادامه
+                      {loading ? 'در حال بررسی...' : 'تایید و ادامه'}
                     </button>
                     <div className="text-center text-sm text-gray-700">
                       {timer > 0 ? (
                         <span>ارسال مجدد کد تا {formattedTime}</span>
                       ) : (
-                        <button onClick={() => setTimer(120)} className="text-primary-600 font-semibold">ارسال مجدد کد</button>
+                        <button 
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              const data = await api.post<{ success: boolean; message?: string }>('/otp/send', { phone });
+                              if (data.success) {
+                                setTimer(120);
+                                if (window.showToast) {
+                                  window.showToast('کد تایید مجدداً ارسال شد', 'success');
+                                }
+                              }
+                            } catch (error: any) {
+                              if (window.showToast) {
+                                window.showToast(error.message || 'خطا در ارسال مجدد کد', 'error');
+                              }
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                          disabled={loading}
+                          className="text-primary-600 font-semibold disabled:text-gray-400"
+                        >
+                          ارسال مجدد کد
+                        </button>
                       )}
                     </div>
                      <button onClick={() => setStep('phone')} className="flex items-center justify-center gap-2 w-full text-gray-700">

@@ -6,6 +6,7 @@ import MaterialInput from './MaterialInput';
 import MaterialSelect from './MaterialSelect';
 import BottomSheet from './BottomSheet';
 import ConfirmationDialog from './ConfirmationDialog';
+import { api } from '../utils/api';
 
 interface ProfileSetupProps {
     onSetupComplete: () => void;
@@ -41,6 +42,8 @@ interface ProfileFormData {
      * This determines whether the barber shop caters to men, women or both.
      */
     gender: 'male' | 'female' | 'unisex';
+    profileImage?: string;
+    profileImageFile?: File;
 }
 
 // --- INITIAL STATE ---
@@ -69,13 +72,122 @@ const TOTAL_STEPS = 5;
 const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const updateFormData = (data: Partial<ProfileFormData>) => {
         setFormData(prev => ({ ...prev, ...data }));
     };
     
-    const handleNext = () => setStep(s => Math.min(s + 1, TOTAL_STEPS + 1));
+    const handleNext = async () => {
+        if (step === TOTAL_STEPS) {
+            // Final step - submit to backend
+            await handleSubmit();
+        } else {
+            setStep(s => Math.min(s + 1, TOTAL_STEPS + 1));
+        }
+    };
     const handleBack = () => setStep(s => Math.max(s - 1, 1));
+
+    const handleSubmit = async () => {
+        setSubmitError(null);
+        setIsSubmitting(true);
+
+        try {
+            // Validate required fields
+            if (!formData.name.trim()) {
+                const error = 'نام سالن الزامی است';
+                setSubmitError(error);
+                window.showToast?.(error, 'error');
+                setIsSubmitting(false);
+                return;
+            }
+            if (!formData.address.trim()) {
+                const error = 'آدرس الزامی است';
+                setSubmitError(error);
+                window.showToast?.(error, 'error');
+                setIsSubmitting(false);
+                return;
+            }
+            if (formData.services.length === 0) {
+                const error = 'حداقل یک خدمت باید اضافه شود';
+                setSubmitError(error);
+                window.showToast?.(error, 'error');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Validate profile image file if provided
+            if (formData.profileImageFile) {
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+                if (!allowedTypes.includes(formData.profileImageFile.type)) {
+                    const error = 'فقط فایل‌های JPG، PNG و WebP پشتیبانی می‌شوند';
+                    setSubmitError(error);
+                    window.showToast?.(error, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (formData.profileImageFile.size > maxSize) {
+                    const error = 'حجم فایل نباید بیشتر از ۵ مگابایت باشد';
+                    setSubmitError(error);
+                    window.showToast?.(error, 'error');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            // Create FormData for multipart/form-data submission
+            const submitFormData = new FormData();
+            submitFormData.append('name', formData.name.trim());
+            submitFormData.append('gender', formData.gender);
+            submitFormData.append('address', formData.address.trim());
+            if (formData.about.trim()) {
+                submitFormData.append('description', formData.about.trim());
+            }
+            
+            // Add profile image if provided
+            if (formData.profileImageFile) {
+                submitFormData.append('profileImage', formData.profileImageFile);
+            }
+            
+            // Note: Services and schedule will be handled via separate endpoints after profile creation
+
+            // Submit to backend
+            const result = await api.upload<{ 
+                success: boolean; 
+                message?: string; 
+                data?: any;
+            }>('/barber/profile', submitFormData);
+
+            if (result.success) {
+                window.showToast?.('پروفایل شما با موفقیت ایجاد شد!', 'success');
+                // Small delay to show success message before moving to success screen
+                setTimeout(() => {
+                    setStep(TOTAL_STEPS + 1); // Go to success screen
+                }, 500);
+            } else {
+                throw new Error(result.message || 'خطا در ایجاد پروفایل');
+            }
+        } catch (error: any) {
+            console.error('Error submitting profile:', error);
+            const errorMessage = error.message || 'خطا در برقراری ارتباط با سرور';
+            setSubmitError(errorMessage);
+            
+            // Handle specific error cases
+            if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+                window.showToast?.('جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید', 'error');
+                // Could redirect to login here if needed
+            } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+                window.showToast?.('شما دسترسی به این بخش را ندارید', 'error');
+            } else {
+                window.showToast?.(errorMessage, 'error');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
     
     const isNextDisabled = useMemo(() => {
         switch (step) {
@@ -138,8 +250,17 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             </main>
 
             <footer className="sticky bottom-0 p-4 border-t border-gray-200 bg-white z-10">
-                <button onClick={handleNext} disabled={isNextDisabled} className="w-full h-12 bg-primary-600 text-white font-bold rounded-md transition hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                    {step === TOTAL_STEPS ? 'پایان و ذخیره' : 'ادامه'}
+                {submitError && (
+                    <div className="mb-2 p-2 bg-error-50 border border-error-200 rounded-md text-error-700 text-sm text-center">
+                        {submitError}
+                    </div>
+                )}
+                <button 
+                    onClick={handleNext} 
+                    disabled={isNextDisabled || isSubmitting} 
+                    className="w-full h-12 bg-primary-600 text-white font-bold rounded-md transition hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                    {isSubmitting ? 'در حال ذخیره...' : step === TOTAL_STEPS ? 'پایان و ذخیره' : 'ادامه'}
                 </button>
             </footer>
         </div>
@@ -148,23 +269,92 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
 
 
 // --- STEP COMPONENTS ---
-const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => (
-    <div className="space-y-6">
-        <p className="text-gray-600 mt-1 text-center">لطفا نام تجاری سالن یا فروشگاه خود را وارد کنید.</p>
-        <MaterialInput id="salonName" label="نام سالن" value={data.name} onChange={e => onUpdate({ name: e.target.value })} />
-        {/* Salon gender selection */}
-        <MaterialSelect
-            id="salonGender"
-            label="نوع سالن"
-            value={data.gender}
-            onChange={e => onUpdate({ gender: e.target.value as 'male' | 'female' | 'unisex' })}
-        >
-            <option value="male">مردانه</option>
-            <option value="female">زنانه</option>
-            <option value="unisex">مختلط</option>
-        </MaterialSelect>
-    </div>
-);
+const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            window.showToast?.('فقط فایل‌های JPG، PNG و WebP پشتیبانی می‌شوند', 'error');
+            return;
+        }
+
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            window.showToast?.('حجم فایل نباید بیشتر از ۵ مگابایت باشد', 'error');
+            return;
+        }
+
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+        onUpdate({ 
+            profileImage: previewUrl,
+            profileImageFile: file 
+        });
+    };
+
+    return (
+        <div className="space-y-6">
+            <p className="text-gray-600 mt-1 text-center">لطفا نام تجاری سالن یا فروشگاه خود را وارد کنید.</p>
+            
+            {/* Profile Image Upload */}
+            <div className="flex flex-col items-center mb-4">
+                <div
+                    className="relative w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden cursor-pointer transition-all duration-200 hover:ring-2 hover:ring-blue-300"
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    {data.profileImage ? (
+                        <img 
+                            src={data.profileImage} 
+                            alt="پروفایل" 
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <ImagePlus className="w-12 h-12 text-gray-500" />
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-2 text-sm text-primary-600 font-semibold"
+                >
+                    انتخاب تصویر پروفایل
+                </button>
+                <p className="text-xs text-gray-500 mt-1 text-center">JPG، PNG، WebP - حداکثر ۵MB (اختیاری)</p>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                />
+            </div>
+
+            <MaterialInput id="salonName" label="نام سالن" value={data.name} onChange={e => onUpdate({ name: e.target.value })} />
+            {/* Salon gender selection */}
+            <MaterialSelect
+                id="salonGender"
+                label="نوع سالن"
+                value={data.gender}
+                onChange={e => onUpdate({ gender: e.target.value as 'male' | 'female' | 'unisex' })}
+            >
+                <option value="male">مردانه</option>
+                <option value="female">زنانه</option>
+                <option value="unisex">مختلط</option>
+            </MaterialSelect>
+        </div>
+    );
+};
 
 const Step2Location: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => {
     const [isMapSheetOpen, setMapSheetOpen] = useState(false);

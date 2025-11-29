@@ -3,6 +3,7 @@ import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getCouponsService, createCouponService, editCouponService, sendCouponSMSService } from './coupon.service';
 import { CreateCouponRequest, EditCouponRequest, SendCouponSMSRequest } from './coupon.type';
 import prisma from '../../../All_Utils/config/prisma';
+import { ensureBarberRecord } from '../utils/barber.utils';
 
 /**
  * Get Coupons Controller
@@ -10,16 +11,19 @@ import prisma from '../../../All_Utils/config/prisma';
  */
 export async function getCouponsController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },
@@ -59,16 +63,19 @@ export async function getCouponsController(req: AuthRequest, res: Response): Pro
  */
 export async function createCouponController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },
@@ -135,10 +142,10 @@ export async function createCouponController(req: AuthRequest, res: Response): P
  */
 export async function editCouponController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
@@ -152,8 +159,11 @@ export async function editCouponController(req: AuthRequest, res: Response): Pro
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },
@@ -219,10 +229,10 @@ export async function editCouponController(req: AuthRequest, res: Response): Pro
  */
 export async function sendCouponSMSController(req: AuthRequest, res: Response): Promise<void> {
   try {
-    if (!req.user || req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
+    if (!req.user) {
+      res.status(401).json({
         success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
+        message: 'کاربر احراز هویت نشده است',
       });
       return;
     }
@@ -236,8 +246,11 @@ export async function sendCouponSMSController(req: AuthRequest, res: Response): 
       return;
     }
 
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
+
     const barber = await prisma.barber.findUnique({
-      where: { id: req.user.barberId },
+      where: { id: barberId },
       select: {
         ownedBarbershops: {
           select: { id: true },

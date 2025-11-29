@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../../User_Side/auth/auth.middleware';
 import { getBarberProfileService, createBarberProfileService } from './profile.service';
 import { CreateBarberProfileRequest } from './profile.type';
+import { ensureBarberRecord } from '../utils/barber.utils';
 
 /**
  * Get Barber Profile Controller
@@ -18,16 +19,8 @@ export async function getBarberProfileController(req: AuthRequest, res: Response
       return;
     }
 
-    // Check if user is a barber
-    if (req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
-        success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
-      });
-      return;
-    }
-
-    const barberId = req.user.barberId;
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
     const result = await getBarberProfileService(barberId);
 
     if (result.success) {
@@ -73,16 +66,8 @@ export async function createBarberProfileController(req: AuthRequest, res: Respo
       return;
     }
 
-    // Check if user is a barber
-    if (req.user.userType !== 'barber' || !req.user.barberId) {
-      res.status(403).json({
-        success: false,
-        message: 'شما دسترسی به این بخش را ندارید',
-      });
-      return;
-    }
-
-    const barberId = req.user.barberId;
+    // Ensure barber record exists (auto-create if needed)
+    const barberId = await ensureBarberRecord(req.user.id);
 
     // Extract data from request body
     const createData: CreateBarberProfileRequest = {

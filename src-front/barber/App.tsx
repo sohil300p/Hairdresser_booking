@@ -15,6 +15,7 @@ import VoiceControl from './components/VoiceControl';
 import AddReservationScreen from './components/AddReservationScreen';
 import CustomerReviewsScreen from './components/CustomerReviewsScreen';
 import CustomerClubScreen from './components/CustomerClubScreen';
+import { setAuthHandlers } from './utils/api';
 
 // Added 'club' to the list of available screens to support the customer club feature.
 export type Screen = 'home' | 'reservations' | 'customers' | 'profile' | 'chat' | 'notifications' | 'support' | 'addReservation' | 'reviews' | 'club';
@@ -82,9 +83,22 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
+    // Initialize API handlers for logout/error handling
+    setAuthHandlers(handleLogout, (message, type) => {
+      window.showToast(message, type);
+    });
+
     const timer = setTimeout(() => {
-      // For demonstration, we go to 'auth'. In a real app, you'd check for a saved token.
-      setAppState('auth');
+      // Check for existing token
+      const token = localStorage.getItem('token');
+      if (token) {
+        // Token exists - go to app (user is already logged in)
+        // TODO: Optionally verify token with backend
+        setAppState('app');
+      } else {
+        // No token - go to auth
+        setAppState('auth');
+      }
     }, 1500); // Splash screen duration reduced for better perceived performance
     return () => clearTimeout(timer);
   }, []);
@@ -115,8 +129,10 @@ const App: React.FC = () => {
     setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (token: string) => {
+    // Token is already stored in localStorage by LoginScreen
     // After login, new users are sent to profile setup.
+    // TODO: Check if user is new based on API response and route accordingly
     setAppState('profile_setup');
   };
 
@@ -126,6 +142,10 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // Clear tokens from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    // Reset app state to auth
     setAppState('auth');
     window.showToast('شما با موفقیت خارج شدید.', 'info');
   };
@@ -196,7 +216,7 @@ const App: React.FC = () => {
       data-theme={isHighContrast ? 'high-contrast' : 'default'}
     >
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-      <div className="container mx-auto max-w-lg min-h-screen flex flex-col bg-surface-container shadow-2xl">
+      <div className="min-h-screen flex flex-col bg-surface-container shadow-2xl">
         {isVoiceAssistantEnabled && <VoiceControl setActiveScreen={setActiveScreen} />}
         <div className={`flex-grow ${showNav && !isSubPageActive ? 'pb-20' : ''}`}>
           {renderScreen()}
@@ -222,7 +242,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ activeScreen, setAc
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-surface-container/80 backdrop-blur-md border-t border-surface-3 shadow-[0_-2px_12px_rgba(15,20,25,0.06)] max-w-lg mx-auto" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
+    <nav className="fixed bottom-0 left-0 right-0 bg-surface-container/80 backdrop-blur-md border-t border-surface-3 shadow-[0_-2px_12px_rgba(15,20,25,0.06)] max-w-xl mx-auto" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
       <div className="flex justify-around items-stretch h-16">
         {navItems.map((item) => {
             const isActive = activeScreen === item.id;

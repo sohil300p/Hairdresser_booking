@@ -18,10 +18,8 @@ export interface AuthRequest extends Request {
  */
 export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
-  console.log('🔍 Auth header received:', authHeader);
   
   const token = extractTokenFromHeader(authHeader);
-  console.log('🎫 Extracted token:', token ? `${token.substring(0, 20)}...` : 'null');
 
   if (!token) {
     console.log('❌ No token found in request');
@@ -33,7 +31,6 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
   }
 
   const payload = verifyAccessToken(token);
-  console.log('🔓 Token payload:', payload);
 
   if (!payload) {
     console.log('❌ Token verification failed');
@@ -64,7 +61,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    // Check if user is a barber
+    // Check if user is a barber (informational only - barber records created on-demand)
     const barber = await prisma.barber.findFirst({
       where: { userRefId: customer.id },
       select: {
@@ -74,6 +71,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     });
 
     // Attach user info to request
+    // Note: barberId may be undefined - barber records are created on-demand when accessing barber endpoints
     req.user = {
       id: customer.id,
       phone: customer.phone,
@@ -82,7 +80,6 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       barberId: barber?.id,
     };
 
-    console.log('✅ User authenticated and verified in DB:', { id: customer.id, phone: customer.phone });
     next();
   } catch (error) {
     console.error('❌ Database error during authentication:', error);
@@ -143,4 +140,3 @@ export async function optionalAuthenticateToken(req: AuthRequest, res: Response,
 
   next();
 }
-
