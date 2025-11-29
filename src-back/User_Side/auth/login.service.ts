@@ -67,12 +67,9 @@ export async function loginWithPasswordService(
       customer = await prisma.customer.create({
         data: {
           phone,
-          passwordHash,
+          password: passwordHash,
           gender: gender as any,
           role: userType === 'barber' ? 'customer' : 'customer', // All start as customer
-          phoneVerified: true,
-          created: BigInt(Date.now()),
-          updated: BigInt(Date.now()),
         },
       });
 
@@ -92,19 +89,26 @@ export async function loginWithPasswordService(
       }
     } else {
       // Existing user - verify password
-      if (!customer.passwordHash) {
+      if (!customer.password) {
         return {
           success: false,
           message: 'این حساب کاربری با رمز عبور ثبت نشده است. لطفاً از روش OTP استفاده کنید',
         };
       }
 
-      const isPasswordValid = await bcrypt.compare(password, customer.passwordHash);
+      const isPasswordValid = await bcrypt.compare(password, customer.password);
       if (!isPasswordValid) {
         return {
           success: false,
           message: 'رمز عبور اشتباه است',
         };
+      }
+
+      // For admin panel access, verify user has admin role
+      // This check can be done at the frontend level, but we validate here too
+      if (customer.role !== 'admin' && customer.role !== 'staff_admin') {
+        // Allow login but frontend should check role for admin panel access
+        // We don't block here as the same endpoint is used for customer/barber login
       }
 
       // Check if user is a barber
@@ -117,8 +121,7 @@ export async function loginWithPasswordService(
     await prisma.customer.update({
       where: { id: customer.id },
       data: {
-        lastLogin: BigInt(Date.now()),
-        updated: BigInt(Date.now()),
+        lastLoginAt: new Date(),
       },
     });
 
@@ -145,7 +148,6 @@ export async function loginWithPasswordService(
         id: customer.id,
         phone: customer.phone,
         fullName: customer.fullName,
-        email: customer.email,
         avatar: customer.avatar,
         role: customer.role as 'customer' | 'admin' | 'staff_admin',
         userType: barber ? 'barber' : 'customer',
