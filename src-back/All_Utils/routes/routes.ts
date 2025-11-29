@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { healthCheck } from '../Helth/healthController';
+import { getSystemMetricsController } from '../Monitoring/monitoring.controller';
+import { authenticateToken } from '../../User_Side/auth/auth.middleware';
 import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../../User_Side/auth/auth.controller';
 import { loginWithPasswordController } from '../../User_Side/auth/login.controller';
-import { authenticateToken } from '../../User_Side/auth/auth.middleware';
 import { getProfileController } from '../../User_Side/Profile_User/Get_Edit_profile/profile.controller';
 import { editProfileController } from '../../User_Side/Profile_User/Get_Edit_profile/editprofile.controller';
 import { getPaymentHistoryController } from '../../User_Side/Profile_User/Payment_Hisotry/payment-history.controller';
@@ -78,6 +79,9 @@ const upload = multer({
 
 // Health Check Route
 router.get('/health', healthCheck);
+
+// Admin Monitoring Routes (requires authentication)
+router.get('/admin/monitoring/metrics', authenticateToken, getSystemMetricsController);
 
 // Authentication Routes
 router.post('/auth/login/password', loginWithPasswordController);
