@@ -21,3 +21,5 @@ export async function logoutBarberController(req: AuthRequest, res: Response): P
   }
 }
 
+
+

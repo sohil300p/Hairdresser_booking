@@ -13,3 +13,5 @@ export async function logoutBarberService(refreshToken?: string): Promise<Logout
   };
 }
 
+
+
