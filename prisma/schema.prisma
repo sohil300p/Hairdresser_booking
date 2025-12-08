@@ -110,6 +110,7 @@ model Customer {
   id        Int      @id @default(autoincrement())
   fullName  String?  @map("full_name")
   phone     String   @unique
+  email     String?  @unique
   password  String?  // hashed password (bcrypt/argon2)
   avatar    String?
   gender    Gender?
@@ -130,6 +131,7 @@ model Customer {
   transactions     Transaction[]     @relation("CustomerTransactions")
 
   @@index([phone])
+  @@index([email])
   @@map("customer")
 }
 

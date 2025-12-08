@@ -66,6 +66,10 @@ import {
   lockFundsController as barberLockFundsController,
 } from '../../Barber_Side/Profile_barber/barber_wallet/Transaction/transaction.controller';
 import { getPaymentHistoryController as getBarberPaymentHistoryController } from '../../Barber_Side/Profile_barber/barber_wallet/Payment_History/payment-history.controller';
+import { getDashboardController } from '../../Barber_Side/Home_page/dashboard.controller';
+import { getTodayAppointmentsController } from '../../Barber_Side/Home_page/today-appointments.controller';
+import { getCustomersController } from '../../Barber_Side/Hairdresser_customers/customers.controller';
+import { getAppointmentsController, updateAppointmentStatusController as updateBarberAppointmentStatusController } from '../../Barber_Side/Appointment_barber/appointment.controller';
 
 const router = Router();
 
@@ -155,6 +159,17 @@ router.post('/barber/wallet/transfer', authenticateToken, barberTransferControll
 router.get('/barber/wallet/history', authenticateToken, getBarberTransactionHistoryController);
 router.post('/barber/wallet/lock', authenticateToken, barberLockFundsController);
 router.get('/barber/wallet/payment-history', authenticateToken, getBarberPaymentHistoryController);
+
+// Barber Home Page Routes (Protected - Barber only)
+router.get('/barber/home/dashboard', authenticateToken, getDashboardController);
+router.get('/barber/home/today-appointments', authenticateToken, getTodayAppointmentsController);
+
+// Barber Customers Routes (Protected - Barber only)
+router.get('/barber/customers', authenticateToken, getCustomersController);
+
+// Barber Appointments Routes (Protected - Barber only)
+router.get('/barber/appointments', authenticateToken, getAppointmentsController);
+router.put('/barber/appointments/:id/status', authenticateToken, updateBarberAppointmentStatusController);
 
 // Payment History Routes (Protected)
 router.get('/payment-history', authenticateToken, getPaymentHistoryController);
