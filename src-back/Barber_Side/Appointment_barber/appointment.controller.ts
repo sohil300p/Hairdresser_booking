@@ -113,3 +113,4 @@ export async function updateAppointmentStatusController(req: AuthRequest, res: R
   }
 }
 
+

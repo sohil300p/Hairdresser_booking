@@ -33,3 +33,4 @@ export async function getTodayAppointmentsController(req: AuthRequest, res: Resp
   }
 }
 
+
