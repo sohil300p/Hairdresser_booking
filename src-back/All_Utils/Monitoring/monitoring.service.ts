@@ -134,33 +134,36 @@ export async function getSystemMetrics(): Promise<SystemMetricsResponse> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
+  // Convert to BigInt timestamps (milliseconds)
+  const todayStartBigInt = BigInt(todayStart.getTime());
+  const oneHourAgoBigInt = BigInt(oneHourAgo.getTime());
+  
   const [totalUsers, activeToday, activeLastHour, newToday] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({
       where: {
-        lastLoginAt: {
-          gte: todayStart,
+        last_login: {
+          gte: todayStartBigInt,
         },
       },
     }),
     prisma.customer.count({
       where: {
-        lastLoginAt: {
-          gte: oneHourAgo,
+        last_login: {
+          gte: oneHourAgoBigInt,
         },
       },
     }),
     prisma.customer.count({
       where: {
-        createdAt: {
-          gte: todayStart,
+        created: {
+          gte: todayStartBigInt,
         },
       },
     }),
   ]);
   
   // Appointment metrics
-  const todayStartBigInt = BigInt(todayStart.getTime());
   const [totalAppointments, todayAppointments, pendingAppointments, confirmedAppointments] = await Promise.all([
     prisma.appointment.count(),
     prisma.appointment.count({

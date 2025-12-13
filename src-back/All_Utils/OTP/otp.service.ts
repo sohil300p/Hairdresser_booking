@@ -31,6 +31,90 @@ function getOtpAttemptsKey(phone: string): string {
 }
 
 /**
+ * Reset OTP limit for a specific phone number (Admin only)
+ */
+export async function resetOtpLimitService(phone: string): Promise<{ success: boolean; message: string }> {
+  if (!isRedisConnected()) {
+    return {
+      success: false,
+      message: 'سرویس Redis در دسترس نیست',
+    };
+  }
+
+  try {
+    const attemptsKey = getOtpAttemptsKey(phone);
+    await safeRedisOperation(
+      async (client) => {
+        await client.del(attemptsKey);
+      },
+      undefined
+    );
+
+    return {
+      success: true,
+      message: `محدودیت OTP برای شماره ${phone} با موفقیت بازنشانی شد`,
+    };
+  } catch (error) {
+    console.error('Error resetting OTP limit:', error);
+    return {
+      success: false,
+      message: 'خطا در بازنشانی محدودیت OTP',
+    };
+  }
+}
+
+/**
+ * Get OTP attempts info for a phone number (Admin only)
+ */
+export async function getOtpAttemptsInfo(phone: string): Promise<{ 
+  success: boolean; 
+  attempts?: number; 
+  remaining?: number;
+  isBlocked?: boolean;
+  message?: string;
+}> {
+  if (!isRedisConnected()) {
+    return {
+      success: false,
+      message: 'سرویس Redis در دسترس نیست',
+    };
+  }
+
+  try {
+    const result = await safeRedisOperation(
+      async (client) => {
+        const attemptsKey = getOtpAttemptsKey(phone);
+        const attempts = await client.get(attemptsKey);
+        const count = attempts ? parseInt(attempts, 10) : 0;
+        const remaining = Math.max(0, MAX_OTP_PER_DAY - count);
+        const isBlocked = count >= MAX_OTP_PER_DAY;
+
+        return {
+          success: true,
+          attempts: count,
+          remaining,
+          isBlocked,
+        };
+      },
+      {
+        success: true,
+        attempts: 0,
+        remaining: MAX_OTP_PER_DAY,
+        isBlocked: false,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Error getting OTP attempts info:', error);
+    return {
+      success: false,
+      message: 'خطا در دریافت اطلاعات OTP',
+    };
+  }
+}
+
+/**
  * Check if phone has exceeded daily OTP limit
  */
 async function checkOtpLimit(phone: string): Promise<{ allowed: boolean; remaining: number }> {
@@ -290,6 +374,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       });
       isNewUser = true;
       console.log(`✅ New minimal user created: ${phone} (ID: ${user.id})`);
+      
+      // Create wallet for new customer
+      try {
+        const { ensureCustomerWallet } = await import('../Wallet/wallet.utils');
+        await ensureCustomerWallet(user.id);
+      } catch (error) {
+        console.error('⚠️ Failed to create wallet for new customer:', error);
+        // Don't fail the login if wallet creation fails
+      }
     } else {
       // User exists - update last login time AND delete OTP
       user = await prisma.customer.update({
@@ -308,6 +401,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         },
       });
       console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);
+      
+      // Ensure wallet exists for existing customer (in case it wasn't created before)
+      try {
+        const { ensureCustomerWallet } = await import('../Wallet/wallet.utils');
+        await ensureCustomerWallet(user.id);
+      } catch (error) {
+        console.error('⚠️ Failed to ensure wallet for existing customer:', error);
+        // Don't fail the login if wallet creation fails
+      }
     }
 
     // OTP is valid and user exists/created - delete it from Redis

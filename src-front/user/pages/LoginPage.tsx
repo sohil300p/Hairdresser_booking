@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { AppContextType, User } from '../types';
 import { api } from '../utils/api';
+import { checkLocalProfileCompleteness, getProfileAction } from '../utils/profileValidation';
 
 interface LoginPageProps {
     context: AppContextType;
@@ -55,22 +56,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ context }) => {
                 const userData: User = {
                     name: data.user.fullName || 'کاربر', // might be null for new users
                     phone: data.user.phone,
-                    avatarUrl: data.user.profileImage,
+                    avatarUrl: data.user.avatar || data.user.profileImage,
                     walletBalance: 0, 
-                    bankCards: []
+                    bankCards: [],
+                    gender: data.user.gender as 'male' | 'female' | undefined
                 };
 
                 context.login(userData, data.token);
                 
-                if (data.isNewUser) {
+                // Check if profile is incomplete and redirect immediately
+                const completeness = checkLocalProfileCompleteness(userData);
+                const action = getProfileAction(completeness);
+                
+                if (action.action === 'redirect') {
+                    context.showToast(action.message || 'لطفاً پروفایل خود را تکمیل کنید.', 'info');
+                    context.setCurrentPage('edit-profile');
+                } else if (data.isNewUser) {
                     context.showToast('خوش آمدید! لطفاً پروفایل خود را تکمیل کنید.', 'success');
-                    // We rely on App.tsx or HomePage logic to check for missing name/gender and show a modal
-                    // But for now, let's just redirect to home.
+                    context.setCurrentPage('edit-profile');
                 } else {
                     context.showToast('خوش آمدید', 'success');
+                    context.setCurrentPage('home');
                 }
-                
-                context.setCurrentPage('home');
             } else {
                 context.showToast(data.message || 'کد تایید نادرست است', 'error');
             }

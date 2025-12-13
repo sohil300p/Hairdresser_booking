@@ -8,7 +8,8 @@ import {
 
 export const authService = {
   async loginWithPassword(data: LoginWithPasswordRequest): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>('/auth/login/password', data);
+    // Use dedicated admin login endpoint
+    const response = await api.post<LoginResponse>('/admin/login', data);
     return response.data;
   },
 

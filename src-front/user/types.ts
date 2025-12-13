@@ -109,7 +109,7 @@ export type Page =
   | 'faq'
   | 'login';
 
-export type ToastType = 'success' | 'error';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export type AppContextType = {
   currentPage: Page;

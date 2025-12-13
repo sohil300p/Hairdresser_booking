@@ -3,6 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginPage from './src/pages/auth/LoginPage';
 import DashboardPage from './src/pages/dashboard/DashboardPage';
+import NotificationConsole from './src/pages/notifications/NotificationConsole';
+import UsersPage from './src/pages/users/UsersPage';
+import BarbersPage from './src/pages/barbers/BarbersPage';
+import AppointmentsPage from './src/pages/appointments/AppointmentsPage';
+import StaffPage from './src/pages/staff/StaffPage';
+import SettingsPage from './src/pages/settings/SettingsPage';
 import DashboardLayout from './src/layouts/DashboardLayout';
 
 // Protected Route Component
@@ -45,10 +51,12 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/users" element={<div className="p-4">Users Management (Coming Soon)</div>} />
-          <Route path="/barbers" element={<div className="p-4">Barbers Management (Coming Soon)</div>} />
-          <Route path="/appointments" element={<div className="p-4">Appointments Management (Coming Soon)</div>} />
-          <Route path="/settings" element={<div className="p-4">Settings (Coming Soon)</div>} />
+          <Route path="/notifications" element={<NotificationConsole />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/barbers" element={<BarbersPage />} />
+          <Route path="/appointments" element={<AppointmentsPage />} />
+          <Route path="/staff" element={<StaffPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
 

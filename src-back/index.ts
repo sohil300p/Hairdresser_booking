@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import prisma from './All_Utils/config/prisma';
 import { getRedisClient, isRedisConnected } from './All_Utils/config/redis';
 import { ensureMinioInitialized, testMinioConnection } from './All_Utils/config/minio';
+import { initializeFirebase } from './All_Utils/Notification/firebase';
 import routes from './All_Utils/routes/routes';
 
 const redisClient = getRedisClient();
@@ -114,6 +115,14 @@ async function startServer() {
       }
     } catch (minioError) {
       console.warn('⚠️ MinIO initialization failed:', minioError);
+    }
+
+    // Initialize Firebase (non-blocking)
+    try {
+      initializeFirebase();
+    } catch (firebaseError) {
+      console.warn('⚠️ Firebase initialization failed:', firebaseError);
+      console.warn('⚠️ Push notifications will not work without Firebase configuration.');
     }
 
     // Start listening

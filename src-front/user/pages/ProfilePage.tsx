@@ -47,6 +47,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ context }) => {
         </div>
         <h1 className="text-2xl font-bold text-[var(--md-sys-color-on-surface)]">{context.user?.name}</h1>
         <p className="text-[var(--md-sys-color-on-surface-variant)] font-mono">{context.user?.phone}</p>
+        {context.user?.gender && (
+          <p className="text-sm text-[var(--md-sys-color-on-surface-variant)] mt-1">
+            {context.user.gender === 'male' ? 'آقا' : context.user.gender === 'female' ? 'خانم' : 'سایر'}
+          </p>
+        )}
       </header>
       
       <div className="p-4 pt-0">

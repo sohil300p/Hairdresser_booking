@@ -112,6 +112,7 @@ export async function editProfileService(
       select: {
         id: true,
         fullName: true,
+        gender: true,
         avatar: true,
         publicMeta: true,
       },
@@ -124,22 +125,21 @@ export async function editProfileService(
       };
     }
 
-    // Check if profile is already completed (name exists)
-    const isProfileCompleted = existingCustomer.fullName;
-
-    // If profile is completed, prevent changes to name
-    if (isProfileCompleted) {
-      if (data.fullName !== undefined) {
-        return {
-          success: false,
-          message: 'امکان تغییر نام پس از تکمیل پروفایل وجود ندارد',
-        };
-      }
-    }
+    // Check if profile is already completed (name and gender are set)
+    const currentFullName = existingCustomer.fullName?.trim() || '';
+    const currentGender = existingCustomer.gender;
+    const isNameSet = currentFullName !== '' && 
+                      currentFullName !== 'کاربر' &&
+                      currentFullName.length >= 2;
+    const isGenderSet = currentGender !== null && 
+                       currentGender !== undefined && 
+                       ['male', 'female', 'other'].includes(currentGender);
+    const isProfileCompleted = isNameSet && isGenderSet;
 
     // Prepare update data
     const updateData: {
       fullName?: string | null;
+      gender?: 'male' | 'female' | 'other' | null;
       avatar?: string | null;
       publicMeta?: any;
     } = {};
@@ -147,10 +147,40 @@ export async function editProfileService(
     // Get existing publicMeta
     const existingPublicMeta = (existingCustomer.publicMeta || {}) as any;
 
-    // Update fullName if provided
+    // Handle fullName update - only block if trying to CHANGE an existing name
     if (data.fullName !== undefined) {
-      const fullName = data.fullName.trim();
-      updateData.fullName = fullName === '' ? null : fullName;
+      const newFullName = data.fullName.trim();
+      
+      if (isNameSet) {
+        // Name is already set - only block if trying to CHANGE it to a different name
+        if (newFullName !== currentFullName && newFullName !== '') {
+          return {
+            success: false,
+            message: 'امکان تغییر نام پس از تکمیل پروفایل وجود ندارد',
+          };
+        }
+        // If same name or empty, don't update fullName
+      } else {
+        // Name not set yet - allow setting it for first time
+        updateData.fullName = newFullName === '' ? null : newFullName;
+      }
+    }
+
+    // Handle gender update - block if profile is already completed
+    if (data.gender !== undefined && data.gender !== null && data.gender !== '') {
+      if (isProfileCompleted) {
+        // Profile is completed - block gender changes
+        if (data.gender !== currentGender) {
+          return {
+            success: false,
+            message: 'امکان تغییر جنسیت پس از تکمیل پروفایل وجود ندارد',
+          };
+        }
+        // If same gender, don't update it (no-op)
+      } else {
+        // Profile not completed - allow setting gender for first time
+        updateData.gender = data.gender as 'male' | 'female' | 'other';
+      }
     }
 
 
@@ -222,6 +252,7 @@ export async function editProfileService(
         fullName: true,
         phone: true,
         avatar: true,
+        gender: true,
         publicMeta: true,
         role: true,
         createdAt: true,
@@ -242,6 +273,7 @@ export async function editProfileService(
         phone: updatedCustomer.phone,
         profileImage: updatedCustomer.avatar,
         backgroundImage,
+        gender: updatedCustomer.gender as 'male' | 'female' | 'other' | null,
         role: updatedCustomer.role as any,
         createdAt: updatedCustomer.createdAt.toISOString(),
         updatedAt: updatedCustomer.updatedAt.toISOString(),

@@ -16,6 +16,7 @@ import AddReservationScreen from './components/AddReservationScreen';
 import CustomerReviewsScreen from './components/CustomerReviewsScreen';
 import CustomerClubScreen from './components/CustomerClubScreen';
 import { setAuthHandlers } from './utils/api';
+import { requestForToken, onMessageListener } from './utils/firebase';
 
 // Added 'club' to the list of available screens to support the customer club feature.
 export type Screen = 'home' | 'reservations' | 'customers' | 'profile' | 'chat' | 'notifications' | 'support' | 'addReservation' | 'reviews' | 'club';
@@ -95,6 +96,13 @@ const App: React.FC = () => {
         // Token exists - go to app (user is already logged in)
         // TODO: Optionally verify token with backend
         setAppState('app');
+        
+        // Initialize Firebase Notifications
+        requestForToken();
+        onMessageListener().then((payload: any) => {
+             window.showToast(payload?.notification?.title || 'New Message', 'info');
+        }).catch(err => console.log('failed: ', err));
+
       } else {
         // No token - go to auth
         setAppState('auth');

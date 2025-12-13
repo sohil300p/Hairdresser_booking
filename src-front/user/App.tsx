@@ -33,6 +33,7 @@ import { FaqPage } from './pages/FaqPage';
 import { Icon, IconName } from './components/Icon';
 import { Toast } from './components/Toast';
 import { Modal } from './components/Modal';
+import { requestForToken, onMessageListener } from './utils/firebase';
 
 // Constants
 import { BOOKINGS, NOTIFICATIONS, LOGGED_IN_USER, DISCOUNTS, BARBERS } from './constants';
@@ -70,21 +71,29 @@ const App: React.FC = () => {
     if (user && !profileChecked) {
       setProfileChecked(true);
       
-      // Check if this is a completely new user (no name at all)
-      const isNewUser = !user.name || user.name === 'کاربر' || user.name.trim().length < 2;
+      // Check local profile completeness first
+      const localCompleteness = checkLocalProfileCompleteness(user);
+      const localAction = getProfileAction(localCompleteness);
       
-      if (isNewUser) {
-        // Only redirect new users to profile completion
-        showToast('خوش آمدید! لطفاً پروفایل خود را تکمیل کنید.', 'info');
+      // If name or gender is missing locally, redirect immediately
+      if (localAction.action === 'redirect') {
+        showToast(localAction.message || 'لطفاً پروفایل خود را تکمیل کنید.', 'info');
         setCurrentPage('edit-profile');
-      } else {
-        // For existing users, validate profile from server in background
+        return;
+      }
+      
+      // For users with local data, validate from server to ensure it's complete
+      const timeoutId = setTimeout(() => {
         validateProfileFromServer().then(result => {
           if (result.success && result.completeness) {
             const action = getProfileAction(result.completeness);
             
-            // Only show gentle warnings for existing users, don't force redirect
-            if (action.action === 'warn' && currentPage === 'home') {
+            // Force redirect if name or gender is missing
+            if (action.action === 'redirect') {
+              showToast(action.message || 'لطفاً پروفایل خود را تکمیل کنید.', 'info');
+              setCurrentPage('edit-profile');
+            } else if (action.action === 'warn') {
+              // Only show warnings if profile is mostly complete
               showToast(action.message || 'برای استفاده کامل از امکانات، پروفایل خود را تکمیل کنید.', 'warning');
             }
           }
@@ -92,23 +101,28 @@ const App: React.FC = () => {
           console.log('Profile validation failed silently:', error);
           // Don't show error to user, just log it
         });
-      }
+      }, 500); // Debounce by 500ms
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [user, profileChecked, currentPage]);
+  }, [user, profileChecked]);
 
   const handleSetCurrentPage = useCallback((page: Page, params: any = null) => {
-    // Smart page access validation - only block critical features
-    if (user && (page === 'booking' || page === 'wallet' || page === 'wallet-withdraw')) {
+    // Block navigation to any page if profile is incomplete (except edit-profile and login)
+    // But allow navigation FROM edit-profile to other pages after successful save
+    if (user && page !== 'edit-profile' && page !== 'login' && currentPage !== 'edit-profile') {
       const completeness = checkLocalProfileCompleteness(user);
       
+      // Force redirect to profile if name is missing
       if (!completeness.hasBasicInfo) {
-        showToast('برای رزرو نوبت، ابتدا نام خود را وارد کنید.', 'error');
+        showToast('لطفاً ابتدا نام خود را وارد کنید.', 'error');
         setCurrentPage('edit-profile');
         return;
       }
       
-      if (page === 'booking' && !completeness.hasGender) {
-        showToast('برای رزرو نوبت، لطفاً جنسیت خود را انتخاب کنید.', 'warning');
+      // Force redirect to profile if gender is missing
+      if (!completeness.hasGender) {
+        showToast('لطفاً جنسیت خود را انتخاب کنید.', 'error');
         setCurrentPage('edit-profile');
         return;
       }
@@ -117,7 +131,7 @@ const App: React.FC = () => {
     setCurrentPage(page);
     setPageParams(params);
     window.scrollTo(0, 0);
-  }, [user]);
+  }, [user, currentPage]);
 
   const login = (userData: User, token: string) => { 
     setUser(userData);
@@ -136,14 +150,44 @@ const App: React.FC = () => {
   // Initialize API client with logout handler
   useEffect(() => {
     // API client unauthorized handler is now set in utils/api.ts
-  }, []);
+    
+    // Initialize Firebase Notifications
+    if (user) {
+      // Request notification permission and register token
+      requestForToken().then((token) => {
+        if (token) {
+          console.log('✅ Notification token obtained and registered');
+        } else {
+          console.log('ℹ️ Notification permission not granted or Firebase not configured');
+        }
+      }).catch((err) => {
+        console.error('❌ Failed to request notification token:', err);
+      });
+      
+      // Set up foreground message listener
+      onMessageListener().then((payload: any) => {
+        console.log('📨 Foreground notification received:', payload);
+        showToast(payload?.notification?.title || payload?.data?.title || 'New Message', 'info');
+        // Optionally refresh notifications list here
+      }).catch(err => {
+        console.log('ℹ️ Message listener not available (Firebase may not be configured):', err);
+      });
+    }
+  }, [user]);
   
   const updateUser = (updatedUserData: Partial<User>) => {
     if (user) {
-        setUser(prev => ({...prev, ...updatedUserData} as User));
-        if (Object.keys(updatedUserData).join() !== 'walletBalance') {
+        const updatedUser = {...user, ...updatedUserData} as User;
+        setUser(updatedUser);
+        // Save to localStorage
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        // Don't show toast for walletBalance or avatarUrl updates (they have their own specific toasts)
+        const updatedKeys = Object.keys(updatedUserData).join();
+        if (updatedKeys !== 'walletBalance' && updatedKeys !== 'avatarUrl') {
             showToast('پروفایل شما با موفقیت به‌روز شد.', 'success');
         }
+        // Reset profileChecked to allow re-validation with new data
+        setProfileChecked(false);
     }
   };
 

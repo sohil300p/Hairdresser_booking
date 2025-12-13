@@ -8,6 +8,7 @@ interface AvatarUploadProps {
   onUploadError: (error: string) => void;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  mode?: 'create' | 'edit'; // Determines POST vs PUT
 }
 
 export const AvatarUpload: React.FC<AvatarUploadProps> = ({
@@ -15,7 +16,8 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
   onUploadSuccess,
   onUploadError,
   disabled = false,
-  size = 'lg'
+  size = 'lg',
+  mode = 'edit' // Default to edit mode (PUT)
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -71,8 +73,10 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       const formData = new FormData();
       formData.append('profileImage', file);
 
-      // Upload to backend using API client
-      const result = await api.upload<{ success: boolean; message?: string; data?: { avatarUrl: string } }>(
+      // Upload to backend using appropriate method based on mode
+      // POST for creating new profile, PUT for editing existing profile
+      const uploadMethod = mode === 'create' ? api.upload : api.uploadPut;
+      const result = await uploadMethod<{ success: boolean; message?: string; data?: { avatarUrl: string } }>(
         '/barber/profile',
         formData
       );
@@ -180,7 +184,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       {/* Upload Instructions */}
       <div className="mt-2 text-center">
         <p className="text-xs text-gray-500">
-          {isUploading ? 'در حال آپلود...' : 'کلیک کنید یا تصویر را بکشید'}
+          {isUploading ? 'در حال آپلود...' : 'برای تغییر تصویر روی عکس کلیک کنید'}
         </p>
         <p className="text-xs text-gray-400 mt-1">
           JPG، PNG، WebP - حداکثر ۵MB

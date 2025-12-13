@@ -75,6 +75,15 @@ export async function loginWithPasswordService(
 
       isNewUser = true;
 
+      // Create wallet for new customer
+      try {
+        const { ensureCustomerWallet } = await import('../../All_Utils/Wallet/wallet.utils');
+        await ensureCustomerWallet(customer.id);
+      } catch (error) {
+        console.error('⚠️ Failed to create wallet for new customer:', error);
+        // Don't fail the login if wallet creation fails
+      }
+
       // If user is a barber, create barber record
       if (userType === 'barber') {
         barber = await prisma.barber.create({
@@ -86,6 +95,15 @@ export async function loginWithPasswordService(
             updated: BigInt(Date.now()),
           },
         });
+        
+        // Create wallet for new barber
+        try {
+          const { ensureBarberWallet } = await import('../../All_Utils/Wallet/wallet.utils');
+          await ensureBarberWallet(barber.id);
+        } catch (error) {
+          console.error('⚠️ Failed to create wallet for new barber:', error);
+          // Don't fail the login if wallet creation fails
+        }
       }
     } else {
       // Existing user - verify password
@@ -115,6 +133,26 @@ export async function loginWithPasswordService(
       barber = await prisma.barber.findFirst({
         where: { userRefId: customer.id },
       });
+
+      // Ensure wallet exists for existing customer (in case it wasn't created before)
+      try {
+        const { ensureCustomerWallet } = await import('../../All_Utils/Wallet/wallet.utils');
+        await ensureCustomerWallet(customer.id);
+      } catch (error) {
+        console.error('⚠️ Failed to ensure wallet for existing customer:', error);
+        // Don't fail the login if wallet creation fails
+      }
+
+      // Ensure wallet exists for existing barber (in case it wasn't created before)
+      if (barber) {
+        try {
+          const { ensureBarberWallet } = await import('../../All_Utils/Wallet/wallet.utils');
+          await ensureBarberWallet(barber.id);
+        } catch (error) {
+          console.error('⚠️ Failed to ensure wallet for existing barber:', error);
+          // Don't fail the login if wallet creation fails
+        }
+      }
     }
 
     // Update last login

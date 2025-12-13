@@ -17,6 +17,7 @@ export const api = {
   put: async <T>(path: string, body: any): Promise<T> => request('PUT', path, body),
   delete: async <T>(path: string): Promise<T> => request('DELETE', path),
   upload: async <T>(path: string, formData: FormData): Promise<T> => request('POST', path, formData, true),
+  uploadPut: async <T>(path: string, formData: FormData): Promise<T> => request('PUT', path, formData, true),
 };
 
 async function request<T>(method: string, path: string, body?: any, isFormData: boolean = false): Promise<T> {

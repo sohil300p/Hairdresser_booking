@@ -255,6 +255,15 @@ export async function createBarberProfileService(
       },
     });
 
+    // Create wallet for new barbershop
+    try {
+      const { ensureBarbershopWallet } = await import('../../../All_Utils/Wallet/wallet.utils');
+      await ensureBarbershopWallet(barbershop.id);
+    } catch (error) {
+      console.error('⚠️ Failed to create wallet for new barbershop:', error);
+      // Don't fail the profile creation if wallet creation fails
+    }
+
     const finalPublicMeta = (barbershop.publicMeta || {}) as any;
     const finalBackgroundImage = finalPublicMeta.backgroundImage || null;
 

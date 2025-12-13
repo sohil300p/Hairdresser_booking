@@ -16,6 +16,7 @@ export const api = {
   put: async <T>(path: string, body: any): Promise<T> => request('PUT', path, body),
   delete: async <T>(path: string): Promise<T> => request('DELETE', path),
   upload: async <T>(path: string, formData: FormData): Promise<T> => request('POST', path, formData, true),
+  uploadPut: async <T>(path: string, formData: FormData): Promise<T> => request('PUT', path, formData, true),
 };
 
 async function request<T>(method: string, path: string, body?: any, isFormData: boolean = false): Promise<T> {
@@ -43,15 +44,32 @@ async function request<T>(method: string, path: string, body?: any, isFormData: 
     const response = await fetch(`${API_BASE_URL}${path}`, config);
 
     if (response.status === 401) {
+      // Try to get error message from response
+      let errorMessage = 'جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید';
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // If response is not JSON, use default message
+      }
+
       if (logoutHandler && showToastHandler) {
-        showToastHandler('جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید', 'error');
+        showToastHandler(errorMessage, 'error');
         logoutHandler();
       }
       throw new Error('Unauthorized - Session expired');
     }
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData: any = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        // If response is not JSON, use status text
+        errorData = { message: `API Error: ${response.statusText}` };
+      }
       throw new Error(errorData.message || `API Error: ${response.statusText}`);
     }
 

@@ -88,10 +88,12 @@ export async function validateProfileFromServer(): Promise<{
     const result = await api.get<{
       success: boolean;
       data: {
+        fullName?: string | null;
         firstName?: string;
         lastName?: string;
-        gender?: 'male' | 'female';
+        gender?: 'male' | 'female' | 'other' | null;
         avatar?: string;
+        profileImage?: string;
         phone: string;
       };
     }>('/profile');
@@ -103,18 +105,19 @@ export async function validateProfileFromServer(): Promise<{
       };
     }
 
+    // Handle both fullName (new format) and firstName/lastName (old format)
+    const fullName = result.data.fullName || 
+                     [result.data.firstName, result.data.lastName]
+                       .filter(Boolean)
+                       .join(' ') || '';
+
     const profileData: ProfileData = {
-      firstName: result.data.firstName,
-      lastName: result.data.lastName,
-      gender: result.data.gender,
-      avatar: result.data.avatar,
+      firstName: result.data.firstName || fullName.split(' ')[0] || '',
+      lastName: result.data.lastName || fullName.split(' ').slice(1).join(' ') || '',
+      gender: result.data.gender || undefined,
+      avatar: result.data.avatar || result.data.profileImage,
       phone: result.data.phone,
     };
-
-    // Create a User-like object for validation
-    const fullName = [profileData.firstName, profileData.lastName]
-      .filter(Boolean)
-      .join(' ') || '';
 
     const userForValidation: User & { gender?: 'male' | 'female' } = {
       name: fullName,
@@ -153,18 +156,21 @@ export function getProfileAction(completeness: ProfileCompleteness): {
     return { action: 'allow' };
   }
 
+  // Force redirect if name is missing
   if (!completeness.hasBasicInfo) {
     return {
       action: 'redirect',
-      message: 'لطفاً ابتدا نام خود را وارد کنید تا بتوانید از اپلیکیشن استفاده کنید.',
+      message: 'برای نمایش نتایج مرتبط، لازم است نام و جنسیت خود را مشخص کنید.',
       redirectTo: 'edit-profile',
     };
   }
 
+  // Force redirect if gender is missing
   if (!completeness.hasGender) {
     return {
-      action: 'warn',
-      message: 'برای استفاده کامل از امکانات، لطفاً جنسیت خود را انتخاب کنید.',
+      action: 'redirect',
+      message: 'برای نمایش نتایج مرتبط، لازم است نام و جنسیت خود را مشخص کنید.',
+      redirectTo: 'edit-profile',
     };
   }
 

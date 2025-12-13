@@ -71,14 +71,22 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       const formData = new FormData();
       formData.append('profileImage', file);
 
-      // Upload to backend using API client
-      const result = await api.upload<{ success: boolean; message?: string; data?: { avatarUrl: string } }>(
+      // Upload to backend using API client (PUT method for profile updates)
+      const result = await api.uploadPut<{ 
+        success: boolean; 
+        message?: string; 
+        data?: { 
+          profileImage: string;
+          fullName?: string | null;
+          gender?: 'male' | 'female' | 'other' | null;
+        } 
+      }>(
         '/profile',
         formData
       );
 
-      if (result.success && result.data?.avatarUrl) {
-        onUploadSuccess(result.data.avatarUrl);
+      if (result.success && result.data?.profileImage) {
+        onUploadSuccess(result.data.profileImage);
         setPreviewUrl(null);
       } else {
         throw new Error(result.message || 'خطا در آپلود تصویر');
@@ -180,7 +188,7 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
       {/* Upload Instructions */}
       <div className="mt-2 text-center">
         <p className="text-xs text-gray-500">
-          {isUploading ? 'در حال آپلود...' : 'کلیک کنید یا تصویر را بکشید'}
+          {isUploading ? 'در حال آپلود...' : 'برای تغییر تصویر روی عکس کلیک کنید'}
         </p>
         <p className="text-xs text-gray-400 mt-1">
           JPG، PNG، WebP - حداکثر ۵MB

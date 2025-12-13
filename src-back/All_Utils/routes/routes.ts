@@ -3,6 +3,7 @@ import multer from 'multer';
 import { healthCheck } from '../Helth/healthController';
 import { getSystemMetricsController } from '../Monitoring/monitoring.controller';
 import { authenticateToken } from '../../User_Side/auth/auth.middleware';
+import { authenticateAdmin } from '../Admin/admin-auth.middleware';
 import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../../User_Side/auth/auth.controller';
 import { loginWithPasswordController } from '../../User_Side/auth/login.controller';
@@ -70,6 +71,20 @@ import { getDashboardController } from '../../Barber_Side/Home_page/dashboard.co
 import { getTodayAppointmentsController } from '../../Barber_Side/Home_page/today-appointments.controller';
 import { getCustomersController } from '../../Barber_Side/Hairdresser_customers/customers.controller';
 import { getAppointmentsController, updateAppointmentStatusController as updateBarberAppointmentStatusController } from '../../Barber_Side/Appointment_barber/appointment.controller';
+import { 
+  registerTokenController, 
+  getUsersWithDevicesController, 
+  adminSendNotificationController 
+} from '../Notification/notification.controller';
+import {
+  getAllUsersController,
+  getAllBarbersController,
+  getAllAppointmentsController,
+  resetUserOtpLimitController,
+  getUserOtpStatusController,
+  getAllAdminsController,
+} from '../Admin/admin.controller';
+import { adminLoginController } from '../Admin/admin-login.controller';
 
 const router = Router();
 
@@ -85,7 +100,10 @@ const upload = multer({
 router.get('/health', healthCheck);
 
 // Admin Monitoring Routes (requires authentication)
-router.get('/admin/monitoring/metrics', authenticateToken, getSystemMetricsController);
+router.get('/admin/monitoring/metrics', authenticateAdmin, getSystemMetricsController);
+
+// Admin Authentication Routes
+router.post('/admin/login', adminLoginController);
 
 // Authentication Routes
 router.post('/auth/login/password', loginWithPasswordController);
@@ -97,6 +115,23 @@ router.post('/auth/logout', logoutController);
 // OTP Routes (legacy - kept for backward compatibility)
 router.post('/otp/send', sendOtpController);
 router.post('/otp/verify', verifyOtpController);
+
+// Notification Routes
+router.post('/notifications/register-token', authenticateToken, registerTokenController);
+
+// Admin Notification Routes
+router.get('/admin/notifications/users', authenticateAdmin, getUsersWithDevicesController);
+router.post('/admin/notifications/send', authenticateAdmin, adminSendNotificationController);
+
+// Admin Management Routes
+router.get('/admin/users', authenticateAdmin, getAllUsersController);
+router.get('/admin/barbers', authenticateAdmin, getAllBarbersController);
+router.get('/admin/appointments', authenticateAdmin, getAllAppointmentsController);
+router.get('/admin/staff', authenticateAdmin, getAllAdminsController); // New: Admin/Staff management
+
+// Admin OTP Management Routes
+router.post('/admin/users/:phone/reset-otp', authenticateAdmin, resetUserOtpLimitController);
+router.get('/admin/users/:phone/otp-status', authenticateAdmin, getUserOtpStatusController);
 
 // Search Routes
 router.get('/search', searchController);

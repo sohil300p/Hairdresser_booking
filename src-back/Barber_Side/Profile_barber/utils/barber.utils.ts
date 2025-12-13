@@ -40,6 +40,16 @@ export async function ensureBarberRecord(customerId: number): Promise<number> {
   });
 
   console.log(`✅ Barber record auto-created for customer ID ${customerId} (Barber ID: ${newBarber.id})`);
+
+  // Create wallet for new barber
+  try {
+    const { ensureBarberWallet } = await import('../../../All_Utils/Wallet/wallet.utils');
+    await ensureBarberWallet(newBarber.id);
+  } catch (error) {
+    console.error('⚠️ Failed to create wallet for new barber:', error);
+    // Don't fail the barber creation if wallet creation fails
+  }
+
   return newBarber.id;
 }
 

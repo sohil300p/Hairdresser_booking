@@ -9,7 +9,9 @@ import {
   Calendar, 
   Settings, 
   LogOut, 
-  Menu
+  Menu,
+  Bell,
+  Shield
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -25,9 +27,11 @@ export default function DashboardLayout() {
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/notifications', label: 'Push Notifications', icon: Bell },
     { href: '/users', label: 'Users', icon: Users },
     { href: '/barbers', label: 'Barbers', icon: Scissors },
     { href: '/appointments', label: 'Appointments', icon: Calendar },
+    { href: '/staff', label: 'Staff & Admins', icon: Shield },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
