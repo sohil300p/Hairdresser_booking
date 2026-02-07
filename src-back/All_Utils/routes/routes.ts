@@ -59,6 +59,10 @@ import { getWorkingHoursController, createWorkingHoursController, editWorkingHou
 import { getCouponsController, createCouponController, editCouponController, sendCouponSMSController } from '../../Barber_Side/Profile_barber/Get_Edit_coupon/coupon.controller';
 import { getCommentsController } from '../../Barber_Side/Profile_barber/Get_commentsCustomer/comment.controller';
 import {
+  getReservationRulesController,
+  putReservationRulesController,
+} from '../../Barber_Side/Profile_barber/ReservationRules/reservation-rules.controller';
+import {
   getWalletBalanceController as getBarberWalletBalanceController,
   depositController as barberDepositController,
   withdrawController as barberWithdrawController,
@@ -85,6 +89,12 @@ import {
   getAllAdminsController,
 } from '../Admin/admin.controller';
 import { adminLoginController } from '../Admin/admin-login.controller';
+import {
+  getWalletSummariesController,
+  getFinancialMetricsController,
+  getAdminTransactionsController,
+} from '../Admin/financial/financial.controller';
+import { mapirReverseController, mapirSearchController } from '../Mapir/mapir-proxy.controller';
 
 const router = Router();
 
@@ -98,6 +108,11 @@ const upload = multer({
 
 // Health Check Route
 router.get('/health', healthCheck);
+
+// Map.ir proxy (reverse geocode + search) – no auth, uses server MAPIR_API_KEY (register early to avoid conflicts)
+router.get('/mapir/reverse', mapirReverseController);
+router.get('/mapir/search', mapirSearchController);
+router.post('/mapir/search', mapirSearchController);
 
 // Admin Monitoring Routes (requires authentication)
 router.get('/admin/monitoring/metrics', authenticateAdmin, getSystemMetricsController);
@@ -132,6 +147,11 @@ router.get('/admin/staff', authenticateAdmin, getAllAdminsController); // New: A
 // Admin OTP Management Routes
 router.post('/admin/users/:phone/reset-otp', authenticateAdmin, resetUserOtpLimitController);
 router.get('/admin/users/:phone/otp-status', authenticateAdmin, getUserOtpStatusController);
+
+// Admin Financial Routes
+router.get('/admin/financial/wallets', authenticateAdmin, getWalletSummariesController);
+router.get('/admin/financial/transactions', authenticateAdmin, getAdminTransactionsController);
+router.get('/admin/financial/metrics', authenticateAdmin, getFinancialMetricsController);
 
 // Search Routes
 router.get('/search', searchController);
@@ -185,6 +205,10 @@ router.post('/barber/coupons/:id/send-sms', authenticateToken, sendCouponSMSCont
 
 // Barber Comments Routes (Protected - Barber only)
 router.get('/barber/comments', authenticateToken, getCommentsController);
+
+// Barber Reservation Rules Routes (Protected - Barber only)
+router.get('/barber/reservation-rules', authenticateToken, getReservationRulesController);
+router.put('/barber/reservation-rules', authenticateToken, putReservationRulesController);
 
 // Barber Wallet Routes (Protected - Barber only)
 router.get('/barber/wallet/balance', authenticateToken, getBarberWalletBalanceController);

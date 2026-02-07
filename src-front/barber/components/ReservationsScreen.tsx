@@ -1,11 +1,10 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { List, Calendar, Plus, Check, X } from 'lucide-react';
-// Import the shared Screen type from App.tsx instead of duplicating it here.
 import type { Screen } from '../App';
-
-// Remove the local Screen type definition; it is now imported from App.tsx.
+import { api } from '../utils/api';
+import type { GetAppointmentsResponse, AppointmentItem } from '../types/api';
 
 interface Reservation {
     id: number;
@@ -17,15 +16,29 @@ interface Reservation {
     date: string;
 }
 
-const initialReservations: Reservation[] = [
-    { id: 1, name: 'احمد رضایی', service: 'اصلاح مو + ریش', time: '14:30', avatar: 'https://picsum.photos/id/1005/100/100', status: 'confirmed' as const, date: '1403/05/10' },
-    { id: 2, name: 'حسن محمدی', service: 'اصلاح مو', time: '16:00', avatar: 'https://picsum.photos/id/1006/100/100', status: 'pending' as const, date: '1403/05/10' },
-    { id: 3, name: 'علی اکبری', service: 'کراتینه', time: '17:30', avatar: 'https://picsum.photos/id/1008/100/100', status: 'confirmed' as const, date: '1403/05/11' },
-    { id: 4, name: 'مریم قاسمی', service: 'رنگ مو', time: '11:00', avatar: 'https://picsum.photos/id/1011/100/100', status: 'cancelled' as const, date: '1403/05/12' },
-    { id: 5, name: 'سارا نادری', service: 'اصلاح صورت', time: '12:00', avatar: 'https://picsum.photos/id/1012/100/100', status: 'pending' as const, date: '1403/05/12' },
-    { id: 6, name: 'رضا حسینی', service: 'اصلاح مو', time: '19:00', avatar: 'https://picsum.photos/id/1013/100/100', status: 'pending' as const, date: '1403/05/20' },
+function timestampToTime(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
-];
+function timestampToDateFa(ts: number): string {
+  return new Date(ts).toLocaleDateString('fa-IR-u-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+}
+
+function mapAppointmentToReservation(appt: AppointmentItem): Reservation {
+  const status = appt.status === 'cancelled' || appt.status === 'no_show' ? 'cancelled' as const
+    : appt.status === 'pending' ? 'pending' as const
+    : 'confirmed' as const;
+  return {
+    id: appt.id,
+    name: appt.customerName || 'مشتری',
+    service: appt.serviceName || '-',
+    time: timestampToTime(appt.startTime),
+    avatar: appt.customerAvatar || 'https://picsum.photos/id/0/100/100',
+    status,
+    date: timestampToDateFa(appt.startTime),
+  };
+}
 
 interface ReservationsScreenProps {
     setActiveScreen: (screen: Screen) => void;
@@ -35,29 +48,45 @@ interface ReservationsScreenProps {
 const ReservationsScreen: React.FC<ReservationsScreenProps> = ({ setActiveScreen, isAutoConfirmEnabled }) => {
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
     const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
-    const [reservations, setReservations] = useState<Reservation[]>(initialReservations);
+    const [reservations, setReservations] = useState<Reservation[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchReservations = useCallback(async () => {
+        try {
+            const status = activeFilter === 'all' ? 'all' : activeFilter;
+            const res = await api.get<GetAppointmentsResponse>(`/barber/appointments?status=${status}&page=1&limit=100`);
+            if (res.success && res.data) {
+                setReservations(res.data.appointments.map(mapAppointmentToReservation));
+            }
+        } catch {
+            setReservations([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [activeFilter]);
+
+    useEffect(() => {
+        setIsLoading(true);
+        fetchReservations();
+    }, [fetchReservations]);
 
     useEffect(() => {
         if (isAutoConfirmEnabled && reservations.some(r => r.status === 'pending')) {
             window.showToast("رزروهای در انتظار به صورت خودکار تایید شدند.", "info");
-            setReservations(prev => 
-                prev.map(r => 
-                    r.status === 'pending' ? { ...r, status: 'confirmed' } : r
-                )
-            );
         }
     }, [isAutoConfirmEnabled]);
 
-    const handleReservationAction = (id: number, action: 'confirm' | 'reject') => {
+    const handleReservationAction = async (id: number, action: 'confirm' | 'reject') => {
         const reservation = reservations.find(r => r.id === id);
         if (!reservation) return;
 
-        if (action === 'confirm') {
-            setReservations(reservations.map(r => r.id === id ? { ...r, status: 'confirmed' } : r));
-            window.showToast(`رزرو ${reservation.name} تایید شد.`, 'success');
-        } else {
-            setReservations(reservations.map(r => r.id === id ? { ...r, status: 'cancelled' } : r));
-            window.showToast(`رزرو ${reservation.name} رد شد.`, 'info');
+        const newStatus = action === 'confirm' ? 'confirmed' : 'cancelled';
+        try {
+            await api.put(`/barber/appointments/${id}/status`, { status: newStatus });
+            setReservations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+            window.showToast(action === 'confirm' ? `رزرو ${reservation.name} تایید شد.` : `رزرو ${reservation.name} رد شد.`, action === 'confirm' ? 'success' : 'info');
+        } catch {
+            window.showToast('خطا در بروزرسانی وضعیت رزرو', 'error');
         }
     };
 
@@ -88,10 +117,12 @@ const ReservationsScreen: React.FC<ReservationsScreenProps> = ({ setActiveScreen
       </header>
 
       <main className="flex-grow overflow-y-auto p-4">
-        {viewMode === 'list' ? (
+        {isLoading ? (
+            <div className="text-center py-16 text-gray-600">در حال بارگذاری...</div>
+        ) : viewMode === 'list' ? (
             <ListView reservations={filteredReservations} onAction={handleReservationAction} />
         ) : (
-            <CalendarView reservations={reservations} onAction={handleReservationAction} />
+            <CalendarView reservations={reservations.filter(r => r.status !== 'cancelled')} onAction={handleReservationAction} />
         )}
       </main>
 

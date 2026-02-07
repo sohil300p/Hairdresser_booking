@@ -21,8 +21,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const CANCELLATION_REFUND_THRESHOLD_HOURS = 3; // 3 hours before appointment
-const CANCELLATION_PENALTY_PERCENT = 25; // 25% penalty if cancelled within 3 hours
+const DEFAULT_CANCELLATION_TIERS = [
+  { minHoursBefore: 24, feePercent: 0 },
+  { minHoursBefore: 12, feePercent: 20 },
+  { minHoursBefore: 1, feePercent: 50 },
+  { minHoursBefore: 0, feePercent: 100 },
+];
 
 /**
  * Create appointment service
@@ -122,6 +126,23 @@ export async function createAppointmentService(
 
     const priceTotal = basePrice + addonsTotal - discountAmount;
 
+    // Determine barbershop for reservation rules
+    let barbershopForRules: { reservationPaymentPercent: number | null } | null = null;
+    if (barbershopId) {
+      barbershopForRules = await prisma.barbershop.findUnique({
+        where: { id: barbershopId },
+        select: { reservationPaymentPercent: true },
+      });
+    } else if (barberId) {
+      const barber = await prisma.barber.findFirst({
+        where: { id: barberId },
+        include: { ownedBarbershops: { take: 1, select: { reservationPaymentPercent: true } } },
+      });
+      barbershopForRules = barber?.ownedBarbershops?.[0] ?? null;
+    }
+    const reservationPaymentPercent = barbershopForRules?.reservationPaymentPercent ?? 100;
+    const amountToPay = Math.round(priceTotal * (reservationPaymentPercent / 100));
+
     // Create appointment
     const appointment = await prisma.appointment.create({
       data: {
@@ -181,11 +202,11 @@ export async function createAppointmentService(
     let authority: string | undefined;
 
     if (paymentMethod === 'wallet') {
-      // Lock funds from wallet
+      // Lock funds from wallet (amount based on barbershop reservation rules)
       const lockResult = await lockFundsForAppointmentService(
         {
           appointmentId: appointment.id,
-          amount: priceTotal,
+          amount: amountToPay,
           method: 'wallet',
         },
         authenticatedUserId,
@@ -206,7 +227,7 @@ export async function createAppointmentService(
         where: { id: appointment.id },
         data: {
           status: 'paid',
-          paidAmount: new Decimal(priceTotal),
+          paidAmount: new Decimal(amountToPay),
           updated: BigInt(Date.now()),
         },
       });
@@ -221,14 +242,14 @@ export async function createAppointmentService(
         },
       });
     } else if (paymentMethod === 'online' || paymentMethod === 'card') {
-      // Create external transaction for online payment
+      // Create external transaction for online payment (amount based on barbershop reservation rules)
       const externalTx = await prisma.externalTransaction.create({
         data: {
           initiatorType: 'customer',
           initiatorId: authenticatedUserId,
           kind: 'appointment_lock',
           relatedAppointmentId: appointment.id,
-          amount: new Decimal(priceTotal),
+          amount: new Decimal(amountToPay),
           method: paymentMethod === 'online' ? 'online' : 'card',
           status: 'pending',
           metadata: {
@@ -250,7 +271,7 @@ export async function createAppointmentService(
       });
 
       const paymentRequest = await requestPayment({
-        amount: Math.round(priceTotal),
+        amount: amountToPay,
         description: `پرداخت رزرو نوبت - سرویس: ${service.name}`,
         callbackUrl: `${callbackUrl}?appointmentId=${appointment.id}`,
         mobile: customer?.phone || undefined,
@@ -672,27 +693,38 @@ export async function cancelAppointmentService(
       };
     }
 
-    // Calculate refund
+    // Calculate refund using barbershop cancellation rules
     const now = Date.now();
     const appointmentStart = Number(appointment.startTime);
     const hoursUntilAppointment = (appointmentStart - now) / (1000 * 60 * 60);
 
-    const priceTotal = appointment.priceTotal ? Number(appointment.priceTotal) : 0;
     const paidAmount = appointment.paidAmount ? Number(appointment.paidAmount) : 0;
 
     let refundAmount = 0;
     let refundPercentage = 100;
 
     if (paidAmount > 0) {
-      if (hoursUntilAppointment > CANCELLATION_REFUND_THRESHOLD_HOURS) {
-        // Full refund (>3 hours before)
-        refundAmount = paidAmount;
-        refundPercentage = 100;
+      let feePercent = 100;
+      const barbershop = appointment.barbershopId
+        ? await prisma.barbershop.findUnique({
+            where: { id: appointment.barbershopId },
+            select: { cancellationPolicy: true, cancellationTiers: true },
+          })
+        : null;
+
+      if (barbershop?.cancellationPolicy === 'not_accepted') {
+        feePercent = 100;
       } else {
-        // Partial refund with penalty (≤3 hours before)
-        refundAmount = paidAmount * (1 - CANCELLATION_PENALTY_PERCENT / 100);
-        refundPercentage = 100 - CANCELLATION_PENALTY_PERCENT;
+        const tiers =
+          (barbershop?.cancellationTiers as { minHoursBefore: number; feePercent: number }[]) ??
+          DEFAULT_CANCELLATION_TIERS;
+        const sorted = [...tiers].sort((a, b) => b.minHoursBefore - a.minHoursBefore);
+        const matchingTier = sorted.find((t) => hoursUntilAppointment >= t.minHoursBefore);
+        feePercent = matchingTier ? matchingTier.feePercent : 100;
       }
+
+      refundPercentage = 100 - feePercent;
+      refundAmount = Math.round(paidAmount * (1 - feePercent / 100));
     }
 
     // Update appointment status

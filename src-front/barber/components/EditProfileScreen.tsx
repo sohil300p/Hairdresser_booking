@@ -1,9 +1,12 @@
 
 
 import React, { useState, useRef } from 'react';
-import { ArrowRight, Camera, Save, XCircle as CancelIcon, MapPin } from 'lucide-react';
+import { ArrowRight, Camera, Save, XCircle as CancelIcon } from 'lucide-react';
 import MaterialInput from './MaterialInput';
 import MaterialSelect from './MaterialSelect';
+import { MapLocationPicker } from './MapLocationPicker';
+import { MapirMapSelector } from './MapirMapSelector';
+import { api } from '../utils/api';
 
 interface ProfileData {
     name: string;
@@ -13,6 +16,8 @@ interface ProfileData {
      * Gender of the salon: male, female or unisex.
      */
     gender: 'male' | 'female' | 'unisex';
+    latitude?: number;
+    longitude?: number;
 }
 
 interface EditProfileScreenProps {
@@ -53,16 +58,27 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
         }
     };
     
-    const handleSave = () => {
-        onSave(profileData, avatarFile, backgroundFile);
-    };
+    const [isSaving, setIsSaving] = useState(false);
 
-    const handleSelectOnMap = () => {
-        // In a real app, this would open a map interface.
-        // Here, we simulate selecting an address and updating the input.
-        const simulatedAddress = "تهران، میدان آزادی، برج آزادی";
-        setProfileData({...profileData, address: simulatedAddress});
-        window.showToast("آدرس از روی نقشه انتخاب شد.", "info");
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const formData = new FormData();
+            formData.append('name', profileData.name);
+            formData.append('gender', profileData.gender);
+            if (profileData.address) formData.append('address', profileData.address);
+            if (profileData.about) formData.append('description', profileData.about);
+            if (avatarFile) formData.append('profileImage', avatarFile);
+            if (backgroundFile) formData.append('backgroundImage', backgroundFile);
+            const res = await api.uploadPut<{ success: boolean }>('/barber/profile', formData);
+            if (res.success) {
+                onSave(profileData, avatarFile, backgroundFile);
+            }
+        } catch {
+            window.showToast?.('خطا در ذخیره پروفایل', 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -100,20 +116,27 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
                         onChange={e => setProfileData({...profileData, name: e.target.value})}
                     />
                     <div className="space-y-2">
-                        <MaterialInput 
-                            id="profileAddress"
-                            label="آدرس"
-                            type="text" 
-                            value={profileData.address} 
-                            onChange={e => setProfileData({...profileData, address: e.target.value})}
+                        <label className="block text-sm font-medium text-gray-700">آدرس</label>
+                        <MapLocationPicker
+                            value={profileData.address}
+                            onChange={(address, lat, lon) => setProfileData({ ...profileData, address, latitude: lat, longitude: lon })}
+                            label=""
+                            placeholder="جستجو یا وارد کردن آدرس..."
+                            showMapSheet={false}
                         />
-                        <button 
-                            onClick={handleSelectOnMap}
-                            className="text-sm font-semibold text-primary-600 flex items-center gap-1 px-1 py-1"
-                        >
-                            <MapPin size={16} />
-                            انتخاب از روی نقشه
-                        </button>
+                        <input type="hidden" id="location_latitude" name="latitude" value={profileData.latitude ?? ''} />
+                        <input type="hidden" id="location_longitude" name="longitude" value={profileData.longitude ?? ''} />
+                        <MapirMapSelector
+                            selectedLat={profileData.latitude}
+                            selectedLon={profileData.longitude}
+                            onSelect={(result) => setProfileData({
+                                ...profileData,
+                                address: result.address,
+                                latitude: result.latitude,
+                                longitude: result.longitude,
+                            })}
+                            height={380}
+                        />
                     </div>
                     <MaterialInput 
                         id="profileAbout"
@@ -139,8 +162,8 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
                 <button onClick={onBack} className="flex-1 h-12 flex items-center justify-center gap-1 bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md font-semibold transition hover:bg-gray-300">
                     <CancelIcon size={18} /> لغو
                 </button>
-                <button onClick={handleSave} className="flex-1 h-12 flex items-center justify-center gap-1 bg-success-500 text-white px-3 py-1.5 rounded-md font-semibold transition hover:bg-success-600">
-                    <Save size={18} /> ذخیره تغییرات
+                <button onClick={handleSave} disabled={isSaving} className="flex-1 h-12 flex items-center justify-center gap-1 bg-success-500 text-white px-3 py-1.5 rounded-md font-semibold transition hover:bg-success-600 disabled:opacity-70 disabled:cursor-not-allowed">
+                    <Save size={18} /> {isSaving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
                 </button>
             </footer>
         </div>

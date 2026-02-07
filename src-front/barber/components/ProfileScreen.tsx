@@ -1,6 +1,6 @@
 
-import React, {useState, useEffect, useRef} from 'react';
-import { ChevronLeft, Edit, Plus, Trash2, CreditCard, Download, UserCog, Clock, Tag, Power, LogOut, Shield, HelpCircle, FileText, Star, Save, WifiOff, Eye, UserCheck, Percent, CalendarPlus, Banknote, History, Copy, Send, Accessibility, ImagePlus, MapPin, ArrowRight, User as UserIcon, Check, ArrowUpRight, Gift } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ChevronLeft, Edit, Plus, Trash2, CreditCard, Clock, Tag, LogOut, HelpCircle, FileText, Star, Percent, CalendarPlus, History, Copy, Send, Accessibility, MapPin, ArrowRight, ArrowUpRight, Gift } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import ConfirmationDialog from './ConfirmationDialog';
 import MaterialInput from './MaterialInput';
@@ -8,13 +8,24 @@ import EditProfileScreen from './EditProfileScreen';
 import MaterialSelect from './MaterialSelect';
 import EditScheduleScreen from './EditScheduleScreen';
 import { Screen } from '../App';
-
-// Sub-page components (moved here for organization)
 import ServicesSubPage from './ServicesSubPage';
 import TermsSubPage from './TermsSubPage';
-// FIX: Added top-level imports for components that were previously loaded with require().
 import CustomerReviewsScreen from './CustomerReviewsScreen';
 import SupportScreen from './SupportScreen';
+import ReservationRulesForm from './ReservationRulesForm';
+import { api } from '../utils/api';
+import type {
+  GetBarberProfileResponse,
+  GetCouponsResponse,
+  GetWalletBalanceResponse,
+  GetPaymentHistoryResponse,
+  GetCustomersResponse,
+  CouponItem,
+} from '../types/api';
+
+const KEY_ORDER = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
+const WEEKDAY_BY_KEY: Record<string, number> = { saturday: 6, sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5 };
+const DAY_NAMES: Record<string, string> = { saturday: 'شنبه', sunday: 'یکشنبه', monday: 'دوشنبه', tuesday: 'سه‌شنبه', wednesday: 'چهارشنبه', thursday: 'پنج‌شنبه', friday: 'جمعه' };
 
 
 interface ProfileScreenProps {
@@ -100,12 +111,46 @@ const withdrawalHistory: Withdrawal[] = [
     { id: 2, amount: 250000, date: '1403/04/15', status: 'completed' },
 ];
 
-const customers: Customer[] = [
-    { id: 1, name: 'احمد رضایی', phone: '09123456789', avatar: 'https://picsum.photos/id/1005/100/100'},
-    { id: 2, name: 'حسن محمدی', phone: '09121112233', avatar: 'https://picsum.photos/id/1006/100/100'},
-    { id: 3, name: 'علی اکبری', phone: '09355554433', avatar: 'https://picsum.photos/id/1008/100/100'},
-];
 
+
+function mapApiScheduleToSchedule(schedules: { weekday: number; openTime: string; closeTime: string; isClosed: boolean }[]): Schedule[] {
+    const byWeekday = new Map<number, { openTime: string; closeTime: string; isClosed: boolean }>();
+    schedules.forEach(s => byWeekday.set(s.weekday, { openTime: s.openTime, closeTime: s.closeTime, isClosed: s.isClosed }));
+    return KEY_ORDER.map(key => {
+        const w = WEEKDAY_BY_KEY[key];
+        const s = byWeekday.get(w);
+        return {
+            key,
+            name: DAY_NAMES[key],
+            isActive: s ? !s.isClosed : true,
+            startTime: s?.openTime || '09:00',
+            endTime: s?.closeTime || '18:00',
+        };
+    });
+}
+
+function mapScheduleToApi(schedule: Schedule[]) {
+    return schedule.map(s => ({
+        weekday: WEEKDAY_BY_KEY[s.key],
+        openTime: s.startTime,
+        closeTime: s.endTime,
+        isClosed: !s.isActive,
+    }));
+}
+
+function mapCouponToDiscount(c: CouponItem): Discount {
+    const percentage = c.kind === 'percentage' && c.value != null ? c.value : 0;
+    return {
+        id: c.id,
+        code: c.code,
+        percentage,
+        description: c.kind === 'percentage' ? `${percentage}% تخفیف` : c.kind === 'fixed' ? `تخفیف ${c.value} تومان` : 'رایگان',
+        isActive: (c.usageMax == null || c.usageCount < c.usageMax) && (c.expiresAt == null || c.expiresAt > Date.now()),
+        applicableServices: c.serviceId ? [c.serviceId] : [],
+        validFrom: c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('fa-IR') : '',
+        validTo: c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('fa-IR') : '',
+    };
+}
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageActive, isLargeFont, setIsLargeFont, isHighContrast, setIsHighContrast, isVoiceAssistantEnabled, setIsVoiceAssistantEnabled, isAutoConfirmEnabled, setIsAutoConfirmEnabled, setActiveScreen }) => {
     type SheetName = 'wallet' | 'discounts' | 'accessibility' | 'sendSms' | 'bookingSettings';
@@ -116,27 +161,82 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
         setIsSubPageActive(activeSubPage !== null);
     }, [activeSubPage, setIsSubPageActive]);
 
-    // Include gender in profile data; default to 'female' for demonstration. Possible values: 'male', 'female', 'unisex'.
-    const [profileData, setProfileData] = useState({ name: 'سالن زیبایی شما', address: 'تهران، خیابان ولیعصر، پلاک ۱۲۳', about: 'ارائه دهنده جدیدترین خدمات آرایشی و پیرایشی با بیش از ۱۰ سال سابقه درخشان. ما در کات‌چی به زیبایی شما اهمیت می‌دهیم.', gender: 'female' as 'male' | 'female' | 'unisex' });
+    const [profileData, setProfileData] = useState({ name: 'سالن زیبایی شما', address: '', about: '', gender: 'female' as 'male' | 'female' | 'unisex' });
     const [avatar, setAvatar] = useState('https://picsum.photos/id/1027/100/100');
     const [background, setBackground] = useState('https://picsum.photos/seed/barbershop/600/400');
-    
     const [schedule, setSchedule] = useState<Schedule[]>(initialSchedule);
     const [services, setServices] = useState<Service[]>(initialServices);
-    const [discounts, setDiscounts] = useState<Discount[]>(initialDiscounts);
-    
-    // Wallet State
+    const [discounts, setDiscounts] = useState<Discount[]>([]);
+
     const [bankCard, setBankCard] = useState({ number: '', name: '', shaba: '' });
     const [newCard, setNewCard] = useState({ number: '', name: '', shaba: '' });
     const [cardErrors, setCardErrors] = useState({ number: '', name: '', shaba: '' });
     const [withdrawalAmount, setWithdrawalAmount] = useState('');
     const [walletView, setWalletView] = useState<'main' | 'addCard' | 'history'>('main');
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [paymentHistory, setPaymentHistory] = useState<Array<{ id: number; amount: number; date: string; status: string }>>([]);
 
-    // Discount State
     const [discountSheetView, setDiscountSheetView] = useState<'list' | 'form'>('list');
     const [editingDiscount, setEditingDiscount] = useState<Discount | null>(null);
     const [discountForSms, setDiscountForSms] = useState<Discount | null>(null);
-    
+    const [smsCustomers, setSmsCustomers] = useState<Customer[]>([]);
+
+    const fetchProfile = useCallback(async () => {
+        try {
+            const res = await api.get<GetBarberProfileResponse>('/barber/profile');
+            if (res.success && res.data) {
+                const b = res.data.barbershop;
+                setProfileData({ name: b.name, address: b.address || '', about: b.description || '', gender: b.gender });
+                setAvatar(b.profileImage || 'https://picsum.photos/id/1027/100/100');
+                setBackground(b.backgroundImage || 'https://picsum.photos/seed/barbershop/600/400');
+                if (res.data.schedules?.length) setSchedule(mapApiScheduleToSchedule(res.data.schedules));
+                if (res.data.services?.length) setServices(res.data.services.map(s => ({ id: s.id, name: s.name, price: s.price ?? 0, duration: s.estimatedTime, description: s.description || undefined, sampleImage: s.avatar || undefined })));
+            }
+        } catch { /* ignore */ }
+    }, []);
+
+    useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+    const fetchCoupons = useCallback(async () => {
+        try {
+            const res = await api.get<GetCouponsResponse>('/barber/coupons');
+            if (res.success && res.data) setDiscounts(res.data.coupons.map(mapCouponToDiscount));
+        } catch { setDiscounts([]); }
+    }, []);
+
+    const fetchWalletBalance = useCallback(async () => {
+        try {
+            const res = await api.get<GetWalletBalanceResponse>('/barber/wallet/balance');
+            if (res.success && res.balance != null) setWalletBalance(res.balance);
+        } catch { setWalletBalance(null); }
+    }, []);
+
+    const fetchPaymentHistory = useCallback(async () => {
+        try {
+            const res = await api.get<GetPaymentHistoryResponse>('/barber/wallet/payment-history');
+            if (res.success && res.data?.payments) {
+                setPaymentHistory(res.data.payments.map(p => ({
+                    id: p.id,
+                    amount: p.price,
+                    date: new Date(p.date).toLocaleDateString('fa-IR'),
+                    status: p.status,
+                })));
+            }
+        } catch { setPaymentHistory([]); }
+    }, []);
+
+    useEffect(() => {
+        if (isSheetOpen === 'wallet') fetchWalletBalance();
+    }, [isSheetOpen, fetchWalletBalance]);
+
+    useEffect(() => {
+        if (isSheetOpen === 'discounts') fetchCoupons();
+    }, [isSheetOpen, fetchCoupons]);
+
+    useEffect(() => {
+        if (isSheetOpen === 'wallet' && walletView === 'history') fetchPaymentHistory();
+    }, [isSheetOpen, walletView, fetchPaymentHistory]);
+
     type DialogAction = (() => void) | null;
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [dialogContent, setDialogContent] = useState({ title: '', description: '' });
@@ -150,30 +250,46 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
         setDialogOpen(true);
     };
     
-    // Discount Management
-    const handleSaveDiscount = (discountData: Discount) => {
-        if (editingDiscount) {
-            setDiscounts(discounts.map(d => d.id === discountData.id ? discountData : d));
-            window.showToast('تخفیف با موفقیت ویرایش شد.', 'success');
-        } else {
-            setDiscounts([...discounts, discountData]);
-            window.showToast('تخفیف جدید اضافه شد.', 'success');
+    const handleSaveDiscount = async (discountData: Discount) => {
+        try {
+            const body = { code: discountData.code, kind: 'percentage' as const, value: discountData.percentage };
+            if (editingDiscount) {
+                await api.put(`/barber/coupons/${discountData.id}`, body);
+                setDiscounts(prev => prev.map(d => d.id === discountData.id ? discountData : d));
+                window.showToast('تخفیف با موفقیت ویرایش شد.', 'success');
+            } else {
+                const res = await api.post<{ success: boolean; data?: { coupon: CouponItem } }>('/barber/coupons', body);
+                if (res.success && res.data?.coupon) {
+                    setDiscounts(prev => [...prev, mapCouponToDiscount(res.data!.coupon!)]);
+                    window.showToast('تخفیف جدید اضافه شد.', 'success');
+                }
+            }
+            setDiscountSheetView('list');
+            setEditingDiscount(null);
+        } catch {
+            window.showToast('خطا در ذخیره تخفیف', 'error');
         }
-        setDiscountSheetView('list');
-        setEditingDiscount(null);
     };
 
     const handleDeleteDiscount = (id: number) => {
         handleOpenDialog('حذف تخفیف', 'آیا از حذف این کد تخفیف اطمینان دارید؟', () => {
-            setDiscounts(discounts.filter(d => d.id !== id));
+            setDiscounts(prev => prev.filter(d => d.id !== id));
             window.showToast('کد تخفیف حذف شد.', 'info');
         }, true);
     };
 
-    const handleOpenSmsSheet = (discount: Discount) => {
+    const handleOpenSmsSheet = async (discount: Discount) => {
         setDiscountForSms(discount);
         setSheetOpen('sendSms');
-    }
+        try {
+            const res = await api.get<GetCustomersResponse>('/barber/customers');
+            if (res.success && res.data) {
+                setSmsCustomers(res.data.customers.map(c => ({ id: c.id, name: c.fullName || 'مشتری', avatar: c.avatar || '', phone: c.phone })));
+            }
+        } catch {
+            setSmsCustomers([]);
+        }
+    };
     
      // Wallet Management
     const handleAddCard = () => {
@@ -217,12 +333,19 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
             return;
         }
         handleOpenDialog(
-            'تایید برداشت وجه', 
+            'تایید برداشت وجه',
             `آیا برداشت مبلغ ${amount.toLocaleString('fa-IR')} تومان به کارت ثبت شده را تایید می‌کنید؟`,
-            () => {
-                window.showToast('درخواست برداشت شما ثبت شد.', 'success');
-                setWithdrawalAmount('');
-                setSheetOpen(null);
+            async () => {
+                try {
+                    await api.post('/barber/wallet/withdraw', { amount, method: 'card', reference: bankCard.shaba || undefined });
+                    setDialogOpen(false);
+                    window.showToast('درخواست برداشت شما ثبت شد.', 'success');
+                    setWithdrawalAmount('');
+                    setSheetOpen(null);
+                    fetchWalletBalance();
+                } catch {
+                    window.showToast('خطا در ثبت درخواست برداشت', 'error');
+                }
             }
         );
     };
@@ -257,10 +380,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
         return <EditScheduleScreen 
             initialSchedule={schedule} 
             onBack={() => setActiveSubPage(null)}
-            onSave={(newSchedule) => {
-                setSchedule(newSchedule);
-                setActiveSubPage(null);
-                window.showToast('ساعات کاری بروزرسانی شد.', 'success');
+            onSave={async (newSchedule) => {
+                try {
+                    await api.put('/barber/working-hours', { schedules: mapScheduleToApi(newSchedule) });
+                    setSchedule(newSchedule);
+                    setActiveSubPage(null);
+                    window.showToast('ساعات کاری بروزرسانی شد.', 'success');
+                } catch {
+                    window.showToast('خطا در بروزرسانی ساعات کاری', 'error');
+                }
             }}
         />
     }
@@ -394,6 +522,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                             aria-describedby="auto-confirm-desc"
                         />
                     </div>
+                    <div className="border-t pt-6">
+                        <ReservationRulesForm isVisible={isSheetOpen === 'bookingSettings'} />
+                    </div>
                 </div>
             </BottomSheet>
 
@@ -403,7 +534,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                     <div className="space-y-4">
                         <div className="bg-primary-50 p-4 rounded-lg text-center">
                             <p className="text-sm text-primary-800">موجودی قابل برداشت</p>
-                            <p className="text-3xl font-bold text-primary-900 mt-1">۱,۲۵۰,۰۰۰ <span className="text-base font-normal">تومان</span></p>
+                            <p className="text-3xl font-bold text-primary-900 mt-1">
+                                {walletBalance != null ? walletBalance.toLocaleString('fa-IR') : '-'} <span className="text-base font-normal">تومان</span>
+                            </p>
                         </div>
 
                         {bankCard.number ? (
@@ -474,16 +607,20 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                      <div>
                         <button type="button" onClick={() => setWalletView('main')} className="text-sm text-primary-600 mb-4 flex items-center gap-1"><ArrowRight size={16}/> بازگشت</button>
                         <div className="space-y-3">
-                            <h3 className="font-bold">تاریخچه برداشت‌ها</h3>
-                             {withdrawalHistory.map(item => (
+                            <h3 className="font-bold">تاریخچه پرداخت‌ها</h3>
+                            {paymentHistory.length > 0 ? paymentHistory.map(item => (
                                 <div key={item.id} className="bg-surface-1 p-3 rounded-lg flex justify-between items-center">
                                     <div>
                                         <p className="font-semibold">{item.amount.toLocaleString('fa-IR')} تومان</p>
                                         <p className="text-xs text-gray-600">{item.date}</p>
                                     </div>
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-success-100 text-success-700">موفق</span>
+                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${item.status === 'success' ? 'bg-success-100 text-success-700' : item.status === 'pending' ? 'bg-warning-100 text-warning-700' : 'bg-error-100 text-error-700'}`}>
+                                        {item.status === 'success' ? 'موفق' : item.status === 'pending' ? 'در انتظار' : 'ناموفق'}
+                                    </span>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="text-center text-gray-600 py-4">تاریخچه‌ای یافت نشد</p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -544,9 +681,16 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                 )}
             </BottomSheet>
             
-            {/* Send SMS Sheet */}
             <BottomSheet isOpen={isSheetOpen === 'sendSms'} onClose={() => setSheetOpen(null)} title={`ارسال کد ${discountForSms?.code}`}>
-                {discountForSms && <SendSmsSheet discount={discountForSms} customers={customers} onClose={() => setSheetOpen(null)}/>}
+                {discountForSms && <SendSmsSheet discount={discountForSms} customers={smsCustomers} onClose={() => setSheetOpen(null)} onSendSms={async (phoneNumbers) => {
+                    try {
+                        await api.post(`/barber/coupons/${discountForSms.id}/send-sms`, { couponId: discountForSms.id, phoneNumbers });
+                        window.showToast(`پیامک برای ${phoneNumbers.length} مشتری ارسال شد.`, 'success');
+                        setSheetOpen(null);
+                    } catch {
+                        window.showToast('خطا در ارسال پیامک', 'error');
+                    }
+                }} />}
             </BottomSheet>
 
 
@@ -623,24 +767,30 @@ const DiscountForm: React.FC<{
 };
 
 
-const SendSmsSheet: React.FC<{discount: Discount, customers: Customer[], onClose: () => void}> = ({ discount, customers, onClose }) => {
+const SendSmsSheet: React.FC<{ discount: Discount; customers: Customer[]; onClose: () => void; onSendSms: (phoneNumbers: string[]) => Promise<void> }> = ({ discount, customers, onClose, onSendSms }) => {
     const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
+    const [isSending, setIsSending] = useState(false);
     const message = `مشتری گرامی! کد تخفیف ${discount.percentage}% برای شما: ${discount.code}`;
 
     const handleToggleCustomer = (id: number) => {
-        setSelectedCustomers(prev => 
+        setSelectedCustomers(prev =>
             prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
         );
     };
 
-    const handleSendSms = () => {
+    const handleSendSms = async () => {
         if (selectedCustomers.length === 0) {
             window.showToast("لطفا حداقل یک مشتری را انتخاب کنید.", "error");
             return;
         }
-        window.showToast(`پیامک تخفیف برای ${selectedCustomers.length} مشتری ارسال شد.`, "success");
-        onClose();
-    }
+        const phoneNumbers = customers.filter(c => selectedCustomers.includes(c.id)).map(c => c.phone);
+        setIsSending(true);
+        try {
+            await onSendSms(phoneNumbers);
+        } finally {
+            setIsSending(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -669,8 +819,8 @@ const SendSmsSheet: React.FC<{discount: Discount, customers: Customer[], onClose
                     ))}
                 </div>
             </div>
-            <button type="button" onClick={handleSendSms} className="w-full h-12 bg-primary-600 text-white font-bold rounded-md flex items-center justify-center gap-2">
-                <Send size={18} /> ارسال به {selectedCustomers.length} نفر
+            <button type="button" onClick={handleSendSms} disabled={isSending || selectedCustomers.length === 0} className="w-full h-12 bg-primary-600 text-white font-bold rounded-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                <Send size={18} /> {isSending ? 'در حال ارسال...' : `ارسال به ${selectedCustomers.length} نفر`}
             </button>
         </div>
     )

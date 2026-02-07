@@ -5,6 +5,7 @@ import { getTodayAppointmentsService } from './today-appointments.service';
 /**
  * Get today's appointments controller
  * GET /api/barber/home/today-appointments
+ * Returns 403 when user has no barber profile yet (barberId missing) – complete onboarding first.
  */
 export async function getTodayAppointmentsController(req: AuthRequest, res: Response): Promise<void> {
   try {

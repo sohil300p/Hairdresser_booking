@@ -36,6 +36,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     console.log('❌ Token verification failed');
     res.status(401).json({
       success: false,
+      code: 'TOKEN_INVALID',
       message: 'Token نامعتبر یا منقضی شده است',
     });
     return;
@@ -53,9 +54,10 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     });
 
     if (!customer) {
-      console.log('❌ User not found in database:', { id: payload.sub, phone: payload.phone });
+      console.log('❌ User not found in database – forcing logout:', { id: payload.sub, phone: payload.phone });
       res.status(401).json({
         success: false,
+        code: 'USER_NOT_FOUND',
         message: 'کاربر یافت نشد - لطفاً مجدداً وارد شوید',
       });
       return;

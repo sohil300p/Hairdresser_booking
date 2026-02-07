@@ -647,12 +647,11 @@ export async function lockFundsForAppointmentService(
       });
     }
 
-    // Update appointment with payment lock reference
+    // Update appointment with payment lock reference (preserve priceTotal, only set paidAmount)
     await prisma.appointment.update({
       where: { id: appointmentId },
       data: {
         paymentLockExternalTransactionId: externalTx.id,
-        priceTotal: new Decimal(amount),
         paidAmount: method === 'wallet' ? new Decimal(amount) : new Decimal(0),
         status: method === 'wallet' ? 'paid' : 'pending',
         updated: BigInt(Date.now()),

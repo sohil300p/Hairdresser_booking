@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { barbersService, Barber } from '../../services/barbers.service';
+import { formatCurrency } from '../../modules/financial/utils/formatCurrency';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Search, Scissors, Phone, Mail, Briefcase, Wallet, Building2, Calendar } from 'lucide-react';
+import { Search, Scissors, Phone, Mail, Wallet, Building2, Calendar } from 'lucide-react';
 
 export default function BarbersPage() {
   const [barbers, setBarbers] = useState<Barber[]>([]);
@@ -43,14 +44,6 @@ export default function BarbersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'IRR',
-      minimumFractionDigits: 0,
-    }).format(amount);
   };
 
   return (

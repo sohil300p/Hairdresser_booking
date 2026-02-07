@@ -3,34 +3,43 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Users, Calendar, DollarSign, ChevronLeft } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { HomeScreenSkeleton } from './SkeletonLoader';
-// Use the shared Screen type exported from App.tsx instead of defining it locally.
 import type { Screen } from '../App';
-
-// Remove the local Screen type definition; it is now imported from App.tsx.
+import { api } from '../utils/api';
+import type {
+  GetDashboardResponse,
+  GetTodayAppointmentsResponse,
+  TodayAppointmentItem,
+} from '../types/api';
 
 interface HomeScreenProps {
     setActiveScreen: (screen: Screen) => void;
     onCustomerSelect: (id: number) => void;
+    /** Called when barber home returns 403 (no barber profile yet) – redirect to onboarding */
+    onRequireOnboarding?: () => void;
 }
 
-const insightData = [
-  { name: 'شنبه', درآمد: 400000 },
-  { name: '۱شنبه', درآمد: 300000 },
-  { name: '۲شنبه', درآمد: 600000 },
-  { name: '۳شنبه', درآمد: 280000 },
-  { name: '۴شنبه', درآمد: 500000 },
-  { name: '۵شنبه', درآمد: 450000 },
-  { name: 'جمعه', درآمد: 100000 },
-];
+const DAY_NAMES = ['شنبه', '۱شنبه', '۲شنبه', '۳شنبه', '۴شنبه', '۵شنبه', 'جمعه'];
+const REVENUE_KEYS = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const;
 
-const todayAppointments = [
-    { id: 1, name: 'احمد رضایی', service: 'اصلاح مو + ریش', time: '14:30', price: '150,000', avatar: 'https://picsum.photos/id/1005/100/100', status: 'confirmed' as const },
-    { id: 2, name: 'حسن محمدی', service: 'اصلاح مو', time: '16:00', price: '100,000', avatar: 'https://picsum.photos/id/1006/100/100', status: 'pending' as const },
-];
+function timestampToTime(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
 
-// Helper to map JS Date day (Sun=0) to our data array (Sat=0)
+function mapAppointmentToCard(appt: TodayAppointmentItem) {
+  return {
+    id: appt.customerId,
+    name: appt.customerName || 'مشتری',
+    service: appt.serviceName || '-',
+    time: timestampToTime(appt.startTime),
+    price: appt.priceTotal != null ? appt.priceTotal.toLocaleString('fa-IR') : '-',
+    avatar: appt.customerAvatar || 'https://picsum.photos/id/0/100/100',
+    status: appt.status as 'confirmed' | 'pending',
+  };
+}
+
 const getTodayIndex = () => {
-    const jsDay = new Date().getDay(); // Sunday: 0, Monday: 1, ..., Saturday: 6
+    const jsDay = new Date().getDay();
     return (jsDay + 1) % 7;
 };
 
@@ -47,12 +56,39 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveScreen, onCustomerSelect }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveScreen, onCustomerSelect, onRequireOnboarding }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<GetDashboardResponse['data'] | null>(null);
+  const [todayAppointments, setTodayAppointments] = useState<ReturnType<typeof mapAppointmentToCard>[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1500); // Simulate network request
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    async function fetchData() {
+      try {
+        const [dashRes, todayRes] = await Promise.all([
+          api.get<GetDashboardResponse>('/barber/home/dashboard'),
+          api.get<GetTodayAppointmentsResponse>('/barber/home/today-appointments'),
+        ]);
+        if (cancelled) return;
+        if (dashRes.success && dashRes.data) setDashboard(dashRes.data);
+        if (todayRes.success && todayRes.data) {
+          setTodayAppointments(todayRes.data.appointments.map(mapAppointmentToCard));
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setDashboard(null);
+          setTodayAppointments([]);
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes('403') || msg.includes('دسترسی به این بخش') || msg.includes('دسترسی')) {
+            onRequireOnboarding?.();
+          }
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    fetchData();
+    return () => { cancelled = true; };
   }, []);
 
   if (isLoading) {
@@ -60,17 +96,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveScreen, onCustomerSele
   }
 
   const todayIndex = getTodayIndex();
-  const todayIncome = insightData[todayIndex]?.درآمد || 0;
+  const insightData = dashboard?.weeklyRevenue
+    ? REVENUE_KEYS.map((key, i) => ({ name: DAY_NAMES[i], درآمد: dashboard.weeklyRevenue[key] }))
+    : DAY_NAMES.map(name => ({ name, درآمد: 0 }));
+  const todayIncome = insightData[todayIndex]?.درآمد ?? 0;
+  const barberName = dashboard?.barberName || '';
+  const barbershopName = dashboard?.barbershopName || 'سالن زیبایی شما';
+  const profileImage = dashboard?.barbershopProfileImage || 'https://picsum.photos/id/1027/100/100';
 
   return (
     <div className="flex flex-col bg-surface-1 h-full overflow-y-auto">
-      {/* Header */}
       <header className="sticky top-0 flex-shrink-0 bg-surface-1/80 backdrop-blur-sm z-40 p-4 border-b border-gray-200 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img src="https://picsum.photos/id/1027/100/100" alt="آواتار" className="w-12 h-12 rounded-full border-2 border-primary-600" />
+          <img src={profileImage} alt="آواتار" className="w-12 h-12 rounded-full border-2 border-primary-600 object-cover" />
           <div>
-            <p className="text-sm text-gray-700">امیرجان صبح بخیر! 👋</p>
-            <h1 className="font-bold text-lg text-black">سالن زیبایی شما</h1>
+            <p className="text-sm text-gray-700">{barberName ? `${barberName} صبح بخیر! 👋` : 'صبح بخیر! 👋'}</p>
+            <h1 className="font-bold text-lg text-black">{barbershopName}</h1>
           </div>
         </div>
         <button onClick={() => setActiveScreen('notifications')} className="relative p-2 rounded-full bg-white border border-gray-200" aria-label="اعلانات">
@@ -80,12 +121,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveScreen, onCustomerSele
       </header>
 
       <main className="flex-grow p-4 space-y-6">
-          {/* Insights Cards */}
           <div className="grid grid-cols-2 gap-4">
-            <InsightCard icon={Users} title="مشتریان" value="124" change="+12%" changeType="up" />
-            <InsightCard icon={Calendar} title="رزروهای فعال" value="5" subtext="در انتظار" />
+            <InsightCard icon={Users} title="مشتریان" value={String(dashboard?.totalCustomers ?? 0)} />
+            <InsightCard icon={Calendar} title="رزروهای فعال" value={String(dashboard?.activeReservations ?? 0)} subtext="در انتظار" />
             <div className="col-span-2">
-                <IncomeCard todayIncome={todayIncome} todayIndex={todayIndex} />
+                <IncomeCard insightData={insightData} todayIncome={todayIncome} todayIndex={todayIndex} />
             </div>
           </div>
           
@@ -97,7 +137,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ setActiveScreen, onCustomerSele
             </div>
             <div className="space-y-3">
               {todayAppointments.map((appt) => (
-                <CustomerCard key={appt.id} {...appt} onClick={() => onCustomerSelect(appt.id)} />
+                <CustomerCard key={`${appt.id}-${appt.time}`} {...appt} onClick={() => onCustomerSelect(appt.id)} />
               ))}
               {todayAppointments.length === 0 && (
                 <div className="text-center py-8 bg-white rounded-lg border border-gray-200 shadow-xs">
@@ -138,7 +178,7 @@ const InsightCard: React.FC<InsightCardProps> = ({ icon: Icon, title, value, cha
     </div>
 );
 
-const IncomeCard: React.FC<{ todayIncome: number, todayIndex: number }> = ({ todayIncome, todayIndex }) => (
+const IncomeCard: React.FC<{ insightData: { name: string; درآمد: number }[]; todayIncome: number; todayIndex: number }> = ({ insightData, todayIncome, todayIndex }) => (
     <div className="bg-white/70 backdrop-blur-md border border-white/30 p-4 rounded-lg shadow-xs h-full">
          <div className="flex items-center justify-between text-gray-600">
             <span className="text-sm font-medium">درآمد امروز</span>

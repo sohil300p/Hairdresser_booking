@@ -337,6 +337,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     //    b. If details MISSING -> DO NOT DELETE OTP, Return isNewUser: true.
 
     // Check if user exists or is new
+    const nowMs = BigInt(Date.now());
     let user = await prisma.customer.findUnique({
       where: { phone },
       select: {
@@ -344,9 +345,9 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         phone: true,
         fullName: true,
         role: true,
-        lastLoginAt: true,
-        createdAt: true,
-        updatedAt: true,
+        last_login: true,
+        created: true,
+        updated: true,
       },
     });
 
@@ -359,17 +360,18 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         data: {
           phone,
           role: 'customer' as Role,
-          lastLoginAt: new Date(),
-          // fullName and gender will be null initially
+          last_login: nowMs,
+          created: nowMs,
+          updated: nowMs,
         },
         select: {
           id: true,
           phone: true,
           fullName: true,
           role: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
+          last_login: true,
+          created: true,
+          updated: true,
         },
       });
       isNewUser = true;
@@ -388,16 +390,17 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       user = await prisma.customer.update({
         where: { phone },
         data: {
-          lastLoginAt: new Date(),
+          last_login: nowMs,
+          updated: nowMs,
         },
         select: {
           id: true,
           phone: true,
           fullName: true,
           role: true,
-          lastLoginAt: true,
-          createdAt: true,
-          updatedAt: true,
+          last_login: true,
+          created: true,
+          updated: true,
         },
       });
       console.log(`✅ Existing user logged in: ${phone} (ID: ${user.id})`);

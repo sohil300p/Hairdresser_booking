@@ -119,6 +119,9 @@ model Barbershop {
   averageRating   Float                @default(0)
   ratingCount     Int                  @default(0)
   publicMeta      Json?                @map("public_meta")
+  reservationPaymentPercent Int?      @default(100) @map("reservation_payment_percent")
+  cancellationPolicy       String?    @map("cancellation_policy")
+  cancellationTiers        Json?      @map("cancellation_tiers")
   created         BigInt               @default(0) @map("created")
   updated         BigInt               @default(0) @map("updated")
   appointments    Appointment[]

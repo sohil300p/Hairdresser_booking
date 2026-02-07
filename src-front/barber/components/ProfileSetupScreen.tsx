@@ -1,11 +1,13 @@
 
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Clock, Building, Scissors, ArrowRight, Info, Plus, Edit, Trash2, ImagePlus, Save, X, CheckCircle, MapPin } from 'lucide-react';
 import MaterialInput from './MaterialInput';
 import MaterialSelect from './MaterialSelect';
 import BottomSheet from './BottomSheet';
 import ConfirmationDialog from './ConfirmationDialog';
+import { MapLocationPicker } from './MapLocationPicker';
+import { MapirMapSelector } from './MapirMapSelector';
 import { api } from '../utils/api';
 
 interface ProfileSetupProps {
@@ -44,6 +46,8 @@ interface ProfileFormData {
     gender: 'male' | 'female' | 'unisex';
     profileImage?: string;
     profileImageFile?: File;
+    latitude?: number;
+    longitude?: number;
 }
 
 // --- INITIAL STATE ---
@@ -67,13 +71,30 @@ const initialFormData: ProfileFormData = {
 };
 
 const TOTAL_STEPS = 5;
+const ONBOARDING_STEP_KEY = 'barber_onboarding_step';
+
+function getSavedStep(): number {
+    try {
+        const s = parseInt(localStorage.getItem(ONBOARDING_STEP_KEY) ?? '1', 10);
+        const n = Number.isNaN(s) ? 1 : s;
+        return Math.max(1, Math.min(TOTAL_STEPS, n));
+    } catch {
+        return 1;
+    }
+}
 
 // --- MAIN COMPONENT ---
 const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) => {
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(getSavedStep);
     const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (step >= 1 && step <= TOTAL_STEPS) {
+            localStorage.setItem(ONBOARDING_STEP_KEY, String(step));
+        }
+    }, [step]);
 
     const updateFormData = (data: Partial<ProfileFormData>) => {
         setFormData(prev => ({ ...prev, ...data }));
@@ -81,7 +102,6 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
     
     const handleNext = async () => {
         if (step === TOTAL_STEPS) {
-            // Final step - submit to backend
             await handleSubmit();
         } else {
             setStep(s => Math.min(s + 1, TOTAL_STEPS + 1));
@@ -95,21 +115,21 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
 
         try {
             // Validate required fields
-            if (!formData.name.trim()) {
+            if (!(formData?.name ?? '').trim()) {
                 const error = 'نام سالن الزامی است';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
                 setIsSubmitting(false);
                 return;
             }
-            if (!formData.address.trim()) {
+            if (!(formData?.address ?? '').trim()) {
                 const error = 'آدرس الزامی است';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
                 setIsSubmitting(false);
                 return;
             }
-            if (formData.services.length === 0) {
+            if ((formData?.services ?? []).length === 0) {
                 const error = 'حداقل یک خدمت باید اضافه شود';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
@@ -118,9 +138,10 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             }
 
             // Validate profile image file if provided
-            if (formData.profileImageFile) {
+            const profileImageFile = formData?.profileImageFile;
+            if (profileImageFile) {
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-                if (!allowedTypes.includes(formData.profileImageFile.type)) {
+                if (!allowedTypes.includes(profileImageFile.type)) {
                     const error = 'فقط فایل‌های JPG، PNG و WebP پشتیبانی می‌شوند';
                     setSubmitError(error);
                     window.showToast?.(error, 'error');
@@ -129,7 +150,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                 }
 
                 const maxSize = 5 * 1024 * 1024; // 5MB
-                if (formData.profileImageFile.size > maxSize) {
+                if (profileImageFile.size > maxSize) {
                     const error = 'حجم فایل نباید بیشتر از ۵ مگابایت باشد';
                     setSubmitError(error);
                     window.showToast?.(error, 'error');
@@ -139,17 +160,18 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             }
 
             // Create FormData for multipart/form-data submission
+            const fd = formData ?? initialFormData;
             const submitFormData = new FormData();
-            submitFormData.append('name', formData.name.trim());
-            submitFormData.append('gender', formData.gender);
-            submitFormData.append('address', formData.address.trim());
-            if (formData.about.trim()) {
-                submitFormData.append('description', formData.about.trim());
+            submitFormData.append('name', (fd.name ?? '').trim());
+            submitFormData.append('gender', fd.gender ?? 'male');
+            submitFormData.append('address', (fd.address ?? '').trim());
+            if ((fd.about ?? '').trim()) {
+                submitFormData.append('description', (fd.about ?? '').trim());
             }
             
             // Add profile image if provided
-            if (formData.profileImageFile) {
-                submitFormData.append('profileImage', formData.profileImageFile);
+            if (fd.profileImageFile) {
+                submitFormData.append('profileImage', fd.profileImageFile);
             }
             
             // Note: Services and schedule will be handled via separate endpoints after profile creation
@@ -162,10 +184,10 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             }>('/barber/profile', submitFormData);
 
             if (result.success) {
+                try { localStorage.removeItem(ONBOARDING_STEP_KEY); } catch { }
                 window.showToast?.('پروفایل شما با موفقیت ایجاد شد!', 'success');
-                // Small delay to show success message before moving to success screen
                 setTimeout(() => {
-                    setStep(TOTAL_STEPS + 1); // Go to success screen
+                    setStep(TOTAL_STEPS + 1);
                 }, 500);
             } else {
                 throw new Error(result.message || 'خطا در ایجاد پروفایل');
@@ -191,9 +213,9 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
     
     const isNextDisabled = useMemo(() => {
         switch (step) {
-            case 1: return formData.name.trim() === '';
-            case 2: return formData.address.trim() === '';
-            case 4: return formData.services.length === 0;
+            case 1: return (formData?.name ?? '').trim() === '';
+            case 2: return (formData?.address ?? '').trim() === '';
+            case 4: return (formData?.services ?? []).length === 0;
             default: return false;
         }
     }, [step, formData]);
@@ -211,7 +233,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
     };
 
     const stepInfo: { [key: number]: { title: string, icon: React.ElementType } } = {
-        1: { title: 'نام سالن شما', icon: Building },
+        1: { title: 'اطلاعات اولیه', icon: Building },
         2: { title: 'آدرس و موقعیت', icon: MapPin },
         3: { title: 'درباره سالن', icon: Info },
         4: { title: 'خدمات و قیمت‌گذاری', icon: Scissors },
@@ -240,10 +262,13 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             </header>
 
             <main className="flex-grow flex flex-col p-6 text-center overflow-y-auto">
-                 <div className="inline-block bg-primary-100 p-3 rounded-full mb-3 self-center">
-                    {React.createElement(stepInfo[step].icon, { className: "w-8 h-8 text-primary-600" })}
+                <div className="flex items-center gap-3 items-center justify-center">
+                    <div className="inline-block bg-primary-100 p-3 rounded-full self-center">
+                        {React.createElement(stepInfo[step].icon, { className: "w-8 h-8 text-primary-600" })}
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">{stepInfo[step].title}</h1>
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">{stepInfo[step].title}</h1>
+
                 <div className="mt-6 text-right flex-grow">
                     {renderStepContent()}
                 </div>
@@ -299,8 +324,6 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
 
     return (
         <div className="space-y-6">
-            <p className="text-gray-600 mt-1 text-center">لطفا نام تجاری سالن یا فروشگاه خود را وارد کنید.</p>
-            
             {/* Profile Image Upload */}
             <div className="flex flex-col items-center mb-4">
                 <div
@@ -340,12 +363,12 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
                 />
             </div>
 
-            <MaterialInput id="salonName" label="نام سالن" value={data.name} onChange={e => onUpdate({ name: e.target.value })} />
+            <MaterialInput id="salonName" label="نام سالن/آرایشگاه" value={data?.name ?? ''} onChange={e => onUpdate({ name: e.target.value })} />
             {/* Salon gender selection */}
             <MaterialSelect
                 id="salonGender"
                 label="نوع سالن"
-                value={data.gender}
+                value={data?.gender ?? 'male'}
                 onChange={e => onUpdate({ gender: e.target.value as 'male' | 'female' | 'unisex' })}
             >
                 <option value="male">مردانه</option>
@@ -357,42 +380,30 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
 };
 
 const Step2Location: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => {
-    const [isMapSheetOpen, setMapSheetOpen] = useState(false);
-
-    const handleConfirmLocation = () => {
-        onUpdate({ address: "تهران، میدان آزادی، برج آزادی، طبقه اول" });
-        setMapSheetOpen(false);
-        window.showToast("آدرس از روی نقشه انتخاب شد.", "info");
-    };
-
     return (
-        <>
-            <div className="space-y-4">
-                <p className="text-gray-600 mt-1 text-center">آدرس خود را وارد کرده یا از روی نقشه انتخاب کنید.</p>
-                <MaterialInput id="salonAddress" label="آدرس (خیابان، شهر)" multiline value={data.address} onChange={e => onUpdate({ address: e.target.value })} />
-                <button 
-                    onClick={() => setMapSheetOpen(true)}
-                    className="w-full h-12 flex items-center justify-center gap-2 bg-gray-100 text-gray-800 font-semibold rounded-md hover:bg-gray-200 transition"
-                >
-                    <MapPin size={18} />
-                    انتخاب از روی نقشه
-                </button>
-            </div>
-            <BottomSheet isOpen={isMapSheetOpen} onClose={() => setMapSheetOpen(false)} title="موقعیت مکانی را انتخاب کنید">
-                <div className="flex flex-col items-center space-y-4">
-                     <div className="relative w-full h-64 bg-gray-300 rounded-lg overflow-hidden">
-                        <img src="https://www.google.com/maps/d/u/0/thumbnail?mid=1_2S-58R31162bl_cf09e9A0&hl=en" alt="نقشه" className="w-full h-full object-cover"/>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <MapPin className="w-10 h-10 text-error-500 drop-shadow-lg" />
-                        </div>
-                    </div>
-                    <p className="text-sm text-center text-gray-600">مکان‌نما را روی موقعیت دقیق سالن خود قرار داده و دکمه تایید را بزنید.</p>
-                    <button onClick={handleConfirmLocation} className="w-full h-12 bg-primary-600 text-white font-bold rounded-md">
-                        تایید موقعیت مکانی
-                    </button>
-                </div>
-            </BottomSheet>
-        </>
+        <div className="space-y-4 flex flex-col gap-1">
+            <p className="text-gray-600 mt-1 text-center">آدرس خود را وارد کرده یا نقشه را جابجا کنید؛ آدرس خودکار پر می‌شود.</p>
+            <label className="block text-sm font-medium text-gray-700">آدرس</label>
+            <MapLocationPicker
+                value={data?.address ?? ''}
+                onChange={(address, lat, lon) => onUpdate({ address, latitude: lat, longitude: lon })}
+                label=""
+                placeholder="جستجو یا وارد کردن آدرس..."
+                showMapSheet={false}
+            />
+            <input type="hidden" id="location_latitude" name="latitude" value={data?.latitude ?? ''} />
+            <input type="hidden" id="location_longitude" name="longitude" value={data?.longitude ?? ''} />
+            <MapirMapSelector
+                selectedLat={data?.latitude}
+                selectedLon={data?.longitude}
+                onSelect={(result) => onUpdate({
+                    address: result.address,
+                    latitude: result.latitude,
+                    longitude: result.longitude,
+                })}
+                height={380}
+            />
+        </div>
     );
 };
 
@@ -400,7 +411,7 @@ const Step2Location: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
 const Step3About: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => (
      <div className="space-y-4">
         <p className="text-gray-600 mt-1 text-center">به مشتریان بگویید چرا باید شما را انتخاب کنند. از تخصص‌ها و ویژگی‌های منحصر به فرد سالن خود بنویسید.</p>
-        <MaterialInput id="salonAbout" label="درباره سالن" multiline value={data.about} onChange={e => onUpdate({ about: e.target.value })} />
+        <MaterialInput id="salonAbout" label="درباره سالن" multiline value={data?.about ?? ''} onChange={e => onUpdate({ about: e.target.value })} />
     </div>
 );
 
@@ -411,11 +422,11 @@ const Step4Services: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
     const handleSaveService = (service: Service) => {
         let updatedServices;
         if (selectedService !== 'new' && selectedService?.id) {
-            updatedServices = data.services.map(s => s.id === service.id ? service : s);
-            window.showToast('خدمت ویرایش شد.', 'success');
+            updatedServices = (data?.services ?? []).map(s => s.id === service.id ? service : s);
+            window.showToast?.('خدمت ویرایش شد.', 'success');
         } else {
-            updatedServices = [...data.services, { ...service, id: Date.now() }];
-            window.showToast('خدمت جدید اضافه شد.', 'success');
+            updatedServices = [...(data?.services ?? []), { ...service, id: Date.now() }];
+            window.showToast?.('خدمت جدید اضافه شد.', 'success');
         }
         onUpdate({ services: updatedServices });
         setSelectedService(null);
@@ -423,9 +434,9 @@ const Step4Services: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
 
     const handleDeleteService = () => {
         if (serviceToDelete === null) return;
-        const updatedServices = data.services.filter(s => s.id !== serviceToDelete);
+        const updatedServices = (data?.services ?? []).filter(s => s.id !== serviceToDelete);
         onUpdate({ services: updatedServices });
-        window.showToast('خدمت حذف شد.', 'info');
+        window.showToast?.('خدمت حذف شد.', 'info');
         setServiceToDelete(null);
     };
 
@@ -433,7 +444,7 @@ const Step4Services: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
         <>
             <p className="text-gray-600 mt-1 text-center mb-4">حداقل یک خدمت را اضافه کنید. می‌توانید بعدا خدمات بیشتری اضافه کنید.</p>
             <div className="space-y-3">
-                {data.services.map(service => (
+                {(data?.services ?? []).map(service => (
                     <div key={service.id} className="bg-white p-3 rounded-lg flex justify-between items-center border shadow-xs">
                         <div className="flex items-center gap-3">
                             <img src={service.photo || 'https://picsum.photos/seed/placeholder/100'} alt={service.name} className="w-12 h-12 rounded-md object-cover bg-gray-200" />
@@ -477,20 +488,21 @@ const Step4Services: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
 
 const Step5Hours: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => {
     
+    const schedule = data?.schedule ?? [];
     const handleToggle = (key: string) => {
-        const newSchedule = data.schedule.map(d => d.key === key ? { ...d, isActive: !d.isActive } : d);
+        const newSchedule = schedule.map(d => d.key === key ? { ...d, isActive: !d.isActive } : d);
         onUpdate({ schedule: newSchedule });
     };
 
     const handleTimeChange = (key: string, field: 'startTime' | 'endTime', value: string) => {
-        const newSchedule = data.schedule.map(d => d.key === key ? { ...d, [field]: value } : d);
+        const newSchedule = schedule.map(d => d.key === key ? { ...d, [field]: value } : d);
         onUpdate({ schedule: newSchedule });
     };
 
     return (
          <div className="space-y-3">
             <p className="text-gray-600 mt-1 text-center mb-4">روزها و ساعات کاری خود را تنظیم کنید. می‌توانید بعدا این تنظیمات را تغییر دهید.</p>
-            {data.schedule.map(day => (
+            {schedule.map(day => (
                 <div key={day.key} className={`p-4 rounded-lg transition ${day.isActive ? 'bg-white border shadow-xs' : 'bg-gray-100'}`}>
                     <div className="flex items-center justify-between">
                         <span className="font-semibold text-lg text-brand-black">{day.name}</span>

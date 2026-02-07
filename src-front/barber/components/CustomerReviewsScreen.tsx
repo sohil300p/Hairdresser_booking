@@ -1,9 +1,10 @@
 
 
-import React, { useState } from 'react';
-import { ArrowRight, Star, ThumbsUp, ThumbsDown, User } from 'lucide-react';
-// Import the shared Screen type from App.tsx instead of redefining it locally.
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Star, User } from 'lucide-react';
 import type { Screen } from '../App';
+import { api } from '../utils/api';
+import type { GetCommentsResponse } from '../types/api';
 
 interface Review {
     id: number;
@@ -12,27 +13,53 @@ interface Review {
     date: string;
     text: string;
     service: string;
-    likes: number;
-    dislikes: number;
+    avatar: string | null;
+}
+
+function formatCommentDate(ts: number): string {
+    const d = new Date(ts);
+    const now = Date.now();
+    const diff = now - ts;
+    if (diff < 86400000) return 'امروز';
+    if (diff < 172800000) return 'دیروز';
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)} روز پیش`;
+    if (diff < 2592000000) return `${Math.floor(diff / 604800000)} هفته پیش`;
+    return d.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 interface CustomerReviewsScreenProps {
-  // Accept a navigation callback that adheres to the global Screen type.
   setActiveScreen: (screen: Screen) => void;
 }
 
-const initialReviews: Review[] = [
-    { id: 1, name: 'علی احمدی', rating: 5, date: '۲ روز پیش', text: 'کارشون عالی و حرفه‌ایه، همیشه مشتریشون هستم. واقعا بهترین آرایشگاه منطقه هستن.', service: 'اصلاح مو + ریش', likes: 12, dislikes: 0 },
-    { id: 2, name: 'سارا نادری', rating: 4, date: 'هفته پیش', text: 'محیط آروم و تمیزی دارن، فقط یکم زمان انتظار طولانی شد.', service: 'رنگ مو', likes: 8, dislikes: 1 },
-    { id: 3, name: 'حسن محمدی', rating: 5, date: 'هفته پیش', text: 'برخورد پرسنل عالی بود و از نتیجه کار خیلی راضی بودم.', service: 'اصلاح مو', likes: 15, dislikes: 0 },
-    { id: 4, name: 'مریم قاسمی', rating: 3, date: '۲ هفته پیش', text: 'قیمت‌هاشون یکم بالاست به نظرم.', service: 'اصلاح صورت', likes: 3, dislikes: 4 },
-    { id: 5, name: 'رضا حسینی', rating: 5, date: '۱ ماه پیش', text: 'بی‌نظیر! بهترین تجربه‌ی اصلاحی که تا حالا داشتم.', service: 'کراتینه', likes: 10, dislikes: 0 },
-];
-
 const CustomerReviewsScreen: React.FC<CustomerReviewsScreenProps> = ({ setActiveScreen }) => {
-    const [reviews, setReviews] = useState<Review[]>(initialReviews);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [averageRating, setAverageRating] = useState('0');
+    const [isLoading, setIsLoading] = useState(true);
 
-    const averageRating = (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1);
+    useEffect(() => {
+        async function fetchComments() {
+            try {
+                const res = await api.get<GetCommentsResponse>('/barber/comments');
+                if (res.success && res.data) {
+                    setReviews(res.data.comments.map(c => ({
+                        id: c.id,
+                        name: c.customerName || 'مشتری ناشناس',
+                        rating: c.rate ?? 0,
+                        date: formatCommentDate(c.createdAt),
+                        text: c.comment || '',
+                        service: c.serviceName || '-',
+                        avatar: c.customerAvatar,
+                    })));
+                    setAverageRating(res.data.averageRating.toFixed(1));
+                }
+            } catch {
+                setReviews([]);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchComments();
+    }, []);
 
     return (
         <div className="absolute inset-0 bg-surface-1 z-40 flex flex-col">
@@ -50,11 +77,15 @@ const CustomerReviewsScreen: React.FC<CustomerReviewsScreenProps> = ({ setActive
                     </div>
                     <p className="text-xs text-gray-600 mt-1">از مجموع {reviews.length} نظر</p>
                 </div>
-                <div className="space-y-3">
-                    {reviews.map(review => (
-                        <ReviewCard key={review.id} {...review} />
-                    ))}
-                </div>
+                {isLoading ? (
+                    <div className="text-center py-16 text-gray-600">در حال بارگذاری...</div>
+                ) : (
+                    <div className="space-y-3">
+                        {reviews.map(review => (
+                            <ReviewCard key={review.id} {...review} />
+                        ))}
+                    </div>
+                )}
             </main>
         </div>
     );
@@ -62,15 +93,19 @@ const CustomerReviewsScreen: React.FC<CustomerReviewsScreenProps> = ({ setActive
 
 interface ReviewCardProps extends Review {}
 
-const ReviewCard: React.FC<ReviewCardProps> = ({ id, rating, date, text, service, likes, dislikes }) => (
+const ReviewCard: React.FC<ReviewCardProps> = ({ name, rating, date, text, service, avatar }) => (
     <div className="bg-white p-4 rounded-lg border shadow-xs">
         <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-                <div className="bg-gray-100 p-2 rounded-full">
-                    <User className="w-4 h-4 text-gray-600" />
-                </div>
+                {avatar ? (
+                    <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                    <div className="bg-gray-100 p-2 rounded-full">
+                        <User className="w-4 h-4 text-gray-600" />
+                    </div>
+                )}
                 <div>
-                    <p className="font-bold text-sm">مشتری ناشناس</p>
+                    <p className="font-bold text-sm">{name}</p>
                     <p className="text-xs text-gray-600">برای <span className="font-semibold text-primary-700">{service}</span></p>
                 </div>
             </div>

@@ -15,7 +15,7 @@ import VoiceControl from './components/VoiceControl';
 import AddReservationScreen from './components/AddReservationScreen';
 import CustomerReviewsScreen from './components/CustomerReviewsScreen';
 import CustomerClubScreen from './components/CustomerClubScreen';
-import { setAuthHandlers } from './utils/api';
+import { api, setAuthHandlers } from './utils/api';
 import { requestForToken, onMessageListener } from './utils/firebase';
 
 // Added 'club' to the list of available screens to support the customer club feature.
@@ -89,26 +89,35 @@ const App: React.FC = () => {
       window.showToast(message, type);
     });
 
-    const timer = setTimeout(() => {
-      // Check for existing token
-      const token = localStorage.getItem('token');
-      if (token) {
-        // Token exists - go to app (user is already logged in)
-        // TODO: Optionally verify token with backend
-        setAppState('app');
-        
-        // Initialize Firebase Notifications
-        requestForToken();
-        onMessageListener().then((payload: any) => {
-             window.showToast(payload?.notification?.title || 'New Message', 'info');
-        }).catch(err => console.log('failed: ', err));
+    let cancelled = false;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      const t = setTimeout(() => {
+        if (!cancelled) setAppState('auth');
+      }, 1500);
+      return () => { cancelled = true; clearTimeout(t); };
+    }
 
-      } else {
-        // No token - go to auth
-        setAppState('auth');
+    (async () => {
+      await new Promise(r => setTimeout(r, 800));
+      if (cancelled) return;
+      try {
+        const res = await api.get<{ success: boolean; data?: unknown }>('/barber/profile');
+        if (cancelled) return;
+        if (res?.success && res?.data) {
+          setAppState('app');
+          requestForToken();
+          onMessageListener().then((payload: any) => {
+            window.showToast(payload?.notification?.title || 'New Message', 'info');
+          }).catch(() => {});
+        } else {
+          setAppState('profile_setup');
+        }
+      } catch {
+        if (!cancelled) setAppState('profile_setup');
       }
-    }, 1500); // Splash screen duration reduced for better perceived performance
-    return () => clearTimeout(timer);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -149,13 +158,20 @@ const App: React.FC = () => {
       window.showToast('پروفایل شما با موفقیت تکمیل شد!', 'success');
   };
 
-  const handleLogout = () => {
-    // Clear tokens from localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    // Reset app state to auth
-    setAppState('auth');
-    window.showToast('شما با موفقیت خارج شدید.', 'info');
+  const handleLogout = async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    try {
+      if (refreshToken) {
+        await api.post('/barber/logout', { refreshToken });
+      }
+    } catch {
+      // On 401, network error, or any failure: still clear tokens locally
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      setAppState('auth');
+      window.showToast('شما با موفقیت خارج شدید.', 'info');
+    }
   };
 
   const handleCustomerSelect = (customerId: number) => {
@@ -170,7 +186,13 @@ const App: React.FC = () => {
   const renderScreen = () => {
     switch (activeScreen) {
       case 'home':
-        return <HomeScreen setActiveScreen={setActiveScreen} onCustomerSelect={handleCustomerSelect} />;
+        return (
+          <HomeScreen
+            setActiveScreen={setActiveScreen}
+            onCustomerSelect={handleCustomerSelect}
+            onRequireOnboarding={() => setAppState('profile_setup')}
+          />
+        );
       case 'reservations':
         return <ReservationsScreen setActiveScreen={setActiveScreen} isAutoConfirmEnabled={isAutoConfirmEnabled} />;
       case 'customers':
@@ -202,7 +224,13 @@ const App: React.FC = () => {
       case 'club':
         return <CustomerClubScreen setActiveScreen={setActiveScreen} />;
       default:
-        return <HomeScreen setActiveScreen={setActiveScreen} onCustomerSelect={handleCustomerSelect} />;
+        return (
+          <HomeScreen
+            setActiveScreen={setActiveScreen}
+            onCustomerSelect={handleCustomerSelect}
+            onRequireOnboarding={() => setAppState('profile_setup')}
+          />
+        );
     }
   };
 
@@ -215,7 +243,7 @@ const App: React.FC = () => {
   }
 
   if (appState === 'profile_setup') {
-      return <ProfileSetupScreen onSetupComplete={handleProfileSetupComplete} />
+      return <ProfileSetupScreen onSetupComplete={handleProfileSetupComplete} />;
   }
 
   return (

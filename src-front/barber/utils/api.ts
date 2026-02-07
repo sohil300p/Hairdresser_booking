@@ -46,11 +46,18 @@ async function request<T>(method: string, path: string, body?: any, isFormData: 
     const response = await fetch(`${API_BASE_URL}${path}`, config);
 
     if (response.status === 401) {
-      if (logoutHandler && showToastHandler) {
-        showToastHandler('جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید', 'error');
-        logoutHandler();
+      let message = 'جلسه شما منقضی شده است. لطفاً مجدداً وارد شوید';
+      try {
+        const data = await response.json();
+        if (data?.message) message = data.message;
+      } catch {
+        // use default message
       }
-      throw new Error('Unauthorized - Session expired');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      if (logoutHandler) logoutHandler();
+      if (showToastHandler) showToastHandler(message, 'error');
+      throw new Error('Unauthorized');
     }
 
     if (!response.ok) {

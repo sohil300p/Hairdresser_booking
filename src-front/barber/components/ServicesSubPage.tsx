@@ -1,9 +1,10 @@
 
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowRight, Plus, Edit, Trash2, ImagePlus, Save, X } from 'lucide-react';
 import MaterialInput from './MaterialInput';
 import ConfirmationDialog from './ConfirmationDialog';
+import { api } from '../utils/api';
 
 interface Service {
     id: number;
@@ -24,6 +25,10 @@ const ServicesSubPage: React.FC<ServicesSubPageProps> = ({ initialServices, onSa
   const [services, setServices] = useState<Service[]>(initialServices);
   const [selectedService, setSelectedService] = useState<Service | 'new' | null>(null);
 
+  useEffect(() => {
+    setServices(initialServices);
+  }, [initialServices]);
+
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
 
@@ -31,16 +36,33 @@ const ServicesSubPage: React.FC<ServicesSubPageProps> = ({ initialServices, onSa
     onSave(services);
     onBack();
   };
-  
-  const handleSaveService = (service: Service) => {
-    if (selectedService !== 'new' && selectedService?.id) {
-        setServices(services.map(s => s.id === service.id ? service : s));
+
+  const handleSaveService = async (service: Service, photoFile?: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('name', service.name);
+      formData.append('price', String(service.price));
+      formData.append('estimatedTime', String(service.duration));
+      formData.append('description', service.description || '');
+      formData.append('gender', 'male');
+      if (photoFile) formData.append('avatar', photoFile);
+
+      if (selectedService !== 'new' && selectedService?.id) {
+        await api.uploadPut(`/barber/services/${service.id}`, formData);
+        setServices(prev => prev.map(s => s.id === service.id ? service : s));
         window.showToast('خدمت با موفقیت ویرایش شد.', 'success');
-    } else {
-        setServices([...services, { ...service, id: Date.now() }]);
-        window.showToast('خدمت جدید اضافه شد.', 'success');
+      } else {
+        const res = await api.upload<{ success: boolean; data?: { service: { id: number; name: string; price: number | null; estimatedTime: number; description: string | null; avatar: string | null } } }>('/barber/services', formData);
+        if (res.success && res.data?.service) {
+          const created = res.data.service;
+          setServices(prev => [...prev, { id: created.id, name: created.name, price: created.price ?? 0, duration: created.estimatedTime, description: created.description || undefined, sampleImage: created.avatar || undefined }]);
+          window.showToast('خدمت جدید اضافه شد.', 'success');
+        }
+      }
+      setSelectedService(null);
+    } catch {
+      window.showToast('خطا در ذخیره خدمت', 'error');
     }
-    setSelectedService(null);
   };
   
   const openDeleteDialog = (id: number) => {
@@ -56,10 +78,10 @@ const ServicesSubPage: React.FC<ServicesSubPageProps> = ({ initialServices, onSa
   };
   
   if (selectedService) {
-    return <AddEditServiceForm 
-        service={selectedService === 'new' ? null : selectedService} 
-        onSave={handleSaveService} 
-        onCancel={() => setSelectedService(null)} 
+    return <AddEditServiceForm
+        service={selectedService === 'new' ? null : selectedService}
+        onSave={handleSaveService}
+        onCancel={() => setSelectedService(null)}
     />
   }
 
@@ -101,9 +123,15 @@ const ServicesSubPage: React.FC<ServicesSubPageProps> = ({ initialServices, onSa
 };
 
 
-const AddEditServiceForm: React.FC<{ service: Service | null, onSave: (s: Service) => void, onCancel: () => void }> = ({ service, onSave, onCancel }) => {
+const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Service, photoFile?: File) => void | Promise<void>; onCancel: () => void }> = ({ service, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Service>(service || { id: 0, name: '', price: 0, duration: 0, description: '', sampleImage: '' });
+    const [photoFile, setPhotoFile] = useState<File | undefined>();
     const imageInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        setFormData(service || { id: 0, name: '', price: 0, duration: 0, description: '', sampleImage: '' });
+        setPhotoFile(undefined);
+    }, [service]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -113,13 +141,14 @@ const AddEditServiceForm: React.FC<{ service: Service | null, onSave: (s: Servic
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const previewUrl = URL.createObjectURL(file);
-            setFormData({ ...formData, sampleImage: previewUrl });
+            setFormData(prev => ({ ...prev, sampleImage: previewUrl }));
+            setPhotoFile(file);
         }
     };
-    
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        onSave(formData, photoFile);
     };
 
     return (

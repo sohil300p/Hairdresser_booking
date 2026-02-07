@@ -15,9 +15,9 @@ html {
 body {
   font-family: 'IRANSansX', 'Tahoma', sans-serif;
   direction: rtl;
-  font-feature-settings: "kern" on, "liga" on, "calt" on;
-  -webkit-font-feature-settings: "kern" on, "liga" on, "calt" on;
-  -moz-font-feature-settings: "kern" on, "liga" on, "calt" on;
+  font-feature-settings: "ss02" on, "liga" on, "calt" on;
+  -webkit-font-feature-settings: "ss02" on, "liga" on, "calt" on;
+  -moz-font-feature-settings: "ss02" on, "liga" on, "calt" on;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
