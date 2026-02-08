@@ -1,0 +1,23 @@
+meta {
+  name: Create Service
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/barber/services
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  name: Haircut
+  price: 500000
+  estimatedTime: 30
+  gender: male
+  avatar: @file()
+}

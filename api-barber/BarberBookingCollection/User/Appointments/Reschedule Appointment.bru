@@ -1,0 +1,26 @@
+meta {
+  name: Reschedule Appointment
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/appointments/:id/reschedule
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "date": "2023-10-28",
+    "time": "15:00"
+  }
+}

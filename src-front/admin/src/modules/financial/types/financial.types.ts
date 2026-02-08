@@ -1,4 +1,4 @@
-export type WalletOwnerType = 'customer' | 'barber' | 'barbershop';
+export type WalletOwnerType = 'customer' | 'barber' | 'barbershop' | 'system';
 
 export interface WalletSummary {
   ownerType: WalletOwnerType;

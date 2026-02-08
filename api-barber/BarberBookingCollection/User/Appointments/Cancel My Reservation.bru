@@ -1,0 +1,25 @@
+meta {
+  name: Cancel My Reservation
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/my-reservations/:id/cancel
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "reason": "Personal reasons"
+  }
+}

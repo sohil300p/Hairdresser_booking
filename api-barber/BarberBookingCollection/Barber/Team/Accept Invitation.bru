@@ -1,0 +1,19 @@
+meta {
+  name: Accept Invitation
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/barber/invitations/:token/accept
+  body: none
+  auth: bearer
+}
+
+params:path {
+  token: some_invitation_token
+}
+
+auth:bearer {
+  token: {{token}}
+}

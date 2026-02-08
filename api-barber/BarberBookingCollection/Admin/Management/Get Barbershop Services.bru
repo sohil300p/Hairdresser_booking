@@ -1,0 +1,19 @@
+meta {
+  name: Get Barbershop Services
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/admin/barbershops/:barbershopId/services
+  body: none
+  auth: bearer
+}
+
+params:path {
+  barbershopId: 1
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

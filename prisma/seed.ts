@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -154,8 +154,16 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Error during seeding:', e);
+  .catch((e: { code?: string; meta?: { modelName?: string } }) => {
+    if (e.code === 'P2021' && e.meta?.modelName) {
+      console.error('❌ Error: The table for this model does not exist in the database.');
+      console.error('\n💡 Apply the schema first, then run the seed again:');
+      console.error('   npx prisma migrate deploy   (or  npx prisma db push)');
+      console.error('   npm run prisma:seed');
+      console.error('\n   Or run:  npm run prisma:deploy:seed');
+    } else {
+      console.error('❌ Error during seeding:', e);
+    }
     process.exit(1);
   })
   .finally(async () => {

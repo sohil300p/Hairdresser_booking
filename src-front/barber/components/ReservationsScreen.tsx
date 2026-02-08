@@ -125,16 +125,16 @@ const ReservationsScreen: React.FC<ReservationsScreenProps> = ({ setActiveScreen
             <CalendarView reservations={reservations.filter(r => r.status !== 'cancelled')} onAction={handleReservationAction} />
         )}
       </main>
-
       <button 
         type="button"
         onClick={() => setActiveScreen('addReservation')}
-        className="fixed left-6 bg-primary-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 hover:shadow-primary-lg hover:scale-105 active:scale-100 transition-all duration-200 ease-in-out z-30" 
+        className="fixed mr-5 bg-primary-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 hover:shadow-primary-lg hover:scale-105 active:scale-100 transition-all duration-200 ease-in-out z-30" 
         style={{bottom: 'calc(5rem + env(safe-area-inset-bottom))'}} 
         aria-label="افزودن رزرو جدید"
       >
         <Plus size={28} />
       </button>
+
     </div>
   );
 };

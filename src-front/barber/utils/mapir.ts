@@ -4,7 +4,18 @@
  * Docs: https://help.map.ir/reverse_api/ , https://help.map.ir/documentation/searchv2-docs/
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+export const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL !== ''
+      ? import.meta.env.VITE_API_BASE_URL
+      : 'http://localhost:3000/api');
+
+/** Absolute URL for Map.ir proxy (required by Request constructor in mapbox-gl). */
+export function getMapirProxyBase(): string {
+  const base = API_BASE.replace(/\/$/, '');
+  if (typeof window === 'undefined') return base;
+  return base.startsWith('http') ? base : `${window.location.origin}${base.startsWith('/') ? base : `/${base}`}`;
+}
 
 function getApiKey(): string {
   const key = import.meta.env.VITE_MAPIR_API_KEY;
@@ -17,6 +28,8 @@ export interface MapirSearchItem {
   latitude: number;
   longitude: number;
   title?: string;
+  /** e.g. POI, Roads, Cities – from Map.ir when both place and address search are used */
+  type?: string;
 }
 
 const SEARCH_TIMEOUT_MS = 10_000;
@@ -45,19 +58,22 @@ export async function mapirSearch(text: string, signal?: AbortSignal | null): Pr
     });
     clearTimeout(timeoutId);
     const data = await res.json().catch(() => ({}));
-    const items = data?.value ?? data?.items ?? Array.isArray(data) ? data : [];
+    const items = data?.value ?? data?.items ?? data?.results ?? (Array.isArray(data) ? data : []);
     return items
-      .filter((x: { address?: unknown; geom?: { coordinates?: unknown[] } }) => x?.address != null && x?.geom?.coordinates != null)
-      .map((x: { address: string; geom: { coordinates: number[] }; title?: string }) => {
-        const [lon, lat] = Array.isArray(x.geom?.coordinates) ? x.geom.coordinates : [NaN, NaN];
+      .map((x: Record<string, unknown>) => {
+        const lat = typeof x?.latitude === 'number' ? x.latitude : Array.isArray((x?.geom as { coordinates?: number[] })?.coordinates) ? (x.geom as { coordinates: number[] }).coordinates[1] : NaN;
+        const lon = typeof x?.longitude === 'number' ? x.longitude : Array.isArray((x?.geom as { coordinates?: number[] })?.coordinates) ? (x.geom as { coordinates: number[] }).coordinates[0] : NaN;
+        const address = (typeof x?.address === 'string' ? x.address : null) ?? (typeof x?.formattedAddress === 'string' ? x.formattedAddress : null) ?? (typeof x?.title === 'string' ? x.title : null) ?? (typeof x?.name === 'string' ? x.name : null) ?? '';
+        const type = (x?.type ?? x?.category ?? x?.kind) as string | undefined;
         return {
-          address: String(x.address),
+          address: String(address || ''),
           latitude: Number(lat),
           longitude: Number(lon),
-          title: x.title ?? x.address,
+          title: (x?.title ?? x?.address ?? x?.formattedAddress ?? address) as string,
+          type,
         };
       })
-      .filter((x: MapirSearchItem) => !Number.isNaN(x.latitude) && !Number.isNaN(x.longitude));
+      .filter((x: MapirSearchItem) => x.address !== '' && !Number.isNaN(x.latitude) && !Number.isNaN(x.longitude));
   } catch {
     clearTimeout(timeoutId);
     return [];
@@ -72,9 +88,21 @@ export interface MapirReverseResult {
 
 const REVERSE_TIMEOUT_MS = 8_000;
 
+/** Remove duplicate segments (e.g. "تهران" repeated) from Map.ir reverse address. */
+function normalizeReverseAddress(addr: string): string {
+  const parts = addr.split(/[،,]+/).map((p) => p.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const kept = parts.filter((p) => {
+    if (seen.has(p)) return false;
+    seen.add(p);
+    return true;
+  });
+  return kept.join('، ');
+}
+
 /**
  * Reverse geocode: get address from lat/lon via backend proxy → Map.ir Reverse.
- * Optional signal allows cancelling when map is moved again before response.
+ * Prefers compact address and deduplicates repeated parts (e.g. تهران).
  */
 export async function mapirReverse(lat: number, lon: number, signal?: AbortSignal | null): Promise<MapirReverseResult | null> {
   if (signal?.aborted) return null;
@@ -89,11 +117,12 @@ export async function mapirReverse(lat: number, lon: number, signal?: AbortSigna
     clearTimeout(timeoutId);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return null;
-    const address =
-      data?.address ?? data?.addressCompact ?? data?.address_compact ?? null;
-    if (!address) return null;
+    const raw =
+      data?.address_compact ?? data?.addressCompact ?? data?.address ?? null;
+    if (!raw) return null;
+    const address = normalizeReverseAddress(String(raw));
     return {
-      address: String(address),
+      address,
       latitude: lat,
       longitude: lon,
     };

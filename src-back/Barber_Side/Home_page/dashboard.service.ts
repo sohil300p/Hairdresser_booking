@@ -9,7 +9,7 @@ export async function getDashboardService(
   barberId: number
 ): Promise<GetDashboardResponse> {
   try {
-    // Get barber with barbershop info
+    // Get barber with barbershop info (owner or staff member)
     const barber = await prisma.barber.findUnique({
       where: { id: barberId },
       select: {
@@ -22,6 +22,14 @@ export async function getDashboardService(
           },
           take: 1,
         },
+        barbershopMembers: {
+          take: 1,
+          include: {
+            barbershop: {
+              select: { id: true, name: true, avatar: true },
+            },
+          },
+        },
       },
     });
 
@@ -32,7 +40,9 @@ export async function getDashboardService(
       };
     }
 
-    const barbershop = barber.ownedBarbershops[0];
+    const barbershop =
+      barber.ownedBarbershops[0] ??
+      barber.barbershopMembers[0]?.barbershop;
     if (!barbershop) {
       return {
         success: false,

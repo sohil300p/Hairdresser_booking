@@ -1,0 +1,17 @@
+meta {
+  name: Calculate Revenue Share
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/revenue-share/calculate
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "amount": 100000
+  }
+}

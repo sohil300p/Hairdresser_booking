@@ -178,6 +178,9 @@ export default function ReservationRulesForm({ isVisible, onSaved }: Reservation
               <p className="text-sm text-gray-600 mt-2">
                 ۰٪ = بازپرداخت کامل، ۱۰۰٪ = بدون بازپرداخت
               </p>
+              <p className="text-sm text-success-700 bg-success-50 border border-success-200 rounded-lg p-2 mt-2">
+                در صورت لغو رزرو توسط آرایشگر، مبلغ به کیف پول مشتری با ۱۰۰٪ بازپرداخت می‌شود.
+              </p>
             </div>
           )}
 

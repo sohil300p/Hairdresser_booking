@@ -9,12 +9,16 @@ export interface NotificationUser {
   lastActive: string | null;
 }
 
+export type NotificationChannel = 'push' | 'email' | 'sms';
+
 export interface SendNotificationData {
   userId: number;
   userType: 'customer' | 'barber';
   title: string;
   body: string;
   data?: Record<string, string>;
+  /** Channels to skip (e.g. block email/SMS, only send push). */
+  blockChannels?: NotificationChannel[];
 }
 
 export const notificationService = {

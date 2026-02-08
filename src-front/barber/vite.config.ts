@@ -37,6 +37,24 @@ function serveMapDist() {
   };
 }
 
+const MAPIR_VECTOR_LOAD_RE =
+  /fetch\("https:\/\/map\.ir\/vector\/load\?x-api-key="\.concat\(this\.props\.apiKey\),/g;
+const MAPIR_PROXY_FETCH =
+  'fetch((window.__MAPIR_PROXY_BASE__||"http://localhost:3000/api")+"/mapir/proxy?url="+encodeURIComponent("https://map.ir/vector/load?x-api-key="+this.props.apiKey),';
+
+/** Rewrite map.ir vector/load fetch in mapir-react-component to use backend proxy (avoids CORS). */
+function mapirProxyPlugin() {
+  return {
+    name: 'mapir-proxy',
+    transform(code: string, id: string) {
+      if (!id.includes('mapir-react-component')) return null;
+      const re = new RegExp(MAPIR_VECTOR_LOAD_RE.source, 'g');
+      const out = code.replace(re, MAPIR_PROXY_FETCH);
+      return out !== code ? { code: out, map: null } : null;
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const rootEnvDir = path.resolve(__dirname, '../..');
   const env = loadEnv(mode, rootEnvDir, '');
@@ -46,8 +64,19 @@ export default defineConfig(({ mode }) => {
       port: 3002,
       host: '0.0.0.0',
       fs: { allow: [path.resolve(__dirname, '..')] },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err) => {
+              console.warn('[vite] API proxy error (backend on :3000 not reachable):', err.message);
+            });
+          },
+        },
+      },
     },
-    plugins: [react(), serveMapDist()],
+    plugins: [react(), serveMapDist(), mapirProxyPlugin()],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },

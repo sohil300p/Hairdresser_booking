@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Wallet, Users, Building2, Store } from 'lucide-react';
+import { Wallet, Users, Building2, Store, Banknote } from 'lucide-react';
 import { formatCurrency } from '../utils/formatCurrency';
 import type { WalletSummary } from '../types/financial.types';
 
@@ -8,12 +8,14 @@ const ownerLabels: Record<string, string> = {
   customer: 'Customers',
   barber: 'Barbers',
   barbershop: 'Barbershops',
+  system: 'System (Platform)',
 };
 
 const ownerIcons: Record<string, React.ReactNode> = {
   customer: <Users className="h-5 w-5" />,
   barber: <Store className="h-5 w-5" />,
   barbershop: <Building2 className="h-5 w-5" />,
+  system: <Banknote className="h-5 w-5" />,
 };
 
 interface WalletSummaryCardProps {

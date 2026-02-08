@@ -1,0 +1,23 @@
+meta {
+  name: Edit Working Hours
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/barber/working-hours
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "weekday": 0,
+    "startMs": 32400000,
+    "endMs": 64800000
+  }
+}

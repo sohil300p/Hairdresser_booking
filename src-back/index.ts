@@ -7,6 +7,7 @@ import { getRedisClient, isRedisConnected } from './All_Utils/config/redis';
 import { ensureMinioInitialized, testMinioConnection } from './All_Utils/config/minio';
 import { initializeFirebase } from './All_Utils/Notification/firebase';
 import routes from './All_Utils/routes/routes';
+import { mapirProxyController, mapirSearchController, mapirReverseController } from './All_Utils/Mapir/mapir-proxy.controller';
 
 const redisClient = getRedisClient();
 
@@ -23,8 +24,18 @@ app.use(cors({
   origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
   credentials: true,
 }));
+
+// Map.ir tile proxy (before json middleware so POST body stays raw for binary tiles)
+app.get('/api/mapir/proxy', mapirProxyController);
+app.post('/api/mapir/proxy', express.raw({ type: () => true }), mapirProxyController);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Map.ir search & reverse (registered on app so path is guaranteed)
+app.get('/api/mapir/search', mapirSearchController);
+app.post('/api/mapir/search', mapirSearchController);
+app.get('/api/mapir/reverse', mapirReverseController);
 
 // Routes
 app.use('/api', routes);

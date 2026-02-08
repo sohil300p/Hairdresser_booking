@@ -1,16 +1,30 @@
+/// <reference types="vite/client" />
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Mapir from 'mapir-react-component';
 import 'mapir-react-component/dist/index.css';
 import { MapPin } from 'lucide-react';
-import { mapirReverse } from '../utils/mapir';
+import { mapirReverse, API_BASE, getMapirProxyBase } from '../utils/mapir';
 
 const API_KEY = import.meta.env.VITE_MAPIR_API_KEY ?? '';
 const isConfigured = !!API_KEY && API_KEY !== 'your-mapir-api-key';
 
+if (typeof window !== 'undefined') {
+  (window as unknown as { __MAPIR_PROXY_BASE__?: string }).__MAPIR_PROXY_BASE__ = getMapirProxyBase();
+}
+
+/** Rewrite map.ir URLs to backend proxy (absolute URL required by Request in mapbox-gl). */
+function mapirUrlToProxy(url: string): string {
+  if (url.startsWith('https://map.ir/') || url.startsWith('https://api.map.ir/')) {
+    const base = typeof window !== 'undefined' ? getMapirProxyBase() : API_BASE.replace(/\/$/, '');
+    return `${base}/mapir/proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 const Map = isConfigured
   ? Mapir.setToken({
       transformRequest: (url: string) => ({
-        url,
+        url: mapirUrlToProxy(url),
         headers: {
           'x-api-key': API_KEY,
           'Mapir-SDK': 'reactjs',
@@ -33,14 +47,20 @@ export interface MapSelectorResult {
 interface MapirMapSelectorProps {
   selectedLat?: number;
   selectedLon?: number;
+  /** When this changes, map remounts to recenter (address search selection → map updates). */
+  centerKey?: number;
   onSelect: (result: MapSelectorResult) => void;
+  /** When provided, map pan only reports coordinates (no address). Omit so pan → address is refreshed. */
+  onMapMove?: (lat: number, lon: number) => void;
   height?: number;
 }
 
 export function MapirMapSelector({
   selectedLat,
   selectedLon,
+  centerKey,
   onSelect,
+  onMapMove,
   height = 380,
 }: MapirMapSelectorProps) {
   const [loading, setLoading] = useState(false);
@@ -48,6 +68,11 @@ export function MapirMapSelector({
   const containerRef = useRef<HTMLDivElement>(null);
   const reverseAbortRef = useRef<AbortController | null>(null);
   const moveEndDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipReverseAfterRecenterRef = useRef(false);
+
+  useEffect(() => {
+    if (centerKey != null) skipReverseAfterRecenterRef.current = true;
+  }, [centerKey]);
 
   useEffect(() => {
     return () => {
@@ -69,6 +94,10 @@ export function MapirMapSelector({
   const fetchAddressForCenter = useCallback(
     (map: { getCenter?: () => { lat: number; lng: number } } | null | undefined) => {
       if (!map?.getCenter) return;
+      if (skipReverseAfterRecenterRef.current) {
+        skipReverseAfterRecenterRef.current = false;
+        return;
+      }
       const c = map.getCenter();
       const lat = c.lat;
       const lng = c.lng;
@@ -84,32 +113,44 @@ export function MapirMapSelector({
 
       setLoading(true);
       setError(null);
-      onSelect({ latitude: lat, longitude: lng, address: '' });
+      if (onMapMove) {
+        onMapMove(lat, lng);
+      } else {
+        onSelect({ latitude: lat, longitude: lng, address: '' });
+      }
       mapirReverse(lat, lng, controller.signal)
         .then((rev) => {
           if (controller.signal.aborted) return;
           reverseAbortRef.current = null;
-          onSelect({
-            latitude: lat,
-            longitude: lng,
-            address: rev?.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-          });
+          if (onMapMove) {
+            onMapMove(lat, lng);
+          } else {
+            onSelect({
+              latitude: lat,
+              longitude: lng,
+              address: rev?.address ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            });
+          }
         })
         .catch(() => {
           if (controller.signal.aborted) return;
           reverseAbortRef.current = null;
           setError('دریافت آدرس ناموفق بود.');
-          onSelect({
-            latitude: lat,
-            longitude: lng,
-            address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-          });
+          if (onMapMove) {
+            onMapMove(lat, lng);
+          } else {
+            onSelect({
+              latitude: lat,
+              longitude: lng,
+              address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            });
+          }
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false);
         });
     },
-    [onSelect]
+    [onSelect, onMapMove]
   );
 
   const onMoveEndHandler = useCallback(
@@ -161,8 +202,9 @@ export function MapirMapSelector({
   }
 
   return (
-    <div ref={containerRef} className="w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative h-[calc(100vh-435px)]">
+    <div ref={containerRef} className="w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-100 relative h-[calc(100vh-450px)]">
       <Mapir
+        key={centerKey != null ? `map-${centerKey}` : undefined}
         Map={Map}
         apiKey={API_KEY}
         center={center}
@@ -175,7 +217,7 @@ export function MapirMapSelector({
         className="absolute inset-0 flex items-center justify-center pointer-events-none"
         aria-hidden
       >
-        <MapPin className="w-12 h-12 text-red-600 drop-shadow-lg -translate-y-1/2" style={{ marginBottom: 0 }} />
+        <MapPin className="w-12 h-12 text-primary-600 drop-shadow-lg -translate-y-1/2" style={{ marginBottom: 0 }} />
       </div>
       {loading && (
         <div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none">

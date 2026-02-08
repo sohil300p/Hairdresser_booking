@@ -22,50 +22,41 @@ function msToTime(ms: number): string {
  */
 export async function getBarberProfileService(barberId: number): Promise<GetBarberProfileResponse> {
   try {
-    // Find barber
+    const barbershopSelect = {
+      id: true,
+      name: true,
+      gender: true,
+      address: true,
+      description: true,
+      avatar: true,
+      publicMeta: true,
+      services: {
+        where: { parentServiceId: null },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          estimatedTime: true,
+          files: true,
+          avatar: true,
+        },
+        orderBy: { created: 'asc' },
+      },
+      schedules: {
+        select: { weekday: true, openMs: true, closeMs: true, isClosed: true },
+        orderBy: { weekday: 'asc' },
+      },
+    };
+
     const barber = await prisma.barber.findUnique({
       where: { id: barberId },
       select: {
         id: true,
-        ownedBarbershops: {
-          select: {
-            id: true,
-            name: true,
-            gender: true,
-            address: true,
-            description: true,
-            avatar: true,
-            publicMeta: true,
-            services: {
-              where: {
-                parentServiceId: null, // Only top-level services
-              },
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                price: true,
-                estimatedTime: true,
-                files: true,
-                avatar: true,
-              },
-              orderBy: {
-                created: 'asc',
-              },
-            },
-            schedules: {
-              select: {
-                weekday: true,
-                openMs: true,
-                closeMs: true,
-                isClosed: true,
-              },
-              orderBy: {
-                weekday: 'asc',
-              },
-            },
-          },
-          take: 1, // Get first barbershop (assuming one barber has one barbershop)
+        ownedBarbershops: { select: barbershopSelect, take: 1 },
+        barbershopMembers: {
+          take: 1,
+          include: { barbershop: { select: barbershopSelect } },
         },
       },
     });
@@ -77,7 +68,8 @@ export async function getBarberProfileService(barberId: number): Promise<GetBarb
       };
     }
 
-    const barbershop = barber.ownedBarbershops[0];
+    const barbershop =
+      barber.ownedBarbershops[0] ?? barber.barbershopMembers[0]?.barbershop;
 
     if (!barbershop) {
       return {
@@ -254,6 +246,17 @@ export async function createBarberProfileService(
         publicMeta: true,
       },
     });
+
+    // Update barber fullName if provided
+    if (data.fullName != null && String(data.fullName).trim()) {
+      await prisma.barber.update({
+        where: { id: barberId },
+        data: {
+          fullName: data.fullName.trim(),
+          updated: BigInt(Date.now()),
+        },
+      });
+    }
 
     // Create wallet for new barbershop
     try {

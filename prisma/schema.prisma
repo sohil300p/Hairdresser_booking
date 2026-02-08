@@ -88,14 +88,33 @@ model Barber {
   timeOff            BarberTimeOff[]
   customer           Customer            @relation("CustomerBarber", fields: [userRefId], references: [id], onDelete: Cascade)
   ownedBarbershops   Barbershop[]        @relation("BarbershopOwner")
+  barbershopMembers BarbershopMember[]
+  barbershopInvitationsSent BarbershopInvitation[] @relation("BarbershopInvitationsSent")
   packagePurchases   PackagePurchase[]
   transactions       Transaction[]       @relation("BarberTransactions")
   sessions           UserSession[]       @relation("BarberSessions")
+  inAppNotifications BarberInAppNotification[]
 
   @@index([userRefId])
   @@index([email])
   @@index([phone])
   @@map("barbers")
+}
+
+model BarberInAppNotification {
+  id        Int      @id @default(autoincrement())
+  barberId  Int      @map("barber_id")
+  type      String   @map("type")
+  title     String   @map("title")
+  body      String   @db.Text
+  read      Boolean  @default(false)
+  meta      Json?    @map("meta")
+  created   BigInt   @default(0) @map("created")
+  barber    Barber   @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@index([barberId, read])
+  @@map("barber_in_app_notifications")
 }
 
 model Barbershop {
@@ -122,17 +141,55 @@ model Barbershop {
   reservationPaymentPercent Int?      @default(100) @map("reservation_payment_percent")
   cancellationPolicy       String?    @map("cancellation_policy")
   cancellationTiers        Json?      @map("cancellation_tiers")
+  platformCommissionPercent Int?      @map("platform_commission_percent")
   created         BigInt               @default(0) @map("created")
   updated         BigInt               @default(0) @map("updated")
   appointments    Appointment[]
   schedules       BarbershopSchedule[]
   owner           Barber               @relation("BarbershopOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         BarbershopMember[]
+  invitations     BarbershopInvitation[]
   commentRates    CommentRate[]
   services        Service[]
   transactions    Transaction[]
 
   @@index([ownerId])
   @@map("barbershops")
+}
+
+model BarbershopMember {
+  id           Int        @id @default(autoincrement())
+  barbershopId Int        @map("barbershop_id")
+  barberId     Int        @map("barber_id")
+  role         String     @default("staff")
+  joinedAt     BigInt     @map("joined_at")
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  barber       Barber     @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([barbershopId, barberId])
+  @@index([barbershopId])
+  @@index([barberId])
+  @@map("barbershop_members")
+}
+
+model BarbershopInvitation {
+  id                Int        @id @default(autoincrement())
+  barbershopId      Int        @map("barbershop_id")
+  inviteePhone      String     @map("invitee_phone")
+  token             String     @unique
+  status            String     @default("pending")
+  invitedByBarberId Int        @map("invited_by_barber_id")
+  createdAt         BigInt     @map("created_at")
+  expiresAt         BigInt     @map("expires_at")
+  barbershop        Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+  invitedBy         Barber     @relation("BarbershopInvitationsSent", fields: [invitedByBarberId], references: [id], onDelete: Cascade)
+
+  @@index([barbershopId])
+  @@index([inviteePhone])
+  @@index([token])
+  @@index([status])
+  @@index([inviteePhone, status])
+  @@map("barbershop_invitations")
 }
 
 model Service {

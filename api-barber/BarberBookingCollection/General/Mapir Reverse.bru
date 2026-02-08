@@ -1,0 +1,16 @@
+meta {
+  name: Mapir Reverse Geocode
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/mapir/reverse?lat=35.7&lon=51.4
+  body: none
+  auth: none
+}
+
+params:query {
+  lat: 35.7
+  lon: 51.4
+}

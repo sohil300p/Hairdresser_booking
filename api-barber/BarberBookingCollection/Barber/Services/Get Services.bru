@@ -1,0 +1,15 @@
+meta {
+  name: Get Services
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/barber/services
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

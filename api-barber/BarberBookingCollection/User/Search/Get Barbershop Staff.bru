@@ -1,0 +1,15 @@
+meta {
+  name: Get Barbershop Staff
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/barbershop/:id/staff
+  body: none
+  auth: none
+}
+
+params:path {
+  id: 1
+}

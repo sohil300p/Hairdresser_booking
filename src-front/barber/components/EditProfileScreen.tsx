@@ -40,6 +40,7 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
     const [backgroundPreview, setBackgroundPreview] = useState(initialBackground);
     const [avatarFile, setAvatarFile] = useState<File | undefined>();
     const [backgroundFile, setBackgroundFile] = useState<File | undefined>();
+    const [mapCenterKey, setMapCenterKey] = useState(0);
 
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const backgroundInputRef = useRef<HTMLInputElement>(null);
@@ -115,11 +116,12 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
                         value={profileData.name} 
                         onChange={e => setProfileData({...profileData, name: e.target.value})}
                     />
-                    <div className="space-y-2">
+                    <div className="space-y-2 mt-2">
                         <label className="block text-sm font-medium text-gray-700">آدرس</label>
                         <MapLocationPicker
                             value={profileData.address}
                             onChange={(address, lat, lon) => setProfileData({ ...profileData, address, latitude: lat, longitude: lon })}
+                            onMoveMapTo={() => setMapCenterKey((k) => k + 1)}
                             label=""
                             placeholder="جستجو یا وارد کردن آدرس..."
                             showMapSheet={false}
@@ -129,6 +131,7 @@ const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
                         <MapirMapSelector
                             selectedLat={profileData.latitude}
                             selectedLon={profileData.longitude}
+                            centerKey={mapCenterKey}
                             onSelect={(result) => setProfileData({
                                 ...profileData,
                                 address: result.address,

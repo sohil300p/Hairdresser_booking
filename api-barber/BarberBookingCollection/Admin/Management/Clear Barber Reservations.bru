@@ -1,0 +1,19 @@
+meta {
+  name: Clear Barber Reservations
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/admin/barbers/:barberId/clear-reservations
+  body: none
+  auth: bearer
+}
+
+params:path {
+  barberId: 1
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

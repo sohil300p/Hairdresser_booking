@@ -1,0 +1,15 @@
+meta {
+  name: Transaction History
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/transactions/history
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

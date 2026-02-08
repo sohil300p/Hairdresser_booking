@@ -1,15 +1,19 @@
 import prisma from '../../config/prisma';
 import type { WalletSummary, FinancialMetrics, AdminTransactionFilters } from './financial.type';
 
-const OWNER_TYPES = ['customer', 'barber', 'barbershop'] as const;
+const OWNER_TYPES = ['customer', 'barber', 'barbershop', 'system'] as const;
 
 export async function getWalletSummariesService(): Promise<WalletSummary[]> {
   const summaries: WalletSummary[] = [];
 
-  const [customerSum, barberSum, barbershopSum] = await Promise.all([
+  const [customerSum, barberSum, barbershopSum, systemWallets] = await Promise.all([
     prisma.customer.aggregate({ _sum: { wallet_balance: true }, _count: { id: true } }),
     prisma.barber.aggregate({ _sum: { walletBalance: true }, _count: { id: true } }),
     prisma.barbershop.aggregate({ _sum: { walletBalance: true }, _count: { id: true } }),
+    prisma.wallet.findMany({
+      where: { ownerType: 'system' },
+      select: { balance: true },
+    }),
   ]);
 
   summaries.push({
@@ -26,6 +30,13 @@ export async function getWalletSummariesService(): Promise<WalletSummary[]> {
     ownerType: 'barbershop',
     totalBalance: Number(barbershopSum._sum.walletBalance ?? 0),
     count: barbershopSum._count.id,
+  });
+
+  const systemBalance = systemWallets.reduce((sum, w) => sum + Number(w.balance ?? 0), 0);
+  summaries.push({
+    ownerType: 'system',
+    totalBalance: systemBalance,
+    count: systemWallets.length || 1,
   });
 
   return summaries;

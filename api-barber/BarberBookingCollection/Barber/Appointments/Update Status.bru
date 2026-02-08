@@ -1,0 +1,25 @@
+meta {
+  name: Update Status
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/barber/appointments/:id/status
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "status": "confirmed"
+  }
+}

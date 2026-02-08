@@ -32,7 +32,10 @@ export interface GetBarberProfileResponse {
 }
 
 export interface CreateBarberProfileRequest {
+  /** Barbershop/salon name */
   name: string;
+  /** Barber's (owner's) full name */
+  fullName?: string;
   gender: 'male' | 'female' | 'unisex';
   address?: string;
   description?: string;

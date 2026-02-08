@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../../User_Side/auth/auth.middleware';
-import { getAllUsersService, getAllBarbersService, getAllAppointmentsService, resetUserOtpLimitService, getUserOtpStatusService, getAllAdminsService } from './admin.service';
+import {
+  getAllUsersService,
+  getAllBarbersService,
+  getAllAppointmentsService,
+  resetUserOtpLimitService,
+  getUserOtpStatusService,
+  getAllAdminsService,
+  getBarberAppointmentsService,
+  getBarbershopServicesForAdminService,
+  clearBarberReservationsService,
+  clearBarberFinancialService,
+} from './admin.service';
 
 export async function getAllUsersController(req: Request, res: Response) {
   try {
@@ -224,6 +235,77 @@ export async function getAllAdminsController(req: Request, res: Response) {
   } catch (error) {
     console.error('❌ Get all admins error:', error);
     res.status(500).json({ success: false, message: 'Internal server error', error: String(error) });
+  }
+}
+
+function requireAdmin(req: Request): { success: false; status: number; body: object } | null {
+  const authReq = req as AuthRequest;
+  if (!authReq.user) {
+    return { success: false, status: 401, body: { success: false, message: 'Authentication required' } };
+  }
+  if (authReq.user.role !== 'admin' && authReq.user.role !== 'staff_admin') {
+    return { success: false, status: 403, body: { success: false, message: 'Access denied. Admin role required.' } };
+  }
+  return null;
+}
+
+export async function getBarberAppointmentsController(req: Request, res: Response) {
+  const deny = requireAdmin(req);
+  if (deny) return res.status(deny.status).json(deny.body);
+  const barberId = parseInt(req.params.barberId, 10);
+  if (Number.isNaN(barberId)) return res.status(400).json({ success: false, message: 'Invalid barberId' });
+  try {
+    const result = await getBarberAppointmentsService(barberId);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    console.error('getBarberAppointments error:', e);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+}
+
+export async function getBarbershopServicesAdminController(req: Request, res: Response) {
+  const deny = requireAdmin(req);
+  if (deny) return res.status(deny.status).json(deny.body);
+  const barbershopId = parseInt(req.params.barbershopId, 10);
+  if (Number.isNaN(barbershopId)) return res.status(400).json({ success: false, message: 'Invalid barbershopId' });
+  try {
+    const result = await getBarbershopServicesForAdminService(barbershopId);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    console.error('getBarbershopServicesAdmin error:', e);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+}
+
+export async function clearBarberReservationsController(req: Request, res: Response) {
+  const deny = requireAdmin(req);
+  if (deny) return res.status(deny.status).json(deny.body);
+  const barberId = parseInt(req.params.barberId, 10);
+  if (Number.isNaN(barberId)) return res.status(400).json({ success: false, message: 'Invalid barberId' });
+  try {
+    const result = await clearBarberReservationsService(barberId);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    console.error('clearBarberReservations error:', e);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+}
+
+export async function clearBarberFinancialController(req: Request, res: Response) {
+  const deny = requireAdmin(req);
+  if (deny) return res.status(deny.status).json(deny.body);
+  const barberId = parseInt(req.params.barberId, 10);
+  if (Number.isNaN(barberId)) return res.status(400).json({ success: false, message: 'Invalid barberId' });
+  try {
+    const result = await clearBarberFinancialService(barberId);
+    if (!result.success) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    console.error('clearBarberFinancial error:', e);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 }
 

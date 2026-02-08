@@ -1,0 +1,15 @@
+meta {
+  name: Get Notifications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/barber/notifications
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

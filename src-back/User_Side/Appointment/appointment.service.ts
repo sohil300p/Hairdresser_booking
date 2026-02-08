@@ -17,6 +17,7 @@ import { checkAvailabilityService } from './availability.service';
 import { lockFundsForAppointmentService } from '../Profile_User/Wallet/Transaction/transaction.service';
 import { validateCouponService, applyCouponService } from '../Profile_User/Coupon/coupon.service';
 import { requestPayment } from '../PaymentGateway/zarrinpal.service';
+import { createBarberInAppNotification } from '../../Barber_Side/Notifications/barber-notifications.service';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -316,6 +317,30 @@ export async function createAppointmentService(
           message: paymentRequest.message || 'درخواست پرداخت با خطا مواجه شد',
         };
       }
+    }
+
+    let ownerBarberId: number | null = appointment.barberId;
+    if (ownerBarberId == null && appointment.barbershopId) {
+      const shop = await prisma.barbershop.findUnique({
+        where: { id: appointment.barbershopId },
+        select: { ownerId: true },
+      });
+      ownerBarberId = shop?.ownerId ?? null;
+    }
+    if (ownerBarberId != null) {
+      const customer = await prisma.customer.findUnique({
+        where: { id: authenticatedUserId },
+        select: { fullName: true },
+      });
+      const customerName = customer?.fullName?.trim() || 'مشتری';
+      const timeStr = time || new Date(Number(appointment.startTime)).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+      createBarberInAppNotification({
+        barberId: ownerBarberId,
+        type: 'new_booking',
+        title: 'رزرو جدید',
+        body: `${customerName} برای ساعت ${timeStr} نوبت گرفت.`,
+        meta: { appointmentId: appointment.id },
+      }).catch((err) => console.warn('Barber in-app notification create failed:', err));
     }
 
     return {
@@ -704,27 +729,32 @@ export async function cancelAppointmentService(
     let refundPercentage = 100;
 
     if (paidAmount > 0) {
-      let feePercent = 100;
-      const barbershop = appointment.barbershopId
-        ? await prisma.barbershop.findUnique({
-            where: { id: appointment.barbershopId },
-            select: { cancellationPolicy: true, cancellationTiers: true },
-          })
-        : null;
-
-      if (barbershop?.cancellationPolicy === 'not_accepted') {
-        feePercent = 100;
+      if (authenticatedUserType === 'barber') {
+        refundPercentage = 100;
+        refundAmount = paidAmount;
       } else {
-        const tiers =
-          (barbershop?.cancellationTiers as { minHoursBefore: number; feePercent: number }[]) ??
-          DEFAULT_CANCELLATION_TIERS;
-        const sorted = [...tiers].sort((a, b) => b.minHoursBefore - a.minHoursBefore);
-        const matchingTier = sorted.find((t) => hoursUntilAppointment >= t.minHoursBefore);
-        feePercent = matchingTier ? matchingTier.feePercent : 100;
-      }
+        let feePercent = 100;
+        const barbershop = appointment.barbershopId
+          ? await prisma.barbershop.findUnique({
+              where: { id: appointment.barbershopId },
+              select: { cancellationPolicy: true, cancellationTiers: true },
+            })
+          : null;
 
-      refundPercentage = 100 - feePercent;
-      refundAmount = Math.round(paidAmount * (1 - feePercent / 100));
+        if (barbershop?.cancellationPolicy === 'not_accepted') {
+          feePercent = 100;
+        } else {
+          const tiers =
+            (barbershop?.cancellationTiers as { minHoursBefore: number; feePercent: number }[]) ??
+            DEFAULT_CANCELLATION_TIERS;
+          const sorted = [...tiers].sort((a, b) => b.minHoursBefore - a.minHoursBefore);
+          const matchingTier = sorted.find((t) => hoursUntilAppointment >= t.minHoursBefore);
+          feePercent = matchingTier ? matchingTier.feePercent : 100;
+        }
+
+        refundPercentage = 100 - feePercent;
+        refundAmount = Math.round(paidAmount * (1 - feePercent / 100));
+      }
     }
 
     // Update appointment status
@@ -821,6 +851,25 @@ export async function cancelAppointmentService(
           });
         }
       }
+    }
+
+    let ownerBarberId: number | null = appointment.barberId;
+    if (ownerBarberId == null && appointment.barbershopId) {
+      const shop = await prisma.barbershop.findUnique({
+        where: { id: appointment.barbershopId },
+        select: { ownerId: true },
+      });
+      ownerBarberId = shop?.ownerId ?? null;
+    }
+    if (ownerBarberId != null) {
+      const customerName = (appointment.customer as { fullName?: string } | null)?.fullName?.trim() || 'مشتری';
+      createBarberInAppNotification({
+        barberId: ownerBarberId,
+        type: 'cancellation',
+        title: 'لغو رزرو',
+        body: `رزرو ${customerName} لغو شد.`,
+        meta: { appointmentId },
+      }).catch((err) => console.warn('Barber in-app notification create failed:', err));
     }
 
     return {

@@ -1,0 +1,22 @@
+meta {
+  name: Register Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/notifications/register-token
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "fcmToken": "token123",
+    "platform": "web"
+  }
+}

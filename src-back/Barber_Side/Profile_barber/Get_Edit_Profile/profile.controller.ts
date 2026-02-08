@@ -72,6 +72,7 @@ export async function createBarberProfileController(req: AuthRequest, res: Respo
     // Extract data from request body
     const createData: CreateBarberProfileRequest = {
       name: req.body.name,
+      fullName: req.body.fullName,
       gender: req.body.gender,
       address: req.body.address,
       description: req.body.description,

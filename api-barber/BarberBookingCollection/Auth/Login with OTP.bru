@@ -1,0 +1,19 @@
+meta {
+  name: Login with OTP
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login/otp
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "phone": "09123456789",
+    "otp": "1234",
+    "userType": "customer"
+  }
+}

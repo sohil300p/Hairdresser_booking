@@ -1,0 +1,15 @@
+meta {
+  name: Get All Barbers
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/admin/barbers
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

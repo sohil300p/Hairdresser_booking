@@ -1,0 +1,21 @@
+meta {
+  name: Purchase Package
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/packages/purchase
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "packageId": 1
+  }
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Cancel Appointment
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/appointments/:id/cancel
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "reason": "Changed mind"
+  }
+}

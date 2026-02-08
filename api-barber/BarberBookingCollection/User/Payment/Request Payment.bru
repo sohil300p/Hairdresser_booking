@@ -1,0 +1,22 @@
+meta {
+  name: Request Payment
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/payment/request
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "amount": 100000,
+    "callbackUrl": "http://localhost:3000/callback"
+  }
+}

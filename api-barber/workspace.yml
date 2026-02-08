@@ -1,0 +1,6 @@
+version: 1
+type: workspace
+name: Barber Booking Workspace
+collections:
+  - name: Barber Booking API
+    path: BarberBookingCollection

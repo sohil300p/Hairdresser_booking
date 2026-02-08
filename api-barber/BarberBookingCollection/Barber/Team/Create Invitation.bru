@@ -1,0 +1,21 @@
+meta {
+  name: Create Invitation
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/barber/barbershop/invitations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "phone": "09123456789"
+  }
+}

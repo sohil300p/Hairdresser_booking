@@ -1,0 +1,15 @@
+meta {
+  name: Get Balance
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/transactions/wallet/balance
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

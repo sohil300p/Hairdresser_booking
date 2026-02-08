@@ -1,0 +1,21 @@
+meta {
+  name: Validate Coupon
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/coupons/validate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "code": "SUMMER50"
+  }
+}

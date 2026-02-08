@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, Edit, Plus, Trash2, CreditCard, Clock, Tag, LogOut, HelpCircle, FileText, Star, Percent, CalendarPlus, History, Copy, Send, Accessibility, MapPin, ArrowRight, ArrowUpRight, Gift } from 'lucide-react';
+import { ChevronLeft, Edit, Plus, Trash2, CreditCard, Clock, Tag, LogOut, HelpCircle, FileText, Star, Percent, CalendarPlus, History, Copy, Send, Accessibility, MapPin, ArrowRight, ArrowUpRight, Gift, Banknote, UserPlus } from 'lucide-react';
 import BottomSheet from './BottomSheet';
 import ConfirmationDialog from './ConfirmationDialog';
 import MaterialInput from './MaterialInput';
@@ -13,6 +13,8 @@ import TermsSubPage from './TermsSubPage';
 import CustomerReviewsScreen from './CustomerReviewsScreen';
 import SupportScreen from './SupportScreen';
 import ReservationRulesForm from './ReservationRulesForm';
+import FinanceManagementSheet from './FinanceManagementSheet';
+import BarbershopSeatsSheet from './BarbershopSeatsSheet';
 import { api } from '../utils/api';
 import type {
   GetBarberProfileResponse,
@@ -153,7 +155,7 @@ function mapCouponToDiscount(c: CouponItem): Discount {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageActive, isLargeFont, setIsLargeFont, isHighContrast, setIsHighContrast, isVoiceAssistantEnabled, setIsVoiceAssistantEnabled, isAutoConfirmEnabled, setIsAutoConfirmEnabled, setActiveScreen }) => {
-    type SheetName = 'wallet' | 'discounts' | 'accessibility' | 'sendSms' | 'bookingSettings';
+    type SheetName = 'wallet' | 'discounts' | 'accessibility' | 'sendSms' | 'bookingSettings' | 'finance' | 'seats';
     const [isSheetOpen, setSheetOpen] = useState<SheetName | null>(null);
     const [activeSubPage, setActiveSubPage] = useState<string | null>(null);
 
@@ -454,11 +456,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                     <div className="bg-white rounded-lg border shadow-xs p-2 space-y-1">
                         <ProfileLink icon={Clock} text="ساعات کاری" onClick={() => setActiveSubPage('editSchedule')} />
                         <ProfileLink icon={Tag} text="خدمات و قیمت‌گذاری" onClick={() => setActiveSubPage('services')} />
+                        <ProfileLink icon={UserPlus} text="تیم و صندلی‌ها" onClick={() => setSheetOpen('seats')} iconRight={ArrowUpRight} />
                         <ProfileLink icon={CalendarPlus} text="تنظیمات رزرو" onClick={() => setSheetOpen('bookingSettings')} iconRight={ArrowUpRight} />
                     </div>
                     <div className="bg-white rounded-lg border shadow-xs p-2 space-y-1">
                         <ProfileLink icon={CreditCard} text="کیف پول و درآمد" onClick={() => { setWalletView('main'); setSheetOpen('wallet'); }} iconRight={ArrowUpRight}/>
-                        <ProfileLink icon={Gift} text="باشگاه مشتریان" onClick={() => setActiveScreen('club')} iconRight={ArrowRight} />
+                        <ProfileLink icon={Banknote} text="مدیریت مالی" onClick={() => setSheetOpen('finance')} iconRight={ArrowUpRight}/>
+                        <ProfileLink icon={Gift} text="باشگاه مشتریان" onClick={() => setActiveScreen('club')} iconRight={ArrowRight} disabled={true}/>
                         <ProfileLink icon={Percent} text="مدیریت تخفیف‌ها" onClick={() => setSheetOpen('discounts')} iconRight={ArrowUpRight}/>
                         <ProfileLink icon={Star} text="نظرات مشتریان" onClick={() => setActiveSubPage('reviews')} />
                     </div>
@@ -527,6 +531,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
                     </div>
                 </div>
             </BottomSheet>
+
+            {/* Finance Management Sheet */}
+            <BottomSheet isOpen={isSheetOpen === 'finance'} onClose={() => setSheetOpen(null)} title="مدیریت مالی">
+                <FinanceManagementSheet
+                    isOpen={isSheetOpen === 'finance'}
+                    onOpenBookingSettings={() => setSheetOpen('bookingSettings')}
+                />
+            </BottomSheet>
+
+            {/* Barbershop Seats / Team Sheet */}
+            <BarbershopSeatsSheet isOpen={isSheetOpen === 'seats'} onClose={() => setSheetOpen(null)} />
 
             {/* Wallet Sheet */}
             <BottomSheet isOpen={isSheetOpen === 'wallet'} onClose={() => setSheetOpen(null)} title="کیف پول و درآمد">
@@ -827,8 +842,8 @@ const SendSmsSheet: React.FC<{ discount: Discount; customers: Customer[]; onClos
 }
 
 
-const ProfileLink: React.FC<{ icon: React.ElementType, text: string, onClick: () => void, color?: string, iconRight?: React.ElementType }> = ({ icon: Icon, text, onClick, color = 'text-gray-800', iconRight: IconRight }) => (
-    <button type="button" onClick={onClick} className={`w-full flex items-center justify-between text-right p-3 rounded-md hover:bg-gray-100 transition duration-200 ${color}`}>
+const ProfileLink: React.FC<{ icon: React.ElementType, text: string, onClick: () => void, color?: string, iconRight?: React.ElementType, disabled?: boolean }> = ({ icon: Icon, text, onClick, color = 'text-gray-800', iconRight: IconRight, disabled = false }) => (
+    <button type="button" onClick={disabled ? undefined : onClick} disabled={disabled} className={`w-full flex items-center justify-between text-right p-3 rounded-md transition duration-200 ${color} ${disabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'}`}>
         <div className="flex items-center gap-4">
             <Icon size={22} className={color !== 'text-gray-800' ? '' : 'text-gray-600'} />
             <span className="font-semibold">{text}</span>

@@ -52,9 +52,15 @@ export async function registerDeviceToken(
 }
 
 /**
- * Send Notification to a specific user
+ * Send Notification to a specific user.
+ * blockChannels: when set, those channels are skipped (e.g. blockEmail/blockSms = only send push).
  */
 export async function sendNotificationToUser(req: SendNotificationRequest) {
+  const blockPush = req.blockChannels?.includes('push');
+  if (blockPush) {
+    return { success: false, message: 'Push is blocked; no other channel implemented' };
+  }
+
   const messaging = getMessaging();
   if (!messaging) return { success: false, message: 'Firebase not initialized' };
 
@@ -211,11 +217,15 @@ export async function getUsersWithDevices() {
         } else if (device.userType === 'barber') {
           const barber = await prisma.barber.findUnique({
             where: { id: device.userId },
-            select: { fullName: true, phone: true },
+            select: {
+              fullName: true,
+              phone: true,
+              customer: { select: { fullName: true, phone: true } },
+            },
           });
           if (barber) {
-            name = barber.fullName || 'Barber';
-            phone = barber.phone || '';
+            name = barber.fullName ?? barber.customer?.fullName ?? 'Barber';
+            phone = barber.phone ?? barber.customer?.phone ?? '';
           }
         }
 

@@ -1,14 +1,16 @@
 
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Clock, Building, Scissors, ArrowRight, Info, Plus, Edit, Trash2, ImagePlus, Save, X, CheckCircle, MapPin } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { Clock, Building, Scissors, ArrowRight, Info, Plus, Edit, Trash2, ImagePlus, Save, X, CheckCircle, MapPin, UserPlus, Users, Copy, Loader2 } from 'lucide-react';
 import MaterialInput from './MaterialInput';
 import MaterialSelect from './MaterialSelect';
 import BottomSheet from './BottomSheet';
+import { TimeRangePicker } from './TimeRangePicker';
 import ConfirmationDialog from './ConfirmationDialog';
 import { MapLocationPicker } from './MapLocationPicker';
 import { MapirMapSelector } from './MapirMapSelector';
 import { api } from '../utils/api';
+import type { BarbershopInvitationItem, BarbershopMemberItem } from '../types/api';
 
 interface ProfileSetupProps {
     onSetupComplete: () => void;
@@ -34,6 +36,9 @@ interface ScheduleDay {
 }
 
 interface ProfileFormData {
+    /** Barber's (owner's) full name */
+    barberName: string;
+    /** Barbershop/salon name */
     name: string;
     address: string;
     about: string;
@@ -62,6 +67,7 @@ const initialSchedule: ScheduleDay[] = [
 ];
 
 const initialFormData: ProfileFormData = {
+    barberName: '',
     name: '',
     address: '',
     about: '',
@@ -70,8 +76,9 @@ const initialFormData: ProfileFormData = {
     gender: 'male',
 };
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 const ONBOARDING_STEP_KEY = 'barber_onboarding_step';
+const ONBOARDING_FORM_DATA_KEY = 'barber_onboarding_form_data';
 
 function getSavedStep(): number {
     try {
@@ -83,12 +90,59 @@ function getSavedStep(): number {
     }
 }
 
+/** Serializable slice of ProfileFormData (no File). */
+function formDataToStored(data: ProfileFormData): string {
+    const stored = {
+        barberName: data?.barberName ?? '',
+        name: data?.name ?? '',
+        address: data?.address ?? '',
+        about: data?.about ?? '',
+        gender: data?.gender ?? 'male',
+        latitude: data?.latitude,
+        longitude: data?.longitude,
+        schedule: data?.schedule ?? initialSchedule,
+        services: (data?.services ?? []).map(({ id, name, price, duration, description, photo }) => ({ id, name, price, duration, description, photo })),
+    };
+    return JSON.stringify(stored);
+}
+
+function getSavedFormData(): ProfileFormData {
+    try {
+        const raw = localStorage.getItem(ONBOARDING_FORM_DATA_KEY);
+        if (!raw) return initialFormData;
+        const parsed = JSON.parse(raw) as Partial<ProfileFormData>;
+        return {
+            ...initialFormData,
+            barberName: parsed.barberName ?? initialFormData.barberName,
+            name: parsed.name ?? initialFormData.name,
+            address: parsed.address ?? initialFormData.address,
+            about: parsed.about ?? initialFormData.about,
+            gender: parsed.gender ?? initialFormData.gender,
+            latitude: parsed.latitude,
+            longitude: parsed.longitude,
+            schedule: Array.isArray(parsed.schedule) && parsed.schedule.length ? parsed.schedule : initialFormData.schedule,
+            services: Array.isArray(parsed.services) ? parsed.services : initialFormData.services,
+        };
+    } catch {
+        return initialFormData;
+    }
+}
+
 // --- MAIN COMPONENT ---
+const WEEKDAY_BY_KEY: Record<string, number> = {
+    saturday: 6, sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5,
+};
+
 const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) => {
     const [step, setStep] = useState(getSavedStep);
-    const [formData, setFormData] = useState<ProfileFormData>(initialFormData);
+    const [formData, setFormData] = useState<ProfileFormData>(getSavedFormData);
+    const formDataRef = useRef<ProfileFormData>(formData);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+
+    useEffect(() => {
+        formDataRef.current = formData;
+    }, [formData]);
 
     useEffect(() => {
         if (step >= 1 && step <= TOTAL_STEPS) {
@@ -99,37 +153,56 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
     const updateFormData = (data: Partial<ProfileFormData>) => {
         setFormData(prev => ({ ...prev, ...data }));
     };
+
+    const saveFormDataToStorage = (data: ProfileFormData) => {
+        try {
+            localStorage.setItem(ONBOARDING_FORM_DATA_KEY, formDataToStored(data));
+        } catch {
+            // ignore
+        }
+    };
     
     const handleNext = async () => {
-        if (step === TOTAL_STEPS) {
+        if (step === 5) {
             await handleSubmit();
+        } else if (step === TOTAL_STEPS) {
+            try {
+                localStorage.removeItem(ONBOARDING_STEP_KEY);
+                localStorage.removeItem(ONBOARDING_FORM_DATA_KEY);
+            } catch { }
+            onSetupComplete();
         } else {
+            saveFormDataToStorage(formData);
             setStep(s => Math.min(s + 1, TOTAL_STEPS + 1));
         }
     };
-    const handleBack = () => setStep(s => Math.max(s - 1, 1));
+    const handleBack = () => {
+        saveFormDataToStorage(formData);
+        setStep(s => Math.max(s - 1, 1));
+    };
 
     const handleSubmit = async () => {
         setSubmitError(null);
         setIsSubmitting(true);
 
+        const fd = formDataRef.current ?? initialFormData;
+
         try {
-            // Validate required fields
-            if (!(formData?.name ?? '').trim()) {
+            if (!(fd.name ?? '').trim()) {
                 const error = 'نام سالن الزامی است';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
                 setIsSubmitting(false);
                 return;
             }
-            if (!(formData?.address ?? '').trim()) {
+            if (!(fd.address ?? '').trim()) {
                 const error = 'آدرس الزامی است';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
                 setIsSubmitting(false);
                 return;
             }
-            if ((formData?.services ?? []).length === 0) {
+            if ((fd.services ?? []).length === 0) {
                 const error = 'حداقل یک خدمت باید اضافه شود';
                 setSubmitError(error);
                 window.showToast?.(error, 'error');
@@ -137,8 +210,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                 return;
             }
 
-            // Validate profile image file if provided
-            const profileImageFile = formData?.profileImageFile;
+            const profileImageFile = fd.profileImageFile;
             if (profileImageFile) {
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
                 if (!allowedTypes.includes(profileImageFile.type)) {
@@ -148,8 +220,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                     setIsSubmitting(false);
                     return;
                 }
-
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                const maxSize = 5 * 1024 * 1024;
                 if (profileImageFile.size > maxSize) {
                     const error = 'حجم فایل نباید بیشتر از ۵ مگابایت باشد';
                     setSubmitError(error);
@@ -159,39 +230,53 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                 }
             }
 
-            // Create FormData for multipart/form-data submission
-            const fd = formData ?? initialFormData;
             const submitFormData = new FormData();
             submitFormData.append('name', (fd.name ?? '').trim());
+            if ((fd.barberName ?? '').trim()) submitFormData.append('fullName', (fd.barberName ?? '').trim());
             submitFormData.append('gender', fd.gender ?? 'male');
             submitFormData.append('address', (fd.address ?? '').trim());
             if ((fd.about ?? '').trim()) {
                 submitFormData.append('description', (fd.about ?? '').trim());
             }
-            
-            // Add profile image if provided
+            if (fd.latitude != null) submitFormData.append('latitude', String(fd.latitude));
+            if (fd.longitude != null) submitFormData.append('longitude', String(fd.longitude));
             if (fd.profileImageFile) {
                 submitFormData.append('profileImage', fd.profileImageFile);
             }
-            
-            // Note: Services and schedule will be handled via separate endpoints after profile creation
 
-            // Submit to backend
-            const result = await api.upload<{ 
-                success: boolean; 
-                message?: string; 
-                data?: any;
-            }>('/barber/profile', submitFormData);
+            const result = await api.upload<{ success: boolean; message?: string; data?: any }>('/barber/profile', submitFormData);
 
-            if (result.success) {
-                try { localStorage.removeItem(ONBOARDING_STEP_KEY); } catch { }
-                window.showToast?.('پروفایل شما با موفقیت ایجاد شد!', 'success');
-                setTimeout(() => {
-                    setStep(TOTAL_STEPS + 1);
-                }, 500);
-            } else {
+            if (!result.success) {
                 throw new Error(result.message || 'خطا در ایجاد پروفایل');
             }
+
+            const schedules = (fd.schedule ?? initialSchedule).map((day) => ({
+                weekday: WEEKDAY_BY_KEY[day.key] ?? 0,
+                openTime: day.startTime,
+                closeTime: day.endTime,
+                isClosed: !day.isActive,
+            }));
+            await api.post<{ success: boolean }>('/barber/working-hours', { schedules });
+
+            for (const svc of fd.services ?? []) {
+                const svcForm = new FormData();
+                svcForm.append('name', (svc.name ?? '').trim());
+                svcForm.append('price', String(svc.price ?? '0'));
+                svcForm.append('estimatedTime', String(Math.max(1, parseInt(String(svc.duration), 10) || 30)));
+                svcForm.append('description', (svc.description ?? '').trim());
+                svcForm.append('gender', 'other');
+                if (svc.photoFile) {
+                    svcForm.append('avatar', svc.photoFile);
+                }
+                await api.upload<{ success: boolean }>('/barber/services', svcForm);
+            }
+
+            try {
+                localStorage.removeItem(ONBOARDING_STEP_KEY);
+                localStorage.removeItem(ONBOARDING_FORM_DATA_KEY);
+            } catch { }
+            window.showToast?.('پروفایل شما با موفقیت ایجاد شد!', 'success');
+            setTimeout(() => setStep(6), 500);
         } catch (error: any) {
             console.error('Error submitting profile:', error);
             const errorMessage = error.message || 'خطا در برقراری ارتباط با سرور';
@@ -227,7 +312,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
             case 3: return <Step3About data={formData} onUpdate={updateFormData} />;
             case 4: return <Step4Services data={formData} onUpdate={updateFormData} />;
             case 5: return <Step5Hours data={formData} onUpdate={updateFormData} />;
-            case 6: return <StepSuccess onComplete={onSetupComplete} />;
+            case 6: return <Step6Seats onComplete={onSetupComplete} />;
             default: return null;
         }
     };
@@ -238,6 +323,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
         3: { title: 'درباره سالن', icon: Info },
         4: { title: 'خدمات و قیمت‌گذاری', icon: Scissors },
         5: { title: 'ساعات کاری', icon: Clock },
+        6: { title: 'تیم و صندلی‌ها', icon: UserPlus },
     };
     
     if (step > TOTAL_STEPS) {
@@ -269,7 +355,7 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                     <h1 className="text-2xl font-bold text-gray-900">{stepInfo[step].title}</h1>
                 </div>
 
-                <div className="mt-6 text-right flex-grow">
+                <div className="mt-3 text-right flex-grow">
                     {renderStepContent()}
                 </div>
             </main>
@@ -282,10 +368,10 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                 )}
                 <button 
                     onClick={handleNext} 
-                    disabled={isNextDisabled || isSubmitting} 
+                    disabled={(step !== TOTAL_STEPS && isNextDisabled) || (step === 5 && isSubmitting)} 
                     className="w-full h-12 bg-primary-600 text-white font-bold rounded-md transition hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                    {isSubmitting ? 'در حال ذخیره...' : step === TOTAL_STEPS ? 'پایان و ذخیره' : 'ادامه'}
+                    {step === 5 && isSubmitting ? 'در حال ذخیره...' : step === 5 ? 'ادامه و ذخیره پروفایل' : step === TOTAL_STEPS ? 'پایان و ورود به پنل' : 'ادامه'}
                 </button>
             </footer>
         </div>
@@ -363,6 +449,7 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
                 />
             </div>
 
+            <MaterialInput id="barberName" label="نام شما (آرایشگر)" value={data?.barberName ?? ''} onChange={e => onUpdate({ barberName: e.target.value })} placeholder="نام و نام خانوادگی" />
             <MaterialInput id="salonName" label="نام سالن/آرایشگاه" value={data?.name ?? ''} onChange={e => onUpdate({ name: e.target.value })} />
             {/* Salon gender selection */}
             <MaterialSelect
@@ -380,13 +467,15 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
 };
 
 const Step2Location: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<ProfileFormData>) => void }> = ({ data, onUpdate }) => {
+    const [mapCenterKey, setMapCenterKey] = useState(0);
     return (
         <div className="space-y-4 flex flex-col gap-1">
-            <p className="text-gray-600 mt-1 text-center">آدرس خود را وارد کرده یا نقشه را جابجا کنید؛ آدرس خودکار پر می‌شود.</p>
-            <label className="block text-sm font-medium text-gray-700">آدرس</label>
+            <p className="text-gray-600 mt-1 text-center">آدرس را جستجو و سپس آدرس دقیق را از نقشه انتخاب کنید.</p>
+            <label className="block text-sm font-medium text-gray-700">آدرس شما:</label>
             <MapLocationPicker
                 value={data?.address ?? ''}
                 onChange={(address, lat, lon) => onUpdate({ address, latitude: lat, longitude: lon })}
+                onMoveMapTo={() => setMapCenterKey((k) => k + 1)}
                 label=""
                 placeholder="جستجو یا وارد کردن آدرس..."
                 showMapSheet={false}
@@ -396,6 +485,7 @@ const Step2Location: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Pro
             <MapirMapSelector
                 selectedLat={data?.latitude}
                 selectedLon={data?.longitude}
+                centerKey={mapCenterKey}
                 onSelect={(result) => onUpdate({
                     address: result.address,
                     latitude: result.latitude,
@@ -498,6 +588,10 @@ const Step5Hours: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profil
         const newSchedule = schedule.map(d => d.key === key ? { ...d, [field]: value } : d);
         onUpdate({ schedule: newSchedule });
     };
+    const handleTimeRangeChange = (key: string, startTime: string, endTime: string) => {
+        const newSchedule = schedule.map(d => d.key === key ? { ...d, startTime, endTime } : d);
+        onUpdate({ schedule: newSchedule });
+    };
 
     return (
          <div className="space-y-3">
@@ -509,13 +603,165 @@ const Step5Hours: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profil
                         <ToggleSwitch enabled={day.isActive} setEnabled={() => handleToggle(day.key)} id={`toggle-${day.key}`} />
                     </div>
                     {day.isActive && (
-                        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
-                            <MaterialInput id={`${day.key}-start`} label="ساعت شروع" type="time" value={day.startTime} onChange={(e) => handleTimeChange(day.key, 'startTime', e.target.value)} style={{ colorScheme: 'light' }} />
-                            <MaterialInput id={`${day.key}-end`} label="ساعت پایان" type="time" value={day.endTime} onChange={(e) => handleTimeChange(day.key, 'endTime', e.target.value)} style={{ colorScheme: 'light' }}/>
+                        <div className="mt-3">
+                            <TimeRangePicker
+                                id={`${day.key}-time`}
+                                startTime={day.startTime}
+                                endTime={day.endTime}
+                                onChange={(start, end) => handleTimeRangeChange(day.key, start, end)}
+                                labelStart="ساعت شروع"
+                                labelEnd="ساعت پایان"
+                            />
                         </div>
                     )}
                 </div>
             ))}
+        </div>
+    );
+};
+
+const Step6Seats: React.FC<{ onComplete: () => void }> = () => {
+    const [inviteePhone, setInviteePhone] = useState('');
+    const [sending, setSending] = useState(false);
+    const [invitations, setInvitations] = useState<BarbershopInvitationItem[]>([]);
+    const [members, setMembers] = useState<BarbershopMemberItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLists = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [invRes, memRes] = await Promise.all([
+                api.get<{ success: boolean; invitations?: BarbershopInvitationItem[] }>('/barber/barbershop/invitations'),
+                api.get<{ success: boolean; members?: BarbershopMemberItem[] }>('/barber/barbershop/members'),
+            ]);
+            if (invRes.success && invRes.invitations != null) setInvitations(invRes.invitations);
+            if (memRes.success && memRes.members != null) setMembers(memRes.members);
+        } catch {
+            setInvitations([]);
+            setMembers([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchLists();
+    }, [fetchLists]);
+
+    const handleInvite = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const phone = inviteePhone.trim().replace(/\s/g, '');
+        if (!phone) return;
+        setSending(true);
+        try {
+            const res = await api.post<{ success: boolean; message?: string }>('/barber/barbershop/invitations', { inviteePhone: phone });
+            if (res.success) {
+                window.showToast?.(res.message || 'دعوتنامه ایجاد شد', 'success');
+                setInviteePhone('');
+                fetchLists();
+            } else {
+                window.showToast?.(res.message || 'خطا در ایجاد دعوتنامه', 'error');
+            }
+        } catch (err: unknown) {
+            window.showToast?.(err instanceof Error ? err.message : 'خطا در ارسال دعوت', 'error');
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const copyInviteLink = (token: string) => {
+        const base = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
+        const link = `${base}?invite=${token}`;
+        navigator.clipboard.writeText(link).then(() => {
+            window.showToast?.('لینک دعوت کپی شد', 'success');
+        }).catch(() => {
+            window.showToast?.('کپی لینک انجام نشد', 'error');
+        });
+    };
+
+    const pendingInvitations = invitations.filter((i) => i.status === 'pending' && i.expiresAt > Date.now());
+
+    if (loading) {
+        return (
+            <div className="flex justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-5 text-right">
+            <p className="text-gray-600 text-sm">
+                با افزودن صندلی (آرایشگر) ظرفیت روزانه سالن خود را مشخص کنید. هر آرایشگر در بازه ساعات کاری سالن شما فعالیت می‌کند.
+            </p>
+            <section className="space-y-2">
+                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <UserPlus size={18} />
+                    افزودن صندلی (دعوت به پنل)
+                </h3>
+                <form onSubmit={handleInvite} className="space-y-2">
+                    <MaterialInput
+                        id="inviteePhone"
+                        label="شماره تلفن دعوت‌شونده"
+                        type="tel"
+                        value={inviteePhone}
+                        onChange={(e) => setInviteePhone(e.target.value)}
+                        placeholder="09xxxxxxxxx"
+                    />
+                    <button
+                        type="submit"
+                        disabled={sending}
+                        className="w-full h-11 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                        {sending ? <Loader2 size={18} className="animate-spin" /> : null}
+                        ارسال دعوتنامه
+                    </button>
+                </form>
+                <p className="text-xs text-gray-500">
+                    لینک دعوت را برای شخص به اشتراک بگذارید تا در اپ وارد شود و دعوت را بپذیرد.
+                </p>
+            </section>
+            {pendingInvitations.length > 0 && (
+                <section>
+                    <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                        <Users size={18} />
+                        دعوتنامه‌های در انتظار
+                    </h3>
+                    <ul className="space-y-2">
+                        {pendingInvitations.map((inv) => (
+                            <li key={inv.id} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-2">
+                                <div>
+                                    <p className="font-medium text-gray-800">{inv.inviteePhone}</p>
+                                    <p className="text-xs text-gray-500">منقضی: {new Date(inv.expiresAt).toLocaleDateString('fa-IR')}</p>
+                                </div>
+                                <button type="button" onClick={() => copyInviteLink(inv.token)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center gap-1 text-sm">
+                                    <Copy size={16} /> لینک
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+            {members.length > 0 && (
+                <section>
+                    <h3 className="font-semibold text-gray-800 flex items-center gap-2 mb-2">
+                        <Users size={18} />
+                        اعضای سالن
+                    </h3>
+                    <ul className="space-y-2">
+                        {members.map((m) => (
+                            <li key={m.barberId} className="bg-gray-50 rounded-lg p-3">
+                                <p className="font-medium text-gray-800">
+                                    {m.fullName || m.phone || `آرایشگر #${m.barberId}`}
+                                    {m.isOwner && <span className="text-xs text-primary-600 mr-2">(مالک)</span>}
+                                </p>
+                                {m.phone && <p className="text-xs text-gray-500">{m.phone}</p>}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+            <p className="text-xs text-gray-500 pt-2">می‌توانید بعداً از پروفایل نیز صندلی اضافه کنید.</p>
         </div>
     );
 };

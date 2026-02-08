@@ -13,6 +13,8 @@ interface MapLocationPickerProps {
   /** Current address text */
   value: string;
   onChange: (address: string, latitude?: number, longitude?: number) => void;
+  /** Called when location is set from search (autocomplete or first result); use to recenter map */
+  onMoveMapTo?: (latitude: number, longitude: number) => void;
   placeholder?: string;
   label?: string;
   /** When true, show "Select on map" button that opens a bottom sheet with search + map preview */
@@ -24,14 +26,17 @@ interface MapLocationPickerProps {
   onCancel?: () => void;
 }
 
-/** Debounce: run search this long after last keyup to reduce API load */
-const SEARCH_DEBOUNCE_MS = 1200;
-/** Don’t call API until at least this many characters (reduces useless requests) */
-const MIN_SEARCH_LENGTH = 2;
+/** Debounce: run search only after user has paused this long (avoids fetch-while-typing) */
+const SEARCH_DEBOUNCE_MS = 1800;
+/** Don’t call API until at least this many characters */
+const MIN_SEARCH_LENGTH = 3;
+/** Show loading spinner only after request has been in flight this long (avoids flash while typing) */
+const LOADING_INDICATOR_DELAY_MS = 400;
 
 export function MapLocationPicker({
   value,
   onChange,
+  onMoveMapTo,
   placeholder = 'آدرس (خیابان، شهر)',
   label = 'آدرس',
   showMapSheet = true,
@@ -42,42 +47,55 @@ export function MapLocationPicker({
 }: MapLocationPickerProps) {
   const [suggestions, setSuggestions] = useState<MapirSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showLoadingSpinner, setShowLoadingSpinner] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
   const isConfigured = isMapirConfigured();
 
-  const runSearch = useCallback(
-    async (text: string) => {
-      const q = text.trim();
-      if (!q || q.length < MIN_SEARCH_LENGTH) {
-        setSuggestions([]);
-        return;
+  const runSearch = useCallback(async (text: string) => {
+    const q = text.trim();
+    if (!q || q.length < MIN_SEARCH_LENGTH) {
+      setSuggestions([]);
+      setLoading(false);
+      setShowLoadingSpinner(false);
+      return;
+    }
+    abortRef.current?.abort();
+    if (loadingDelayRef.current) {
+      clearTimeout(loadingDelayRef.current);
+      loadingDelayRef.current = null;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setShowLoadingSpinner(false);
+    loadingDelayRef.current = setTimeout(() => {
+      loadingDelayRef.current = null;
+      if (!controller.signal.aborted) setShowLoadingSpinner(true);
+    }, LOADING_INDICATOR_DELAY_MS);
+    try {
+      const items = await mapirSearch(q, controller.signal);
+      if (controller.signal.aborted) return;
+      abortRef.current = null;
+      setSuggestions(items);
+      setOpen(true);
+    } catch {
+      if (!controller.signal.aborted) abortRef.current = null;
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setShowLoadingSpinner(false);
       }
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setLoading(true);
-      try {
-        const items = await mapirSearch(q, controller.signal);
-        if (controller.signal.aborted) return;
-        abortRef.current = null;
-        setSuggestions(items);
-        setOpen(true);
-        if (items.length > 0) {
-          const first = items[0];
-          onChange(first.address, first.latitude, first.longitude);
-        }
-      } catch {
-        if (!controller.signal.aborted) abortRef.current = null;
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+      if (loadingDelayRef.current) {
+        clearTimeout(loadingDelayRef.current);
+        loadingDelayRef.current = null;
       }
-    },
-    [onChange]
-  );
+    }
+  }, []);
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -87,6 +105,13 @@ export function MapLocationPicker({
       if (!v.trim() || v.trim().length < MIN_SEARCH_LENGTH) {
         setSuggestions([]);
         setOpen(false);
+        setLoading(false);
+        setShowLoadingSpinner(false);
+        if (loadingDelayRef.current) {
+          clearTimeout(loadingDelayRef.current);
+          loadingDelayRef.current = null;
+        }
+        abortRef.current?.abort();
         return;
       }
       debounceRef.current = setTimeout(() => runSearch(v), SEARCH_DEBOUNCE_MS);
@@ -97,6 +122,7 @@ export function MapLocationPicker({
   const handleSelect = useCallback(
     (item: MapirSearchItem) => {
       onChange(item.address, item.latitude, item.longitude);
+      onMoveMapTo?.(item.latitude, item.longitude);
       setSuggestions([]);
       setOpen(false);
       if (mode === 'sheet' && onConfirm) {
@@ -107,14 +133,16 @@ export function MapLocationPicker({
         });
       }
     },
-    [onChange, mode, onConfirm]
+    [onChange, onMoveMapTo, mode, onConfirm]
   );
 
   useEffect(() => {
     const t = debounceRef.current;
+    const ld = loadingDelayRef.current;
     const ac = abortRef.current;
     return () => {
       if (t) clearTimeout(t);
+      if (ld) clearTimeout(ld);
       ac?.abort();
     };
   }, []);
@@ -150,7 +178,7 @@ export function MapLocationPicker({
           autoComplete="off"
           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         />
-        {loading && (
+        {showLoadingSpinner && (
           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
             ...
           </div>
@@ -158,20 +186,29 @@ export function MapLocationPicker({
         {open && suggestions.length > 0 && (
           <ul
             ref={listRef}
-            className="absolute z-20 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+            className="absolute z-50 mt-1 w-full max-h-48 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"
           >
-            {suggestions.map((item, i) => (
-              <li key={i}>
-                <button
-                  type="button"
-                  className="w-full text-right px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
-                  onClick={() => handleSelect(item)}
-                >
-                  <MapPin size={14} className="text-gray-500 flex-shrink-0" />
-                  <span className="text-sm text-gray-900">{item.address}</span>
-                </button>
-              </li>
-            ))}
+            {suggestions.map((item, i) => {
+              const isPlace = item.type === 'POI' || (item.type && !/Roads|Cities|Neighborhoods|Counties|Provinces|Region/i.test(item.type));
+              const typeLabel = item.type ? (isPlace ? 'مکان' : 'آدرس') : null;
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className="w-full text-right px-3 py-2 hover:bg-gray-100 flex items-center gap-2"
+                    onClick={() => handleSelect(item)}
+                  >
+                    <MapPin size={14} className="text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-900 flex-1">{item.address}</span>
+                    {typeLabel && (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {typeLabel}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -242,7 +279,7 @@ export function MapLocationSheetContent({
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <MapPin className="w-10 h-10 text-error-500 drop-shadow-lg" />
+            <MapPin className="w-10 h-10 text-primary-600 drop-shadow-lg" />
           </div>
         </div>
       )}

@@ -1,0 +1,18 @@
+meta {
+  name: Verify Payment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/payment/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "authority": "000000000000000000000000000000000000",
+    "status": "OK"
+  }
+}

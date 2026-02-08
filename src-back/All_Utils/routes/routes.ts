@@ -54,10 +54,16 @@ import { getMyReservationsController, cancelMyReservationController } from '../.
 import { getBarberProfileController, createBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/profile.controller';
 import { editBarberProfileController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/editprofile.controller';
 import { logoutBarberController } from '../../Barber_Side/Profile_barber/Get_Edit_Profile/logout.controller';
+import { getBarberFinancialConfigController } from '../../Barber_Side/Profile_barber/Financial/financial.controller';
 import { getServicesController, createServiceController, editServiceController } from '../../Barber_Side/Profile_barber/Get_Edit_Service/service.controller';
 import { getWorkingHoursController, createWorkingHoursController, editWorkingHoursController } from '../../Barber_Side/Profile_barber/Get_Edit_workingHours/workinghour.controller';
 import { getCouponsController, createCouponController, editCouponController, sendCouponSMSController } from '../../Barber_Side/Profile_barber/Get_Edit_coupon/coupon.controller';
 import { getCommentsController } from '../../Barber_Side/Profile_barber/Get_commentsCustomer/comment.controller';
+import {
+  getBarberNotificationsController,
+  markBarberNotificationReadController,
+  markAllBarberNotificationsReadController,
+} from '../../Barber_Side/Notifications/barber-notifications.controller';
 import {
   getReservationRulesController,
   putReservationRulesController,
@@ -75,6 +81,13 @@ import { getDashboardController } from '../../Barber_Side/Home_page/dashboard.co
 import { getTodayAppointmentsController } from '../../Barber_Side/Home_page/today-appointments.controller';
 import { getCustomersController } from '../../Barber_Side/Hairdresser_customers/customers.controller';
 import { getAppointmentsController, updateAppointmentStatusController as updateBarberAppointmentStatusController } from '../../Barber_Side/Appointment_barber/appointment.controller';
+import {
+  createInvitationController,
+  listInvitationsController,
+  listMembersController,
+  getMyPendingInvitationsController,
+  acceptInvitationController,
+} from '../../Barber_Side/Barbershop_seats/seats.controller';
 import { 
   registerTokenController, 
   getUsersWithDevicesController, 
@@ -87,6 +100,10 @@ import {
   resetUserOtpLimitController,
   getUserOtpStatusController,
   getAllAdminsController,
+  getBarberAppointmentsController,
+  getBarbershopServicesAdminController,
+  clearBarberReservationsController,
+  clearBarberFinancialController,
 } from '../Admin/admin.controller';
 import { adminLoginController } from '../Admin/admin-login.controller';
 import {
@@ -94,6 +111,7 @@ import {
   getFinancialMetricsController,
   getAdminTransactionsController,
 } from '../Admin/financial/financial.controller';
+import { setBarbershopCommissionController } from '../Admin/barbershop-commission.controller';
 import { mapirReverseController, mapirSearchController } from '../Mapir/mapir-proxy.controller';
 
 const router = Router();
@@ -141,8 +159,13 @@ router.post('/admin/notifications/send', authenticateAdmin, adminSendNotificatio
 // Admin Management Routes
 router.get('/admin/users', authenticateAdmin, getAllUsersController);
 router.get('/admin/barbers', authenticateAdmin, getAllBarbersController);
+router.put('/admin/barbershops/:id/commission', authenticateAdmin, setBarbershopCommissionController);
 router.get('/admin/appointments', authenticateAdmin, getAllAppointmentsController);
-router.get('/admin/staff', authenticateAdmin, getAllAdminsController); // New: Admin/Staff management
+router.get('/admin/staff', authenticateAdmin, getAllAdminsController);
+router.get('/admin/barbers/:barberId/appointments', authenticateAdmin, getBarberAppointmentsController);
+router.get('/admin/barbershops/:barbershopId/services', authenticateAdmin, getBarbershopServicesAdminController);
+router.post('/admin/barbers/:barberId/clear-reservations', authenticateAdmin, clearBarberReservationsController);
+router.post('/admin/barbers/:barberId/clear-financial', authenticateAdmin, clearBarberFinancialController);
 
 // Admin OTP Management Routes
 router.post('/admin/users/:phone/reset-otp', authenticateAdmin, resetUserOtpLimitController);
@@ -180,6 +203,7 @@ router.put('/barber/profile', authenticateToken, upload.fields([
   { name: 'backgroundImage', maxCount: 1 }
 ]), editBarberProfileController);
 router.post('/barber/logout', authenticateToken, logoutBarberController);
+router.get('/barber/financial-config', authenticateToken, getBarberFinancialConfigController);
 
 // Barber Services Routes (Protected - Barber only)
 router.get('/barber/services', authenticateToken, getServicesController);
@@ -205,6 +229,18 @@ router.post('/barber/coupons/:id/send-sms', authenticateToken, sendCouponSMSCont
 
 // Barber Comments Routes (Protected - Barber only)
 router.get('/barber/comments', authenticateToken, getCommentsController);
+
+// Barber Notifications (In-App, Redis-backed) (Protected - Barber only)
+router.get('/barber/notifications', authenticateToken, getBarberNotificationsController);
+router.patch('/barber/notifications/read-all', authenticateToken, markAllBarberNotificationsReadController);
+router.patch('/barber/notifications/:id/read', authenticateToken, markBarberNotificationReadController);
+
+// Barber Barbershop Seats / Invitations (Protected - Barber only)
+router.post('/barber/barbershop/invitations', authenticateToken, createInvitationController);
+router.get('/barber/barbershop/invitations', authenticateToken, listInvitationsController);
+router.get('/barber/barbershop/members', authenticateToken, listMembersController);
+router.get('/barber/invitations', authenticateToken, getMyPendingInvitationsController);
+router.post('/barber/invitations/:token/accept', authenticateToken, acceptInvitationController);
 
 // Barber Reservation Rules Routes (Protected - Barber only)
 router.get('/barber/reservation-rules', authenticateToken, getReservationRulesController);

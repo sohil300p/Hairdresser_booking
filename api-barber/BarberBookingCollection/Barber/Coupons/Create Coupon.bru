@@ -1,0 +1,23 @@
+meta {
+  name: Create Coupon
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/barber/coupons
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "code": "SUMMER50",
+    "percent": 10,
+    "maxUsage": 100
+  }
+}

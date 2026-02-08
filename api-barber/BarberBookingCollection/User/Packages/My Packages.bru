@@ -1,0 +1,15 @@
+meta {
+  name: My Packages
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/packages/my-packages
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

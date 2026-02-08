@@ -1,0 +1,19 @@
+meta {
+  name: Get Appointment
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/appointments/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}

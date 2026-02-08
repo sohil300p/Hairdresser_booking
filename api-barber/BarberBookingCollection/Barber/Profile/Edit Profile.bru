@@ -1,0 +1,20 @@
+meta {
+  name: Edit Profile
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/barber/profile
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  name: My Barbershop Updated
+  profileImage: @file()
+}

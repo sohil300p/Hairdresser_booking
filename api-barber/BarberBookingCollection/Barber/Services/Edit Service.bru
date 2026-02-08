@@ -1,0 +1,24 @@
+meta {
+  name: Edit Service
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/barber/services/:id
+  body: multipartForm
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  name: Haircut Updated
+  price: 600000
+}

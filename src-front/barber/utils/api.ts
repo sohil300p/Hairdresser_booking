@@ -9,12 +9,13 @@ export const setAuthHandlers = (
   showToastHandler = showToast;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api');
 
 export const api = {
   get: async <T>(path: string): Promise<T> => request('GET', path),
   post: async <T>(path: string, body: any): Promise<T> => request('POST', path, body),
   put: async <T>(path: string, body: any): Promise<T> => request('PUT', path, body),
+  patch: async <T>(path: string, body?: any): Promise<T> => request('PATCH', path, body),
   delete: async <T>(path: string): Promise<T> => request('DELETE', path),
   upload: async <T>(path: string, formData: FormData): Promise<T> => request('POST', path, formData, true),
   uploadPut: async <T>(path: string, formData: FormData): Promise<T> => request('PUT', path, formData, true),

@@ -1,0 +1,19 @@
+meta {
+  name: Read Notification
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/barber/notifications/:id/read
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}

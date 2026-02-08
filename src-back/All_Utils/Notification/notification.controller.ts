@@ -58,7 +58,7 @@ export async function getUsersWithDevicesController(req: Request, res: Response)
  */
 export async function adminSendNotificationController(req: Request, res: Response) {
   try {
-    const { userId, userType, title, body, data } = req.body;
+    const { userId, userType, title, body, data, blockChannels } = req.body;
     
     if (!userId || !userType || !title || !body) {
       return res.status(400).json({ 
@@ -79,7 +79,8 @@ export async function adminSendNotificationController(req: Request, res: Respons
       userType: userType as 'customer' | 'barber',
       title: String(title),
       body: String(body),
-      data: data || undefined
+      data: data || undefined,
+      blockChannels: Array.isArray(blockChannels) ? blockChannels : undefined,
     });
 
     if (!result.success) {

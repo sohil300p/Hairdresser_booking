@@ -1,0 +1,15 @@
+meta {
+  name: Get Comments
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/barber/comments
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

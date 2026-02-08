@@ -1,0 +1,22 @@
+meta {
+  name: Transfer
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/transactions/transfer
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "amount": 10000,
+    "destinationUserPhone": "09..."
+  }
+}

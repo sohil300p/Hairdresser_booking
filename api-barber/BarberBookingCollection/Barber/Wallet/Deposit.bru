@@ -1,0 +1,21 @@
+meta {
+  name: Deposit
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/barber/wallet/deposit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "amount": 100000
+  }
+}

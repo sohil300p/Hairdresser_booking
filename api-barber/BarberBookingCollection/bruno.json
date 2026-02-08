@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Barber Booking API",
+  "type": "collection",
+  "ignore": [
+    ".git",
+    "node_modules"
+  ]
+}

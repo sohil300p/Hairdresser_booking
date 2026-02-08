@@ -1,0 +1,25 @@
+meta {
+  name: Update Status
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/appointments/:id/status
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}

@@ -26,6 +26,20 @@ export interface AdminStaff {
   lastLoginAt: Date | null;
 }
 
+export interface AdminBarbershopReservationTier {
+  minHoursBefore: number;
+  feePercent: number;
+}
+
+export interface AdminBarbershop {
+  id: number;
+  name: string;
+  platformCommissionPercent: number | null;
+  reservationPaymentPercent: number | null;
+  cancellationPolicy: string | null;
+  cancellationTiers: AdminBarbershopReservationTier[] | null;
+}
+
 export interface AdminBarber {
   id: number;
   fullName: string | null;
@@ -38,6 +52,7 @@ export interface AdminBarber {
   walletBalance: number;
   barbershopCount: number;
   appointmentCount: number;
+  barbershops: AdminBarbershop[];
 }
 
 export interface AdminAppointment {
@@ -118,9 +133,17 @@ export async function getAllBarbersService() {
         avatar: true,
         gender: true,
         walletBalance: true,
+        customer: {
+          select: { fullName: true, phone: true },
+        },
         ownedBarbershops: {
           select: {
             id: true,
+            name: true,
+            platformCommissionPercent: true,
+            reservationPaymentPercent: true,
+            cancellationPolicy: true,
+            cancellationTiers: true,
           },
         },
         appointments: {
@@ -136,8 +159,8 @@ export async function getAllBarbersService() {
 
     const barbersList: AdminBarber[] = barbers.map((barber) => ({
       id: barber.id,
-      fullName: barber.fullName,
-      phone: barber.phone,
+      fullName: barber.fullName ?? barber.customer?.fullName ?? null,
+      phone: barber.phone ?? barber.customer?.phone ?? null,
       email: barber.email,
       specialization: barber.specialization,
       experienceYears: barber.experienceYears,
@@ -146,6 +169,14 @@ export async function getAllBarbersService() {
       walletBalance: Number(barber.walletBalance),
       barbershopCount: barber.ownedBarbershops.length,
       appointmentCount: barber.appointments.length,
+      barbershops: barber.ownedBarbershops.map((s) => ({
+        id: s.id,
+        name: s.name,
+        platformCommissionPercent: s.platformCommissionPercent,
+        reservationPaymentPercent: s.reservationPaymentPercent,
+        cancellationPolicy: s.cancellationPolicy,
+        cancellationTiers: (s.cancellationTiers as AdminBarbershopReservationTier[] | null) ?? null,
+      })),
     }));
 
     return { success: true, barbers: barbersList };
@@ -315,6 +346,122 @@ export async function getAllAdminsService() {
     return { success: true, admins: adminsList };
   } catch (error) {
     console.error('❌ Error getting all admins:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export interface AdminBarberAppointment {
+  id: number;
+  startTime: number;
+  endTime: number;
+  status: string;
+  customerName: string | null;
+  customerPhone: string;
+  serviceName: string | null;
+  barbershopName: string | null;
+  priceTotal: number | null;
+}
+
+export async function getBarberAppointmentsService(barberId: number) {
+  try {
+    const barber = await prisma.barber.findUnique({
+      where: { id: barberId },
+      select: { id: true },
+    });
+    if (!barber) return { success: false, message: 'Barber not found' };
+
+    const appointments = await prisma.appointment.findMany({
+      where: { barberId },
+      include: {
+        customer: { select: { fullName: true, phone: true } },
+        service: { select: { name: true } },
+        barbershop: { select: { name: true } },
+      },
+      orderBy: { startTime: 'desc' },
+      take: 500,
+    });
+
+    const list: AdminBarberAppointment[] = appointments.map((a) => ({
+      id: a.id,
+      startTime: Number(a.startTime),
+      endTime: Number(a.endTime),
+      status: a.status,
+      customerName: a.customer?.fullName ?? null,
+      customerPhone: a.customer?.phone ?? '',
+      serviceName: a.service?.name ?? null,
+      barbershopName: a.barbershop?.name ?? null,
+      priceTotal: a.priceTotal != null ? Number(a.priceTotal) : null,
+    }));
+
+    return { success: true, appointments: list };
+  } catch (error) {
+    console.error('Error getBarberAppointments:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export interface AdminBarbershopServiceItem {
+  id: number;
+  name: string;
+  price: number | null;
+  estimatedTime: number;
+  gender: string;
+}
+
+export async function getBarbershopServicesForAdminService(barbershopId: number) {
+  try {
+    const services = await prisma.service.findMany({
+      where: { barbershopId, parentServiceId: null },
+      select: { id: true, name: true, price: true, estimatedTime: true, gender: true },
+      orderBy: { created: 'asc' },
+    });
+
+    const list: AdminBarbershopServiceItem[] = services.map((s) => ({
+      id: s.id,
+      name: s.name,
+      price: s.price != null ? Number(s.price) : null,
+      estimatedTime: s.estimatedTime,
+      gender: s.gender,
+    }));
+
+    return { success: true, services: list };
+  } catch (error) {
+    console.error('Error getBarbershopServicesForAdmin:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function clearBarberReservationsService(barberId: number) {
+  try {
+    const barber = await prisma.barber.findUnique({ where: { id: barberId }, select: { id: true } });
+    if (!barber) return { success: false, message: 'Barber not found' };
+
+    const now = BigInt(Date.now());
+    const updated = await prisma.appointment.updateMany({
+      where: { barberId, startTime: { gt: now }, status: { not: 'cancelled' } },
+      data: { status: 'cancelled' },
+    });
+
+    return { success: true, cancelledCount: updated.count };
+  } catch (error) {
+    console.error('Error clearBarberReservations:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
+export async function clearBarberFinancialService(barberId: number) {
+  try {
+    const barber = await prisma.barber.findUnique({ where: { id: barberId }, select: { id: true, walletBalance: true } });
+    if (!barber) return { success: false, message: 'Barber not found' };
+
+    await prisma.barber.update({
+      where: { id: barberId },
+      data: { walletBalance: 0 },
+    });
+
+    return { success: true, previousBalance: Number(barber.walletBalance ?? 0) };
+  } catch (error) {
+    console.error('Error clearBarberFinancial:', error);
     return { success: false, error: String(error) };
   }
 }

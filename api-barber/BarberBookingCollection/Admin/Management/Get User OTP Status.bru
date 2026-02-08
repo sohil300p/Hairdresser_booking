@@ -1,0 +1,19 @@
+meta {
+  name: Get User OTP Status
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/admin/users/:phone/otp-status
+  body: none
+  auth: bearer
+}
+
+params:path {
+  phone: 09123456789
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

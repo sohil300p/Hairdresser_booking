@@ -60,7 +60,7 @@ export default function DashboardPage() {
       ) : summaries.length > 0 ? (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Wallet Summary</h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {summaries.map((s) => (
               <WalletSummaryCard key={s.ownerType} summary={s} />
             ))}

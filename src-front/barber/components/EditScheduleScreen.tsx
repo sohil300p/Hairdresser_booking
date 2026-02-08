@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ArrowRight, Save, X } from 'lucide-react';
-import MaterialInput from './MaterialInput';
+import { TimeRangePicker } from './TimeRangePicker';
 
 interface Schedule {
     key: string;
@@ -39,6 +39,9 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({ initialSchedule
     const handleTimeChange = (key: string, field: 'startTime' | 'endTime', value: string) => {
         setEditedSchedule(editedSchedule.map(day => day.key === key ? {...day, [field]: value} : day));
     };
+    const handleTimeRangeChange = (key: string, startTime: string, endTime: string) => {
+        setEditedSchedule(editedSchedule.map(day => day.key === key ? {...day, startTime, endTime} : day));
+    };
     
     return (
         <div className="absolute inset-0 bg-surface-1 z-50 flex flex-col">
@@ -55,9 +58,15 @@ const EditScheduleScreen: React.FC<EditScheduleScreenProps> = ({ initialSchedule
                             <ToggleSwitch label={day.isActive ? "فعال" : "تعطیل"} enabled={day.isActive} setEnabled={() => handleDayToggle(day.key)} id={`schedule-toggle-${day.key}`} />
                         </div>
                         {day.isActive && (
-                            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
-                                <MaterialInput id={`${day.key}-start`} label="ساعت شروع" type="time" value={day.startTime} onChange={(e) => handleTimeChange(day.key, 'startTime', e.target.value)} />
-                                <MaterialInput id={`${day.key}-end`} label="ساعت پایان" type="time" value={day.endTime} onChange={(e) => handleTimeChange(day.key, 'endTime', e.target.value)} />
+                            <div className="mt-4 pt-4 border-t">
+                                <TimeRangePicker
+                                    id={`${day.key}-time`}
+                                    startTime={day.startTime}
+                                    endTime={day.endTime}
+                                    onChange={(start, end) => handleTimeRangeChange(day.key, start, end)}
+                                    labelStart="ساعت شروع"
+                                    labelEnd="ساعت پایان"
+                                />
                             </div>
                         )}
                     </div>

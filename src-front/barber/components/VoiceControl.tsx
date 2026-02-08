@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic } from 'lucide-react';
 // Import the shared Screen type from App.tsx instead of redefining it locally.
 import type { Screen } from '../App';
 
@@ -56,6 +56,7 @@ declare global {
 
 interface VoiceControlProps {
     setActiveScreen: (screen: Screen) => void;
+    registerStart?: (start: () => void) => void;
 }
 
 const commandToScreen: { [key: string]: Screen } = {
@@ -74,7 +75,7 @@ const commandToScreen: { [key: string]: Screen } = {
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 const isSpeechRecognitionSupported = !!SpeechRecognitionAPI;
 
-const VoiceControl: React.FC<VoiceControlProps> = ({ setActiveScreen }) => {
+const VoiceControl: React.FC<VoiceControlProps> = ({ setActiveScreen, registerStart }) => {
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
     // Fix: 'SpeechRecognition' now correctly refers to the instance interface type.
@@ -149,7 +150,14 @@ const VoiceControl: React.FC<VoiceControlProps> = ({ setActiveScreen }) => {
             }
         }
     };
-    
+
+    const toggleRef = useRef(toggleListening);
+    toggleRef.current = toggleListening;
+    useEffect(() => {
+        registerStart?.(() => toggleRef.current());
+        return () => registerStart?.(() => {});
+    }, [registerStart]);
+
     if (!isSpeechRecognitionSupported) {
         return null;
     }
@@ -174,20 +182,7 @@ const VoiceControl: React.FC<VoiceControlProps> = ({ setActiveScreen }) => {
         );
     }
 
-    return (
-        <div
-            className="fixed bottom-24 left-6 z-50"
-            style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
-        >
-            <button
-                onClick={toggleListening}
-                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl transition-transform duration-300 ease-in-out hover:scale-110 bg-primary-600 text-white`}
-                aria-label={"فعال‌سازی دستیار صوتی"}
-            >
-                <Mic size={28} />
-            </button>
-        </div>
-    );
+    return null;
 };
 
 export default VoiceControl;

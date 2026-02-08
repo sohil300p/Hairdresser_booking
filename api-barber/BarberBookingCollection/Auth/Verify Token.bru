@@ -1,0 +1,17 @@
+meta {
+  name: Verify Token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/auth/verify-token
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "token": "your_access_token_here"
+  }
+}

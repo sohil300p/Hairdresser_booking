@@ -1,0 +1,15 @@
+meta {
+  name: Get Users with Devices
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/admin/notifications/users
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

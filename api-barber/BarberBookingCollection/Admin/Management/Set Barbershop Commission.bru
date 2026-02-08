@@ -1,0 +1,25 @@
+meta {
+  name: Set Barbershop Commission
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/admin/barbershops/:id/commission
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+body:json {
+  {
+    "platformCommissionPercent": 15
+  }
+}

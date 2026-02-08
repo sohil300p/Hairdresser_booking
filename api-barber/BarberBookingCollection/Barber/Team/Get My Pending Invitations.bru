@@ -1,0 +1,15 @@
+meta {
+  name: Get My Pending Invitations
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/barber/invitations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

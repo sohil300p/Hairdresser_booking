@@ -1,0 +1,25 @@
+meta {
+  name: Edit Coupon
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/barber/coupons/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "active": false
+  }
+}

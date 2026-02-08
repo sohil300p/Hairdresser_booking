@@ -1,0 +1,21 @@
+meta {
+  name: Edit Profile
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/profile
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  fullName: John Doe
+  gender: male
+  profileImage: @file()
+}

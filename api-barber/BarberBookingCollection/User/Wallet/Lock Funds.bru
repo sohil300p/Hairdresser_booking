@@ -1,0 +1,22 @@
+meta {
+  name: Lock Funds
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/transactions/lock
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "amount": 50000,
+    "reason": "Security Deposit"
+  }
+}

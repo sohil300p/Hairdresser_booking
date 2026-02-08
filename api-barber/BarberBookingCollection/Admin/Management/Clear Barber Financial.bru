@@ -1,0 +1,19 @@
+meta {
+  name: Clear Barber Financial
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/admin/barbers/:barberId/clear-financial
+  body: none
+  auth: bearer
+}
+
+params:path {
+  barberId: 1
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}

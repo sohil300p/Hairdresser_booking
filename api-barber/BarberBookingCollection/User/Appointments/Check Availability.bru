@@ -1,0 +1,17 @@
+meta {
+  name: Check Availability
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/appointments/availability
+  body: none
+  auth: none
+}
+
+params:query {
+  date: 2023-10-27
+  barbershopId: 1
+  serviceId: 1
+}
