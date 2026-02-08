@@ -1,42 +1,64 @@
-
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowRight, Save, X } from 'lucide-react';
 import MaterialInput from './MaterialInput';
 import BottomSheet from './BottomSheet';
-// Import the shared Screen type from App.tsx instead of redeclaring it here.
+import { api } from '../utils/api';
 import type { Screen } from '../App';
-
-// Remove the local Screen type definition; it is now imported from App.tsx.
+import type { ServiceItem, GetServicesResponse } from '../types/api';
 
 interface AddReservationScreenProps {
   setActiveScreen: (screen: Screen) => void;
 }
 
-const services = [
-  { id: 1, name: 'اصلاح مو', price: '100,000 تومان' },
-  { id: 2, name: 'اصلاح مو + ریش', price: '150,000 تومان' },
-  { id: 3, name: 'کراتینه', price: '800,000 تومان' },
-  { id: 4, name: 'رنگ مو', price: '450,000 تومان' },
-  { id: 5, name: 'اصلاح صورت', price: '80,000 تومان' },
-];
+function formatPrice(price: number | null): string {
+  return `${(price ?? 0).toLocaleString('fa-IR')} تومان`;
+}
 
 const AddReservationScreen: React.FC<AddReservationScreenProps> = ({ setActiveScreen }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [service, setService] = useState('');
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [date, setDate] = useState('1403/05/15');
   const [time, setTime] = useState('15:30');
   const [isServiceSheetOpen, setServiceSheetOpen] = useState(false);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  const fetchServices = useCallback(async () => {
+    try {
+      setServicesLoading(true);
+      setServicesError(null);
+      const res = await api.get<GetServicesResponse>('/barber/services');
+      if (res.success && res.data?.services) {
+        setServices(res.data.services);
+      } else {
+        setServices([]);
+      }
+    } catch (err) {
+      setServicesError('خطا در دریافت لیست خدمات');
+      setServices([]);
+    } finally {
+      setServicesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedService) {
+      window.showToast('لطفاً یک خدمت انتخاب کنید', 'error');
+      return;
+    }
     window.showToast('رزرو با موفقیت ثبت شد!', 'success');
     setActiveScreen('reservations');
   };
-  
-  const handleServiceSelect = (serviceName: string) => {
-    setService(serviceName);
+
+  const handleServiceSelect = (s: ServiceItem) => {
+    setSelectedService(s);
     setServiceSheetOpen(false);
   };
 
@@ -71,7 +93,7 @@ const AddReservationScreen: React.FC<AddReservationScreenProps> = ({ setActiveSc
                   id="service" 
                   label="خدمت" 
                   type="text" 
-                  value={service}
+                  value={selectedService ? `${selectedService.name} - ${formatPrice(selectedService.price)}` : ''}
                   onClick={() => setServiceSheetOpen(true)}
                   readOnly
                   required
@@ -115,16 +137,24 @@ const AddReservationScreen: React.FC<AddReservationScreenProps> = ({ setActiveSc
 
       <BottomSheet isOpen={isServiceSheetOpen} onClose={() => setServiceSheetOpen(false)} title="انتخاب خدمت">
         <div className="space-y-2">
-            {services.map(s => (
-                <button 
-                    key={s.id} 
-                    onClick={() => handleServiceSelect(s.name)}
-                    className="w-full text-right p-4 bg-surface-1 rounded-lg hover:bg-primary-100 hover:text-primary-700 transition"
-                >
-                    <p className="font-semibold">{s.name}</p>
-                    <p className="text-sm text-gray-600">{s.price}</p>
-                </button>
-            ))}
+            {servicesLoading ? (
+                <p className="text-center py-4 text-gray-500">در حال بارگذاری...</p>
+            ) : servicesError ? (
+                <p className="text-center py-4 text-red-600">{servicesError}</p>
+            ) : services.length === 0 ? (
+                <p className="text-center py-4 text-gray-500">هنوز خدمتی تعریف نشده است. از بخش پروفایل، خدمات خود را اضافه کنید.</p>
+            ) : (
+                services.map((s) => (
+                    <button
+                        key={s.id}
+                        onClick={() => handleServiceSelect(s)}
+                        className="w-full text-right p-4 bg-surface-1 rounded-lg hover:bg-primary-100 hover:text-primary-700 transition"
+                    >
+                        <p className="font-semibold">{s.name}</p>
+                        <p className="text-sm text-gray-600">{formatPrice(s.price)}</p>
+                    </button>
+                ))
+            )}
         </div>
       </BottomSheet>
     </>
