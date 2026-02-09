@@ -5,9 +5,9 @@ import helmet from 'helmet';
 import prisma from './All_Utils/config/prisma';
 import { getRedisClient, isRedisConnected } from './All_Utils/config/redis';
 import { ensureMinioInitialized, testMinioConnection } from './All_Utils/config/minio';
-import { initializeFirebase } from './All_Utils/Notification/firebase';
+import { initializeFirebase } from './All_Notifications/Notification/firebase';
 import routes from './All_Utils/routes/routes';
-import { mapirProxyController, mapirSearchController, mapirReverseController } from './All_Utils/Mapir/mapir-proxy.controller';
+import { mapirProxyController, mapirSearchController, mapirReverseController } from './Mapir/mapir-proxy.controller';
 
 const redisClient = getRedisClient();
 

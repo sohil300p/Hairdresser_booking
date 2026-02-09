@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../config/prisma';
+import prisma from '../../All_Utils/config/prisma';
 import { authenticateAdmin } from './admin-auth.middleware';
 
 export async function setBarbershopCommissionController(req: Request, res: Response): Promise<void> {

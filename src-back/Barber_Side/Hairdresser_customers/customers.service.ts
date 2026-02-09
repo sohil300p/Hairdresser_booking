@@ -45,8 +45,8 @@ export async function getCustomersService(
             email: true,
             avatar: true,
             gender: true,
-            createdAt: true,
-            lastLoginAt: true,
+            created: true,
+            last_login: true,
             publicMeta: true,
             privateMeta: true,
           },
@@ -78,8 +78,8 @@ export async function getCustomersService(
           email: string | null;
           avatar: string | null;
           gender: 'male' | 'female' | 'other' | null;
-          createdAt: Date;
-          lastLoginAt: Date | null;
+          created: Date;
+          last_login: Date | null;
           publicMeta: any;
           privateMeta: any;
         };
@@ -152,8 +152,8 @@ export async function getCustomersService(
         visitCount: item.visitCount,
         lastVisitDate: item.lastVisitDate,
         totalSpent: Number(item.totalSpent),
-        createdAt: Number(item.customer.createdAt),
-        lastLoginAt: item.customer.lastLoginAt ? Number(item.customer.lastLoginAt) : null,
+        createdAt: (item.customer.created as Date).getTime(),
+        lastLoginAt: item.customer.last_login != null ? (item.customer.last_login as Date).getTime() : null,
       };
     });
 

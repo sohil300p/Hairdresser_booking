@@ -1,5 +1,5 @@
-import prisma from '../config/prisma';
-import { resetOtpLimitService, getOtpAttemptsInfo } from '../OTP/otp.service';
+import prisma from '../../All_Utils/config/prisma';
+import { resetOtpLimitService, getOtpAttemptsInfo } from '../../All_Notifications/OTP/otp.service';
 
 export interface AdminUser {
   id: number;
@@ -85,8 +85,8 @@ export async function getAllUsersService() {
         email: true,
         avatar: true,
         gender: true,
-        createdAt: true,
-        lastLoginAt: true,
+        created: true,
+        last_login: true,
         appointments: {
           select: {
             id: true,
@@ -94,7 +94,7 @@ export async function getAllUsersService() {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        created: 'desc',
       },
     });
 
@@ -107,8 +107,8 @@ export async function getAllUsersService() {
       email: customer.email,
       avatar: customer.avatar,
       gender: customer.gender,
-      createdAt: customer.createdAt,
-      lastLoginAt: customer.lastLoginAt,
+      createdAt: customer.created as Date,
+      lastLoginAt: customer.last_login != null ? (customer.last_login as Date) : null,
       appointmentCount: customer.appointments.length,
     }));
 

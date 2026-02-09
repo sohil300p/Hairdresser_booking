@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { healthCheck } from '../Helth/healthController';
-import { getSystemMetricsController } from '../Monitoring/monitoring.controller';
+import { getSystemMetricsController } from '../../Admin_Side/Monitoring/monitoring.controller';
 import { authenticateToken } from '../../User_Side/auth/auth.middleware';
-import { authenticateAdmin } from '../Admin/admin-auth.middleware';
-import { sendOtpController, verifyOtpController } from '../OTP/otp.controller';
+import { authenticateAdmin } from '../../Admin_Side/Admin/admin-auth.middleware';
+import { sendOtpController, verifyOtpController } from '../../All_Notifications/OTP/otp.controller';
 import { refreshTokenController, verifyTokenController, logoutController } from '../../User_Side/auth/auth.controller';
 import { loginWithPasswordController } from '../../User_Side/auth/login.controller';
 import { getProfileController } from '../../User_Side/Profile_User/Get_Edit_profile/profile.controller';
@@ -92,7 +92,7 @@ import {
   registerTokenController, 
   getUsersWithDevicesController, 
   adminSendNotificationController 
-} from '../Notification/notification.controller';
+} from '../../All_Notifications/Notification/notification.controller';
 import {
   getAllUsersController,
   getAllBarbersController,
@@ -104,15 +104,15 @@ import {
   getBarbershopServicesAdminController,
   clearBarberReservationsController,
   clearBarberFinancialController,
-} from '../Admin/admin.controller';
-import { adminLoginController } from '../Admin/admin-login.controller';
+} from '../../Admin_Side/Admin/admin.controller';
+import { adminLoginController } from '../../Admin_Side/Admin/admin-login.controller';
 import {
   getWalletSummariesController,
   getFinancialMetricsController,
   getAdminTransactionsController,
-} from '../Admin/financial/financial.controller';
-import { setBarbershopCommissionController } from '../Admin/barbershop-commission.controller';
-import { mapirReverseController, mapirSearchController } from '../Mapir/mapir-proxy.controller';
+} from '../../Admin_Side/Admin/financial/financial.controller';
+import { setBarbershopCommissionController } from '../../Admin_Side/Admin/barbershop-commission.controller';
+import { mapirReverseController, mapirSearchController } from '../../Mapir/mapir-proxy.controller';
 
 const router = Router();
 

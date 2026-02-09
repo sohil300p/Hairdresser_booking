@@ -1,7 +1,7 @@
-import prisma from '../config/prisma';
+import prisma from '../../All_Utils/config/prisma';
 import bcrypt from 'bcryptjs';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
-import { validateIranianPhoneNumber, normalizePhoneNumber } from '../utils/validator';
+import { generateAccessToken, generateRefreshToken } from '../../All_Utils/utils/jwt';
+import { validateIranianPhoneNumber, normalizePhoneNumber } from '../../All_Utils/utils/validator';
 
 interface AdminLoginRequest {
   phone: string;

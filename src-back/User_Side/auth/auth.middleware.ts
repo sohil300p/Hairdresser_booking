@@ -63,14 +63,19 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       return;
     }
 
-    // Check if user is a barber (informational only - barber records created on-demand)
-    const barber = await prisma.barber.findFirst({
-      where: { userRefId: customer.id },
-      select: {
-        id: true,
-        userRefId: true,
-      },
-    });
+    // Check if user is a barber (optional - skip if barbers table/column missing)
+    let barber: { id: number; userRefId: number } | null = null;
+    try {
+      barber = await prisma.barber.findFirst({
+        where: { userRefId: customer.id },
+        select: {
+          id: true,
+          userRefId: true,
+        },
+      });
+    } catch {
+      // barbers table or customer_id/user_ref_id column may not exist
+    }
 
     // Attach user info to request
     // Note: barberId may be undefined - barber records are created on-demand when accessing barber endpoints
@@ -116,14 +121,18 @@ export async function optionalAuthenticateToken(req: AuthRequest, res: Response,
         });
 
         if (customer) {
-          // Check if user is a barber
-          const barber = await prisma.barber.findFirst({
-            where: { userRefId: customer.id },
-            select: {
-              id: true,
-              userRefId: true,
-            },
-          });
+          let barber: { id: number; userRefId: number } | null = null;
+          try {
+            barber = await prisma.barber.findFirst({
+              where: { userRefId: customer.id },
+              select: {
+                id: true,
+                userRefId: true,
+              },
+            });
+          } catch {
+            // barbers table or column may not exist
+          }
 
           req.user = {
             id: customer.id,

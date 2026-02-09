@@ -26,9 +26,9 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         gender: true,
         publicMeta: true,
         role: true,
-        lastLoginAt: true,
-        createdAt: true,
-        updatedAt: true,
+        last_login: true,
+        created: true,
+        updated: true,
       },
     });
 
@@ -39,10 +39,16 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
       };
     }
 
-    // Check if user is a barber
-    const barber = await prisma.barber.findFirst({
-      where: { userRefId: customer.id },
-    });
+    // Check if user is a barber (optional - skip if barbers table/column missing)
+    let barber: { id: number } | null = null;
+    try {
+      barber = await prisma.barber.findFirst({
+        where: { userRefId: customer.id },
+        select: { id: true },
+      });
+    } catch {
+      // barbers table or column may not exist
+    }
 
     // Extract backgroundImage from publicMeta
     const publicMeta = (customer.publicMeta || {}) as any;
@@ -62,8 +68,8 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         gender: customer.gender as 'male' | 'female' | 'other' | null,
         userType: barber ? 'barber' : 'customer',
         barberId: barber?.id,
-        createdAt: Number(customer.createdAt),
-        updatedAt: Number(customer.updatedAt),
+        createdAt: (customer.created as Date).getTime(),
+        updatedAt: (customer.updated as Date).getTime(),
       },
     };
   } catch (error) {

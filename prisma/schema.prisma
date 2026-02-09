@@ -19,16 +19,15 @@ model Customer {
   gender            Gender?
   role              Role              @default(customer)
   email_verified_at BigInt?
-  phone_verified    Boolean           @default(false)
   otp               String?
   otp_expires       BigInt?
   wallet_balance    Decimal           @default(0.00) @db.Decimal(20, 2)
   transaction_code  String?
   publicMeta        Json?             @map("public_meta")
   privateMeta       Json?             @map("private_meta")
-  last_login        BigInt?
-  created           BigInt            @default(0)
-  updated           BigInt            @default(0)
+  last_login        DateTime?         @map("last_login")
+  created           DateTime          @default(now()) @map("created")
+  updated           DateTime          @updatedAt @map("updated")
   appointments      Appointment[]     @relation("CustomerAppointments")
   barber            Barber?           @relation("CustomerBarber")
   commentRates      CommentRate[]
@@ -39,7 +38,7 @@ model Customer {
 
   @@index([phone])
   @@index([email])
-  @@map("customers")
+  @@map("customer")
 }
 
 model Admin {
@@ -64,7 +63,7 @@ model Admin {
 
 model Barber {
   id                 Int                 @id @default(autoincrement())
-  userRefId          Int                 @unique @map("user_ref_id")
+  userRefId          Int                 @unique @map("customer_id")
   fullName           String?             @map("full_name")
   specialization     String?
   experienceYears    Int?                @map("experience_years")
@@ -318,7 +317,7 @@ model Wallet {
   internalTransactionsTo   InternalTransaction[] @relation("WalletInternalTxsTo")
 
   @@index([ownerType, ownerId])
-  @@map("wallets")
+  @@map("wallet")
 }
 
 model ExternalTransaction {

@@ -1,4 +1,4 @@
-import prisma from '../../config/prisma';
+import prisma from '../../../All_Utils/config/prisma';
 import type { WalletSummary, FinancialMetrics, AdminTransactionFilters } from './financial.type';
 
 const OWNER_TYPES = ['customer', 'barber', 'barbershop', 'system'] as const;

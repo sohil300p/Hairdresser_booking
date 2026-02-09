@@ -1,4 +1,4 @@
-import prisma from '../config/prisma';
+import prisma from '../../All_Utils/config/prisma';
 import { getMessaging } from './firebase';
 import { SendNotificationRequest, SendMulticastRequest } from './notification.type';
 

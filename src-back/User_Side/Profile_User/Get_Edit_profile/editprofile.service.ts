@@ -245,7 +245,6 @@ export async function editProfileService(
       where: { id: userId },
       data: {
         ...updateData,
-        updatedAt: new Date(),
       },
       select: {
         id: true,
@@ -255,8 +254,8 @@ export async function editProfileService(
         gender: true,
         publicMeta: true,
         role: true,
-        createdAt: true,
-        updatedAt: true,
+        created: true,
+        updated: true,
       },
     });
 
@@ -275,8 +274,8 @@ export async function editProfileService(
         backgroundImage,
         gender: updatedCustomer.gender as 'male' | 'female' | 'other' | null,
         role: updatedCustomer.role as any,
-        createdAt: updatedCustomer.createdAt.toISOString(),
-        updatedAt: updatedCustomer.updatedAt.toISOString(),
+        createdAt: (updatedCustomer.created as Date).getTime(),
+        updatedAt: (updatedCustomer.updated as Date).getTime(),
       },
     };
   } catch (error) {

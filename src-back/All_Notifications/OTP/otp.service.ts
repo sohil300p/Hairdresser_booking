@@ -336,14 +336,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     //    a. If details provided -> Delete OTP, Create User, Login.
     //    b. If details MISSING -> DO NOT DELETE OTP, Return isNewUser: true.
 
-    // Check if user exists or is new
-    const nowMs = BigInt(Date.now());
+    // Check if user exists or is new (DB columns last_login, created, updated are DATETIME)
+    const now = new Date();
     let user = await prisma.customer.findUnique({
       where: { phone },
       select: {
         id: true,
         phone: true,
         fullName: true,
+        avatar: true,
         role: true,
         last_login: true,
         created: true,
@@ -360,14 +361,15 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
         data: {
           phone,
           role: 'customer' as Role,
-          last_login: nowMs,
-          created: nowMs,
-          updated: nowMs,
+          last_login: now,
+          created: now,
+          updated: now,
         },
         select: {
           id: true,
           phone: true,
           fullName: true,
+          avatar: true,
           role: true,
           last_login: true,
           created: true,
@@ -379,7 +381,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       
       // Create wallet for new customer
       try {
-        const { ensureCustomerWallet } = await import('../Wallet/wallet.utils');
+        const { ensureCustomerWallet } = await import('../../All_Utils/Wallet/wallet.utils');
         await ensureCustomerWallet(user.id);
       } catch (error) {
         console.error('⚠️ Failed to create wallet for new customer:', error);
@@ -390,13 +392,14 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       user = await prisma.customer.update({
         where: { phone },
         data: {
-          last_login: nowMs,
-          updated: nowMs,
+          last_login: now,
+          updated: now,
         },
         select: {
           id: true,
           phone: true,
           fullName: true,
+          avatar: true,
           role: true,
           last_login: true,
           created: true,
@@ -407,7 +410,7 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       
       // Ensure wallet exists for existing customer (in case it wasn't created before)
       try {
-        const { ensureCustomerWallet } = await import('../Wallet/wallet.utils');
+        const { ensureCustomerWallet } = await import('../../All_Utils/Wallet/wallet.utils');
         await ensureCustomerWallet(user.id);
       } catch (error) {
         console.error('⚠️ Failed to ensure wallet for existing customer:', error);
@@ -424,14 +427,19 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
       undefined // fallback
     );
 
-    // Check if user is a barber (either existing or newly created)
-    const barber = await prisma.barber.findFirst({
-      where: { userRefId: user.id },
-      select: {
-        id: true,
-        userRefId: true,
-      },
-    });
+    // Check if user is a barber (optional: skip if wallet/barber tables missing or schema mismatch)
+    let barber: { id: number; userRefId: number } | null = null;
+    try {
+      barber = await prisma.barber.findFirst({
+        where: { userRefId: user.id },
+        select: {
+          id: true,
+          userRefId: true,
+        },
+      });
+    } catch (barberErr) {
+      console.warn('⚠️ Barber lookup skipped (table/column may not exist):', barberErr instanceof Error ? barberErr.message : barberErr);
+    }
 
     // Generate JWT tokens
     const payload = {

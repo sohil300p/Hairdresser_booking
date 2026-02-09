@@ -1,6 +1,6 @@
-import prisma from '../config/prisma';
-import { getRedisStatus, getRedisClient } from '../config/redis';
-import { getMinioStatus } from '../config/minio';
+import prisma from '../../All_Utils/config/prisma';
+import { getRedisStatus, getRedisClient } from '../../All_Utils/config/redis';
+import { getMinioStatus } from '../../All_Utils/config/minio';
 import { SystemMetricsResponse } from './monitoring.type';
 import os from 'os';
 
@@ -134,30 +134,28 @@ export async function getSystemMetrics(): Promise<SystemMetricsResponse> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
-  // Convert to BigInt timestamps (milliseconds)
   const todayStartBigInt = BigInt(todayStart.getTime());
-  const oneHourAgoBigInt = BigInt(oneHourAgo.getTime());
   
   const [totalUsers, activeToday, activeLastHour, newToday] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({
       where: {
         last_login: {
-          gte: todayStartBigInt,
+          gte: todayStart,
         },
       },
     }),
     prisma.customer.count({
       where: {
         last_login: {
-          gte: oneHourAgoBigInt,
+          gte: oneHourAgo,
         },
       },
     }),
     prisma.customer.count({
       where: {
         created: {
-          gte: todayStartBigInt,
+          gte: todayStart,
         },
       },
     }),
