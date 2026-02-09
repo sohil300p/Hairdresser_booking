@@ -1,0 +1,96 @@
+/* Import local IRANSansX fonts FIRST */
+@import url('./assets/fonts/IRANSansX.css');
+
+/* Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* Material Design 3 Color Variables */
+:root {
+  --md-sys-color-primary: #1976d2;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e3f2fd;
+  --md-sys-color-on-primary-container: #0d47a1;
+  --md-sys-color-secondary: #03dac6;
+  --md-sys-color-on-secondary: #000000;
+  --md-sys-color-tertiary: #4caf50;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-error: #f44336;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-surface-variant: #f5f5f5;
+  --md-sys-color-on-surface-variant: #757575;
+  --md-sys-color-outline: #e0e0e0;
+}
+
+/* Global font application */
+* {
+  font-family: 'IRANSansX', 'IRANSansXV', 'IranSansX', 'Tahoma', 'Arial', sans-serif !important;
+}
+
+html, body {
+  font-family: 'IRANSansX', 'IRANSansXV', 'IranSansX', 'Tahoma', 'Arial', sans-serif !important;
+  direction: rtl;
+}
+
+input {
+  @apply w-full p-3 border-2 border-gray-300 rounded-lg transition-colors duration-300;
+}
+input:focus {
+  @apply border-blue-500 ring-2 ring-blue-200 outline-none;
+}
+
+/* Override any existing font declarations */
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, button,
+input, textarea, select, option {
+  font-family: 'IRANSansX', 'IRANSansXV', 'IranSansX', 'Tahoma', 'Arial', sans-serif !important;
+}
+
+/* Persian text optimization */
+body {
+  font-feature-settings: "ss02" on, "liga" on, "calt" on;
+  -webkit-font-feature-settings: "ss02" on, "liga" on, "calt" on;
+  -moz-font-feature-settings: "ss02" on, "liga" on, "calt" on;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Font weight utilities */
+.font-thin { font-weight: 100 !important; }
+.font-ultralight { font-weight: 200 !important; }
+.font-light { font-weight: 300 !important; }
+.font-normal { font-weight: 400 !important; }
+.font-medium { font-weight: 500 !important; }
+.font-demibold { font-weight: 600 !important; }
+.font-bold { font-weight: 700 !important; }
+.font-extrabold { font-weight: 800 !important; }
+.font-black { font-weight: 900 !important; }
+
+/* Gender icon animations */
+@keyframes gender-select {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1.05); }
+}
+
+@keyframes gender-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.gender-icon-selected {
+  animation: gender-select 0.3s ease-out;
+}
+
+.gender-icon-hover:hover {
+  animation: gender-pulse 1s infinite;
+}
+
+/* SVG optimization */
+.gender-svg {
+  will-change: transform, filter;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}

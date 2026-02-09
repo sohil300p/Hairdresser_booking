@@ -4,6 +4,10 @@
   "description": "Backend API for barber shop appointment booking system",
   "main": "dist/index.js",
   "scripts": {
+    "commentedOUT": [
+      {"install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install"},
+      {"dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"BACKEND,USER,BARBER,ADMIN\" --prefix-colors \"blue,magenta,cyan,yellow\""}
+    ],
     "dev": "node scripts/kill-port.js 3000 && ts-node-dev --respawn --transpile-only src-back/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -16,13 +20,14 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:deploy:seed": "prisma db push && npm run prisma:seed",
-    "install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install",
+    "install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../fastpath && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install",
     "dev:backend": "npm run dev",
     "dev:user": "node scripts/kill-port.js 3001 && cd src-front/user && npm run dev",
     "dev:barber": "node scripts/kill-port.js 3002 && cd src-front/barber && npm run dev",
     "dev:admin": "node scripts/kill-port.js 3003 && cd src-front/admin && npm run dev",
+    "dev:fastpath": "node scripts/kill-port.js 3004 && cd src-front/fastpath && npm run dev",
     "dev:frontend": "concurrently \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"USER,BARBER,ADMIN\" --prefix-colors \"magenta,cyan,yellow\"",
-    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"BACKEND,USER,BARBER,ADMIN\" --prefix-colors \"blue,magenta,cyan,yellow\"",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:fastpath\" \"npm run dev:barber\" \"npm run dev:admin\" --names \"BACKEND,USER,BARBER,ADMIN\" --prefix-colors \"blue,magenta,cyan,yellow\"",
     "test:otp": "ts-node scripts/test-otp.ts",
     "test:sms": "ts-node scripts/test-sms.ts",
     "test:simple-sms": "ts-node scripts/test-simple-sms.ts"
