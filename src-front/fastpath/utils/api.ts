@@ -1,9 +1,7 @@
-import { AppContextType } from '../types';
+let logoutHandler: (() => void) | null = null;
+let showToastHandler: ((message: string, type?: string) => void) | null = null;
 
-let logoutHandler: AppContextType['logout'] | null = null;
-let showToastHandler: AppContextType['showToast'] | null = null;
-
-export const setAuthHandlers = (logout: AppContextType['logout'], showToast: AppContextType['showToast']) => {
+export const setAuthHandlers = (logout: () => void, showToast: (message: string, type?: string) => void) => {
   logoutHandler = logout;
   showToastHandler = showToast;
 };
