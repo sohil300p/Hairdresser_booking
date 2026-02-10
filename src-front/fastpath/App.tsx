@@ -126,12 +126,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white font-sans min-h-screen" dir="rtl">
+    <div className="max-w-md mx-auto bg-gray-50 font-sans min-h-screen relative" dir="rtl">
       <Modal isOpen={isModalOpen} onClose={hideModal} position={modalPosition}>
         {modalContent}
       </Modal>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <main>{renderPage()}</main>
+      <main className="min-h-screen">{renderPage()}</main>
     </div>
   );
 };

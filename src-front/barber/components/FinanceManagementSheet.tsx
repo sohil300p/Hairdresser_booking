@@ -84,7 +84,7 @@ export default function FinanceManagementSheet({
                     <span>{config.exampleBarberShare.toLocaleString('fa-IR')} تومان</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 mt-2 text-center">
                   درصد کمیسیون پلتفرم بسته به پکیج آرایشگاه متفاوت است
                 </p>
               </div>
@@ -95,7 +95,7 @@ export default function FinanceManagementSheet({
               <p className="text-sm text-gray-700 mb-3">
                 قوانین لغو رزرو توسط شما تعریف می‌شود.
               </p>
-              <p className="text-sm text-success-700 bg-success-50 border border-success-200 rounded-lg p-3 mb-3">
+              <p className="text-sm text-success-700 text-center bg-success-50 border border-success-200 rounded-lg p-3 mb-3">
                 در صورت لغو رزرو توسط آرایشگر، تمام مبلغ به مشتری برمیگردد.
               </p>
               {config.hasDeclaredCancellation ? (

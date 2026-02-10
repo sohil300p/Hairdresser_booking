@@ -35,15 +35,6 @@ export interface FastPathParams {
   appointmentId?: number;
 }
 
-export interface ReservationLookupResult {
-  id: number;
-  status: string;
-  date: string;
-  time: string;
-  barbershopName?: string;
-  serviceName?: string;
-}
-
 export interface BarbershopSearchResult {
   id: number;
   name: string;
