@@ -336,8 +336,8 @@ export async function verifyOtpService(data: VerifyOtpRequest): Promise<VerifyOt
     //    a. If details provided -> Delete OTP, Create User, Login.
     //    b. If details MISSING -> DO NOT DELETE OTP, Return isNewUser: true.
 
-    // Check if user exists or is new (DB columns last_login, created, updated are DATETIME)
-    const now = new Date();
+    // Check if user exists or is new (DB columns last_login, created, updated are BigInt ms)
+    const now = BigInt(Date.now());
     let user = await prisma.customer.findUnique({
       where: { phone },
       select: {

@@ -68,8 +68,8 @@ export async function getProfileService(userId: number): Promise<GetProfileRespo
         gender: customer.gender as 'male' | 'female' | 'other' | null,
         userType: barber ? 'barber' : 'customer',
         barberId: barber?.id,
-        createdAt: (customer.created as Date).getTime(),
-        updatedAt: (customer.updated as Date).getTime(),
+        createdAt: Number(customer.created),
+        updatedAt: Number(customer.updated),
       },
     };
   } catch (error) {

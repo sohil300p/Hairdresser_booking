@@ -25,9 +25,9 @@ model Customer {
   transaction_code  String?
   publicMeta        Json?             @map("public_meta")
   privateMeta       Json?             @map("private_meta")
-  last_login        DateTime?         @map("last_login")
-  created           DateTime          @default(now()) @map("created")
-  updated           DateTime          @updatedAt @map("updated")
+  last_login        BigInt?           @map("last_login")
+  created           BigInt            @default(0) @map("created")
+  updated           BigInt            @default(0) @map("updated")
   appointments      Appointment[]     @relation("CustomerAppointments")
   barber            Barber?           @relation("CustomerBarber")
   commentRates      CommentRate[]
@@ -657,6 +657,14 @@ model PackagePurchase {
   @@index([barberId])
   @@index([externalTransactionId])
   @@map("package_purchases")
+}
+
+model AppSetting {
+  id    Int     @id @default(autoincrement())
+  key   String  @unique
+  value String? @db.Text
+
+  @@map("app_settings")
 }
 
 enum Role {

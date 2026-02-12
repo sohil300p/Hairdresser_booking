@@ -185,12 +185,17 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onLogout, setIsSubPageAct
 
     const fetchProfile = useCallback(async () => {
         try {
-            const res = await api.get<GetBarberProfileResponse>('/barber/profile');
+            const [res, defaultsRes] = await Promise.all([
+                api.get<GetBarberProfileResponse>('/barber/profile'),
+                api.get<{ success: boolean; data?: { defaultBarberProfileImageUrl: string; defaultBarberHeaderImageUrl: string } }>('/settings/default-images').catch(() => ({ success: false, data: undefined })),
+            ]);
+            const defaultProfile = defaultsRes?.data?.defaultBarberProfileImageUrl || 'https://picsum.photos/id/1027/100/100';
+            const defaultHeader = defaultsRes?.data?.defaultBarberHeaderImageUrl || 'https://picsum.photos/seed/barbershop/600/400';
             if (res.success && res.data) {
                 const b = res.data.barbershop;
                 setProfileData({ name: b.name, address: b.address || '', about: b.description || '', gender: b.gender });
-                setAvatar(b.profileImage || 'https://picsum.photos/id/1027/100/100');
-                setBackground(b.backgroundImage || 'https://picsum.photos/seed/barbershop/600/400');
+                setAvatar(b.profileImage || defaultProfile);
+                setBackground(b.backgroundImage || defaultHeader);
                 if (res.data.schedules?.length) setSchedule(mapApiScheduleToSchedule(res.data.schedules));
                 if (res.data.services?.length) setServices(res.data.services.map(s => ({ id: s.id, name: s.name, price: s.price ?? 0, duration: s.estimatedTime, description: s.description || undefined, sampleImage: s.avatar || undefined })));
             }

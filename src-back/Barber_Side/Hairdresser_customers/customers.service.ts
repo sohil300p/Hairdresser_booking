@@ -152,8 +152,8 @@ export async function getCustomersService(
         visitCount: item.visitCount,
         lastVisitDate: item.lastVisitDate,
         totalSpent: Number(item.totalSpent),
-        createdAt: (item.customer.created as Date).getTime(),
-        lastLoginAt: item.customer.last_login != null ? (item.customer.last_login as Date).getTime() : null,
+        createdAt: Number(item.customer.created),
+        lastLoginAt: item.customer.last_login != null ? Number(item.customer.last_login) : null,
       };
     });
 

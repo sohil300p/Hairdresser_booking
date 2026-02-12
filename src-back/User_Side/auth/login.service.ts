@@ -64,12 +64,15 @@ export async function loginWithPasswordService(
       const passwordHash = await bcrypt.hash(password, 10);
 
       // Create customer
+      const now = BigInt(Date.now());
       customer = await prisma.customer.create({
         data: {
           phone,
-          password: passwordHash,
+          password_hash: passwordHash,
           gender: gender as any,
           role: userType === 'barber' ? 'customer' : 'customer', // All start as customer
+          created: now,
+          updated: now,
         },
       });
 
@@ -107,14 +110,14 @@ export async function loginWithPasswordService(
       }
     } else {
       // Existing user - verify password
-      if (!customer.password) {
+      if (!customer.password_hash) {
         return {
           success: false,
           message: 'این حساب کاربری با رمز عبور ثبت نشده است. لطفاً از روش OTP استفاده کنید',
         };
       }
 
-      const isPasswordValid = await bcrypt.compare(password, customer.password);
+      const isPasswordValid = await bcrypt.compare(password, customer.password_hash);
       if (!isPasswordValid) {
         return {
           success: false,
@@ -159,7 +162,8 @@ export async function loginWithPasswordService(
     await prisma.customer.update({
       where: { id: customer.id },
       data: {
-        lastLoginAt: new Date(),
+        last_login: BigInt(Date.now()),
+        updated: BigInt(Date.now()),
       },
     });
 

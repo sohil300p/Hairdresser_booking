@@ -44,11 +44,14 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
       </button>
   );
 
+  const defaultHeader = 'https://picsum.photos/seed/barbershop/600/400';
+  const headerSrc = barber.gallery?.[0] || barber.avatarUrl || defaultHeader;
+
   return (
     <div className="bg-gray-50 min-h-screen" dir="rtl">
       <div className="relative">
         <header className="h-56">
-          <img src={barber.gallery[0]} alt="gallery" className="w-full h-full object-cover" />
+          <img src={headerSrc} alt="gallery" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-black/10"></div>
           <button onClick={() => context.setCurrentPage('home')} className="absolute top-4 right-4 bg-white/70 backdrop-blur-sm rounded-full p-2 shadow-md z-10 transition-transform active:scale-90">
               <Icon name="chevronRight" className="w-6 h-6 text-gray-800" />
@@ -106,7 +109,7 @@ export const BarberProfilePage: React.FC<BarberProfilePageProps> = ({ context })
         )}
          {activeTab === 'gallery' && (
             <div className="grid grid-cols-2 gap-2">
-                {barber.gallery.map((img, index) => (
+                {(barber.gallery?.length ? barber.gallery : [headerSrc]).map((img, index) => (
                     <img key={index} src={img} alt={`gallery ${index}`} className="w-full h-32 object-cover rounded-md" />
                 ))}
             </div>

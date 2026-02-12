@@ -168,7 +168,7 @@ const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Servic
                             )}
                         </div>
                         <button type="button" onClick={() => imageInputRef.current?.click()} className="font-semibold text-primary-600">
-                            انتخاب تصویر نمونه
+                            انتخاب تصویر نمونه (اختیاری)
                         </button>
                         <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                     </div>

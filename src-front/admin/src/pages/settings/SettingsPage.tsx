@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Settings, Save, RefreshCw, Bell, Database, Server } from 'lucide-react';
+import { Save, RefreshCw, Bell, Server, Image } from 'lucide-react';
+import { getDefaultImages, updateDefaultImages, type DefaultImages } from '../../services/settings.service';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -12,8 +13,19 @@ export default function SettingsPage() {
     refreshInterval: 30,
     itemsPerPage: 20,
   });
+  const [defaultImages, setDefaultImages] = useState<DefaultImages>({
+    defaultBarberProfileImageUrl: '',
+    defaultBarberHeaderImageUrl: '',
+  });
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingImages, setIsSavingImages] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  useEffect(() => {
+    getDefaultImages()
+      .then(setDefaultImages)
+      .catch(() => {});
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -35,6 +47,20 @@ export default function SettingsPage() {
       itemsPerPage: 20,
     });
     setStatus({ type: 'success', message: 'Settings reset to defaults' });
+  };
+
+  const handleSaveDefaultImages = async () => {
+    setIsSavingImages(true);
+    setStatus(null);
+    try {
+      const updated = await updateDefaultImages(defaultImages);
+      setDefaultImages(updated);
+      setStatus({ type: 'success', message: 'Default images saved. They will be used when a barber has no profile or header image.' });
+    } catch {
+      setStatus({ type: 'error', message: 'Failed to save default images.' });
+    } finally {
+      setIsSavingImages(false);
+    }
   };
 
   return (
@@ -127,6 +153,50 @@ export default function SettingsPage() {
                 />
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Image className="h-5 w-5" />
+              Default Images
+            </CardTitle>
+            <CardDescription>
+              Images shown when a barber has not set a profile picture or header banner. Used in barber and user apps.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="defaultBarberProfileImageUrl">Default profile image URL</Label>
+              <Input
+                id="defaultBarberProfileImageUrl"
+                type="url"
+                placeholder="https://..."
+                value={defaultImages.defaultBarberProfileImageUrl}
+                onChange={(e) => setDefaultImages((prev) => ({ ...prev, defaultBarberProfileImageUrl: e.target.value }))}
+              />
+              <p className="text-sm text-muted-foreground">
+                Shown as barber/shop avatar when not specified
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="defaultBarberHeaderImageUrl">Default header / banner image URL</Label>
+              <Input
+                id="defaultBarberHeaderImageUrl"
+                type="url"
+                placeholder="https://..."
+                value={defaultImages.defaultBarberHeaderImageUrl}
+                onChange={(e) => setDefaultImages((prev) => ({ ...prev, defaultBarberHeaderImageUrl: e.target.value }))}
+              />
+              <p className="text-sm text-muted-foreground">
+                Shown at top of barber profile when not specified
+              </p>
+            </div>
+            <Button onClick={handleSaveDefaultImages} disabled={isSavingImages}>
+              <Save className="mr-2 h-4 w-4" />
+              {isSavingImages ? 'Saving...' : 'Save default images'}
+            </Button>
           </CardContent>
         </Card>
 

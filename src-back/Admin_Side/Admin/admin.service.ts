@@ -107,8 +107,8 @@ export async function getAllUsersService() {
       email: customer.email,
       avatar: customer.avatar,
       gender: customer.gender,
-      createdAt: customer.created as Date,
-      lastLoginAt: customer.last_login != null ? (customer.last_login as Date) : null,
+      createdAt: customer.created != null ? new Date(Number(customer.created)) : null,
+      lastLoginAt: customer.last_login != null ? new Date(Number(customer.last_login)) : null,
       appointmentCount: customer.appointments.length,
     }));
 

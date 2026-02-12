@@ -9,7 +9,12 @@ interface BarberCardProps {
   onFavoriteToggle: () => void;
 }
 
+const DEFAULT_HEADER = 'https://picsum.photos/seed/barbershop/600/400';
+const DEFAULT_AVATAR = 'https://picsum.photos/id/1027/200/200';
+
 export const BarberCard: React.FC<BarberCardProps> = ({ barber, onClick, isFavorite, onFavoriteToggle }) => {
+  const headerSrc = barber.gallery?.[0] || barber.avatarUrl || DEFAULT_HEADER;
+  const avatarSrc = barber.avatarUrl || DEFAULT_AVATAR;
   return (
     <div
       onClick={onClick}
@@ -30,9 +35,9 @@ export const BarberCard: React.FC<BarberCardProps> = ({ barber, onClick, isFavor
       )}
 
       <div className="relative">
-        <img src={barber.gallery[0] || barber.avatarUrl} alt={barber.name} className="w-full h-32 object-cover" />
+        <img src={headerSrc} alt={barber.name} className="w-full h-32 object-cover" />
         <img 
-          src={barber.avatarUrl} 
+          src={avatarSrc} 
           alt={`${barber.name} avatar`} 
           className="absolute bottom-0 right-4 transform translate-y-1/2 w-16 h-16 rounded-full border-4 border-white shadow-lg object-cover" 
         />

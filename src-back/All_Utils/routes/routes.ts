@@ -112,6 +112,11 @@ import {
   getAdminTransactionsController,
 } from '../../Admin_Side/Admin/financial/financial.controller';
 import { setBarbershopCommissionController } from '../../Admin_Side/Admin/barbershop-commission.controller';
+import {
+  getDefaultImagesController,
+  getDefaultImagesPublicController,
+  updateDefaultImagesController,
+} from '../../Admin_Side/Admin/settings/default-images.controller';
 import { mapirReverseController, mapirSearchController } from '../../Mapir/mapir-proxy.controller';
 
 const router = Router();
@@ -175,6 +180,13 @@ router.get('/admin/users/:phone/otp-status', authenticateAdmin, getUserOtpStatus
 router.get('/admin/financial/wallets', authenticateAdmin, getWalletSummariesController);
 router.get('/admin/financial/transactions', authenticateAdmin, getAdminTransactionsController);
 router.get('/admin/financial/metrics', authenticateAdmin, getFinancialMetricsController);
+
+// Admin Default Images (barber profile + header)
+router.get('/admin/settings/default-images', authenticateAdmin, getDefaultImagesController);
+router.put('/admin/settings/default-images', authenticateAdmin, updateDefaultImagesController);
+
+// Public default images (for barber app + user app fallbacks)
+router.get('/settings/default-images', getDefaultImagesPublicController);
 
 // Search Routes
 router.get('/search', searchController);
