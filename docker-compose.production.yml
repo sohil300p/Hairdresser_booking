@@ -22,6 +22,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
     entrypoint: ["/app/entrypoint.sh"]
     # No depends_on on infra; MySQL/Redis/MinIO are on shared infrastructure
 
