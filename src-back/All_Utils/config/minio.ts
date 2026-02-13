@@ -4,9 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // MinIO configuration from environment variables
+// endPoint must be hostname only (no port); port is separate
+const rawEndpoint = process.env.MINIO_ENDPOINT || 'localhost';
+const [endPointHost, endpointPort] = rawEndpoint.includes(':')
+  ? rawEndpoint.split(':')
+  : [rawEndpoint, null];
 const minioConfig = {
-  endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-  port: parseInt(process.env.MINIO_PORT || '9000', 10),
+  endPoint: endPointHost,
+  port: parseInt(endpointPort || process.env.MINIO_PORT || '9000', 10),
   useSSL: process.env.MINIO_USE_SSL === 'true',
   accessKey: process.env.MINIO_ACCESS_KEY || 'minioadmin',
   secretKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
