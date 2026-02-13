@@ -50,13 +50,13 @@ export async function updateDefaultImagesService(input: UpdateDefaultImagesInput
   if (input.profileImageFile) {
     data.defaultBarberProfileImageUrl = await uploadToMinIO(input.profileImageFile, 'profile');
   } else if (input.defaultBarberProfileImageUrl !== undefined) {
-    data.defaultBarberProfileImageUrl = input.defaultBarberProfileImageUrl.trim() || null;
+    data.defaultBarberProfileImageUrl = input.defaultBarberProfileImageUrl.trim() || undefined;
   }
 
   if (input.headerImageFile) {
     data.defaultBarberHeaderImageUrl = await uploadToMinIO(input.headerImageFile, 'header');
   } else if (input.defaultBarberHeaderImageUrl !== undefined) {
-    data.defaultBarberHeaderImageUrl = input.defaultBarberHeaderImageUrl.trim() || null;
+    data.defaultBarberHeaderImageUrl = input.defaultBarberHeaderImageUrl.trim() || undefined;
   }
 
   if (data.defaultBarberProfileImageUrl !== undefined) {
