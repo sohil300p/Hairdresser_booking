@@ -9,5 +9,8 @@ fi
 if [ -n "$SHADOW_DATABASE_URL" ] && echo "$SHADOW_DATABASE_URL" | grep -q '^mariadb://'; then
   export SHADOW_DATABASE_URL="mysql://${SHADOW_DATABASE_URL#mariadb://}"
 fi
-npx prisma migrate deploy || true
+
+echo "Running migrations..."
+npx prisma migrate deploy
+
 exec node dist/index.js
