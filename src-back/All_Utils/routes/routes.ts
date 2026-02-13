@@ -181,9 +181,12 @@ router.get('/admin/financial/wallets', authenticateAdmin, getWalletSummariesCont
 router.get('/admin/financial/transactions', authenticateAdmin, getAdminTransactionsController);
 router.get('/admin/financial/metrics', authenticateAdmin, getFinancialMetricsController);
 
-// Admin Default Images (barber profile + header)
+// Admin Default Images (barber profile + header) - accepts URL or file upload
 router.get('/admin/settings/default-images', authenticateAdmin, getDefaultImagesController);
-router.put('/admin/settings/default-images', authenticateAdmin, updateDefaultImagesController);
+router.put('/admin/settings/default-images', authenticateAdmin, upload.fields([
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'headerImage', maxCount: 1 },
+]), updateDefaultImagesController);
 
 // Public default images (for barber app + user app fallbacks)
 router.get('/settings/default-images', getDefaultImagesPublicController);
