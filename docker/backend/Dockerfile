@@ -2,7 +2,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 ENV NODE_ENV=development
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
