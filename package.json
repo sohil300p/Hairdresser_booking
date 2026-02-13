@@ -38,6 +38,9 @@
     "appointment",
     "api"
   ],
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "author": "Soheil saffari",
   "license": "MIT",
   "dependencies": {
@@ -63,7 +66,10 @@
     "soap": "^1.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "prisma": "^6.18.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -80,11 +86,8 @@
     "baseline-browser-mapping": "^2.9.19",
     "concurrently": "^9.1.2",
     "jest": "^30.2.0",
-    "prisma": "^6.18.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "ts-node-dev": "^2.0.0"
   }
 }
