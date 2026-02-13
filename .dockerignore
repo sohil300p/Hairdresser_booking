@@ -9,5 +9,4 @@ docker-compose*.yaml
 src-front/node_modules
 src-front/dist
 src-front/.vite
-docker
 TEST_API.md
