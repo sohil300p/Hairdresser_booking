@@ -1,5 +1,11 @@
 version: "3.9"
 
+# Shared Dokploy network: barberApp_service joins so backend can reach barberApp_infra (Redis, MariaDB, MinIO).
+networks:
+  default:
+    name: dokploy-network
+    external: true
+
 services:
   backend:
     build:
