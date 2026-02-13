@@ -22,7 +22,7 @@ async function getOrCreateWallet(
   ownerType: 'customer' | 'barber' | 'barbershop' | 'system',
   ownerId: number,
   currency: string = 'IRR'
-): Promise<{ id: number; balance: Decimal }> {
+): Promise<{ id: number; balance: Decimal; currency: string }> {
   let wallet = await prisma.wallet.findFirst({
     where: {
       ownerType,
@@ -44,7 +44,7 @@ async function getOrCreateWallet(
     });
   }
 
-  return wallet;
+  return { id: wallet.id, balance: wallet.balance, currency: wallet.currency };
 }
 
 /**
@@ -199,7 +199,7 @@ export async function depositService(
         await prisma.customer.update({
           where: { id: authenticatedUserId },
           data: {
-            walletBalance: newBalance,
+            wallet_balance: newBalance,
             updated: BigInt(Date.now()),
           },
         });
@@ -322,7 +322,7 @@ export async function withdrawService(
       await prisma.customer.update({
         where: { id: authenticatedUserId },
         data: {
-          walletBalance: newBalance,
+          wallet_balance: newBalance,
           updated: BigInt(Date.now()),
         },
       });
@@ -641,7 +641,7 @@ export async function lockFundsForAppointmentService(
       await prisma.customer.update({
         where: { id: authenticatedUserId },
         data: {
-          walletBalance: newBalance,
+          wallet_balance: newBalance,
           updated: BigInt(Date.now()),
         },
       });

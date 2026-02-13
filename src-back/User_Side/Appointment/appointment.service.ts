@@ -845,7 +845,7 @@ export async function cancelAppointmentService(
           await prisma.customer.update({
             where: { id: appointment.customerId },
             data: {
-              walletBalance: newBalance,
+              wallet_balance: newBalance,
               updated: BigInt(Date.now()),
             },
           });

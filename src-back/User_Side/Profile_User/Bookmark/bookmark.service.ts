@@ -1,4 +1,4 @@
-import prisma from '../../../../All_Utils/config/prisma';
+import prisma from '../../../All_Utils/config/prisma';
 import {
   AddBookmarkRequest,
   AddBookmarkResponse,

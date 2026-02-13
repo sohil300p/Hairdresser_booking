@@ -39,7 +39,7 @@ export async function editProfileController(req: AuthRequest, res: Response): Pr
     // Validate that at least one field is provided
     if (
       (editData.fullName === undefined || editData.fullName === '') &&
-      (editData.gender === undefined || editData.gender === '') &&
+      (editData.gender === undefined || (editData.gender as string) === '') &&
       !profileImageFile &&
       !backgroundImageFile
     ) {

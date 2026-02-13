@@ -167,7 +167,7 @@ export async function editProfileService(
     }
 
     // Handle gender update - block if profile is already completed
-    if (data.gender !== undefined && data.gender !== null && data.gender !== '') {
+    if (data.gender !== undefined && data.gender !== null && (data.gender as string) !== '') {
       if (isProfileCompleted) {
         // Profile is completed - block gender changes
         if (data.gender !== currentGender) {
@@ -251,6 +251,7 @@ export async function editProfileService(
         id: true,
         fullName: true,
         phone: true,
+        email: true,
         avatar: true,
         gender: true,
         publicMeta: true,
@@ -271,6 +272,7 @@ export async function editProfileService(
         id: updatedCustomer.id,
         fullName: updatedCustomer.fullName,
         phone: updatedCustomer.phone,
+        email: updatedCustomer.email,
         profileImage: updatedCustomer.avatar,
         backgroundImage,
         gender: updatedCustomer.gender as 'male' | 'female' | 'other' | null,

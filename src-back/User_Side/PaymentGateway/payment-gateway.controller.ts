@@ -201,7 +201,7 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
           await prisma.customer.update({
             where: { id: internalTx.toWallet.ownerId },
             data: {
-              walletBalance: newBalance,
+              wallet_balance: newBalance,
               updated: BigInt(Date.now()),
             },
           });

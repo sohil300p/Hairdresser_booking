@@ -116,7 +116,7 @@ export async function verifyTokenService(token: string): Promise<VerifyTokenResp
 /**
  * Logout service
 */
-export async function logoutService(refreshToken?: string): Promise<LogoutResponse> {
+export async function logoutService(refreshToken?: string, _userId?: number): Promise<LogoutResponse> {
   // just for example.
   return {
     success: true,
