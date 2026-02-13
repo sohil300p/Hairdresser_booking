@@ -18,7 +18,7 @@
     "prisma:push": "prisma db push",
     "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:seed": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\"}' prisma/seed.ts",
     "prisma:deploy:seed": "prisma db push && npm run prisma:seed",
     "install:all": "npm install && cd src-front/user && npm install --legacy-peer-deps && cd ../fastpath && npm install --legacy-peer-deps && cd ../barber && npm install --legacy-peer-deps && cd ../admin && npm install",
     "dev:backend": "npm run dev",

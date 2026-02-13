@@ -116,13 +116,26 @@ async function main() {
 
   console.log(`✅ Created ${customers.length} test customers`);
 
-  // Create wallets for all customers
+  // Create wallets for all customers (inline to avoid importing src-back in Docker runner)
   console.log('💰 Creating wallets for customers...');
   try {
-    const { ensureCustomerWallet } = await import('../src-back/All_Utils/Wallet/wallet.utils');
-    await Promise.all(
-      customers.map(customer => ensureCustomerWallet(customer.id))
-    );
+    for (const customer of customers) {
+      const existing = await prisma.wallet.findFirst({
+        where: { ownerType: 'customer', ownerId: customer.id, currency: 'IRR' }
+      });
+      if (!existing) {
+        await prisma.wallet.create({
+          data: {
+            ownerType: 'customer',
+            ownerId: customer.id,
+            currency: 'IRR',
+            balance: 0,
+            created: BigInt(Date.now()),
+            updated: BigInt(Date.now()),
+          }
+        });
+      }
+    }
     console.log(`✅ Wallets created for ${customers.length} customers`);
   } catch (error) {
     console.error('⚠️ Failed to create wallets for some customers:', error);
