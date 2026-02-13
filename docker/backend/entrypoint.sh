@@ -11,6 +11,7 @@ if [ -n "$SHADOW_DATABASE_URL" ] && echo "$SHADOW_DATABASE_URL" | grep -q '^mari
 fi
 
 echo "Running migrations..."
-npx prisma migrate deploy
+npx prisma migrate deploy || true
+
 
 exec node dist/index.js
