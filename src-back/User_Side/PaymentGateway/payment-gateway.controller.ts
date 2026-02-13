@@ -105,7 +105,8 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
     const { Authority, Status, appointmentId } = req.query;
 
     if (!Authority) {
-      return res.status(400).send('Authority parameter is required');
+      res.status(400).send('Authority parameter is required');
+      return;
     }
 
     // Find external transaction by authority
@@ -117,7 +118,8 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
     });
 
     if (!externalTx) {
-      return res.status(400).send('Transaction not found');
+      res.status(400).send('Transaction not found');
+      return;
     }
 
     // If Status is not OK, mark as failed
@@ -146,7 +148,8 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
       const redirectUrl = appointmentId
         ? `${frontendUrl}/payment/failed?authority=${Authority}&appointmentId=${appointmentId}`
         : `${frontendUrl}/payment/failed?authority=${Authority}`;
-      return res.redirect(redirectUrl);
+      res.redirect(redirectUrl);
+      return;
     }
 
     // Verify payment with ZarrinPal
@@ -244,7 +247,8 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
       const redirectUrl = appointmentId || externalTx.relatedAppointmentId
         ? `${frontendUrl}/payment/success?refId=${verifyResult.refId}&authority=${Authority}&appointmentId=${appointmentId || externalTx.relatedAppointmentId}`
         : `${frontendUrl}/payment/success?refId=${verifyResult.refId}&authority=${Authority}`;
-      return res.redirect(redirectUrl);
+      res.redirect(redirectUrl);
+      return;
     } else {
       // Payment verification failed
       await prisma.externalTransaction.update({
@@ -261,7 +265,8 @@ export async function verifyPaymentCallbackController(req: Request, res: Respons
       });
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-      return res.redirect(`${frontendUrl}/payment/failed?authority=${Authority}&error=${encodeURIComponent(verifyResult.message)}`);
+      res.redirect(`${frontendUrl}/payment/failed?authority=${Authority}&error=${encodeURIComponent(verifyResult.message)}`);
+      return;
     }
   } catch (error) {
     console.error('Error in verifyPaymentCallbackController:', error);

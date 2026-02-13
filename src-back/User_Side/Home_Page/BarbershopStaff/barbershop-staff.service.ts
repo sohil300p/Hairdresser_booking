@@ -63,18 +63,22 @@ export async function getBarbershopStaffService(
                 id: true,
               },
             },
-            commentRates: {
-              where: {
-                barbershopId: params.barbershopId,
-              },
-              select: {
-                rate: true,
-              },
-            },
           },
         },
       },
       distinct: ['barberId'],
+    });
+
+    // Get barbershop comment rates for barber ratings (CommentRate links to barbershop/appointment, not barber)
+    const barbershopCommentRates = await prisma.commentRate.findMany({
+      where: { barbershopId: params.barbershopId, appointmentId: { not: null } },
+      select: {
+        rate: true,
+        appointmentId: true,
+        appointment: {
+          select: { barbers: { select: { barberId: true } } },
+        },
+      },
     });
 
     // Get owner as well
@@ -87,14 +91,6 @@ export async function getBarbershopStaffService(
           },
           select: {
             id: true,
-          },
-        },
-        commentRates: {
-          where: {
-            barbershopId: params.barbershopId,
-          },
-          select: {
-            rate: true,
           },
         },
       },
@@ -113,11 +109,21 @@ export async function getBarbershopStaffService(
       }
     });
 
+    // Map barberId -> ratings from comment rates (via appointment barbers)
+    const barberRatingsMap = new Map<number, number[]>();
+    for (const cr of barbershopCommentRates) {
+      if (cr.rate == null) continue;
+      const barberIds = cr.appointment?.barbers?.map((b) => b.barberId) ?? [];
+      for (const bid of barberIds) {
+        const arr = barberRatingsMap.get(bid) ?? [];
+        arr.push(cr.rate as number);
+        barberRatingsMap.set(bid, arr);
+      }
+    }
+
     // Format staff data
     const staffItems: StaffItem[] = Array.from(allBarbers.values()).map((barber) => {
-      const ratings = (barber.commentRates || [])
-        .map((cr: any) => cr.rate)
-        .filter((r: any): r is number => r !== null && r !== undefined);
+      const ratings = barberRatingsMap.get(barber.id) ?? [];
       const averageRating = ratings.length > 0
         ? ratings.reduce((sum: number, r: number) => sum + r, 0) / ratings.length
         : 0;

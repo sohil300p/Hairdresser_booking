@@ -7,6 +7,8 @@
 
 import { Request, Response } from 'express';
 
+type FetchResponse = Awaited<ReturnType<typeof fetch>>;
+
 const MAPIR_BASE = process.env.MAPIR_BASE_URL || 'https://map.ir';
 const ALLOWED_MAPIR_ORIGINS = ['https://map.ir', 'https://api.map.ir'];
 const API_KEY = process.env.MAPIR_API_KEY || process.env.VITE_MAPIR_API_KEY || '';
@@ -19,7 +21,7 @@ function getApiKey(): string {
   return key;
 }
 
-function fetchWithTimeout(url: string, options: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+function fetchWithTimeout(url: string, options: RequestInit & { timeoutMs?: number } = {}): Promise<FetchResponse> {
   const { timeoutMs = MAPIR_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -81,30 +83,29 @@ function normalizeSearchResponse(data: unknown): {
   const raw = data as { value?: unknown[]; items?: unknown[]; results?: unknown[] };
   const list = raw?.value ?? raw?.items ?? raw?.results ?? (Array.isArray(data) ? data : []);
   const seen = new Set<string>();
-  const value = (list as unknown[]).map((x: Record<string, unknown>) => {
-    const geom = x?.geom as { coordinates?: number[] } | undefined;
+  const value = (list as unknown[]).map((x: unknown) => {
+    const item = x as Record<string, unknown>;
+    const geom = item?.geom as { coordinates?: number[] } | undefined;
     const coords = Array.isArray(geom?.coordinates) ? geom.coordinates : [];
-    const lat = typeof x?.latitude === 'number' ? x.latitude : coords[1];
-    const lon = typeof x?.longitude === 'number' ? x.longitude : coords[0];
+    const lat = typeof item?.latitude === 'number' ? item.latitude : coords[1];
+    const lon = typeof item?.longitude === 'number' ? item.longitude : coords[0];
     const address =
-      (typeof x?.address === 'string' ? x.address : null) ??
-      (typeof x?.formattedAddress === 'string' ? x.formattedAddress : null) ??
-      (typeof x?.title === 'string' ? x.title : null) ??
-      (typeof x?.name === 'string' ? x.name : null) ??
+      (typeof item?.address === 'string' ? item.address : null) ??
+      (typeof item?.formattedAddress === 'string' ? item.formattedAddress : null) ??
+      (typeof item?.title === 'string' ? item.title : null) ??
+      (typeof item?.name === 'string' ? item.name : null) ??
       '';
     if (address === '' || (lat == null && lon == null) || (Number.isNaN(Number(lat)) && Number.isNaN(Number(lon))))
       return null;
     const latN = Number(lat);
     const lonN = Number(lon);
     if (Number.isNaN(latN) || Number.isNaN(lonN)) return null;
-    const type = (x?.type ?? x?.category ?? x?.kind) as string | undefined;
+    const type = (item?.type ?? item?.category ?? item?.kind) as string | undefined;
     const key = `${latN.toFixed(5)}_${lonN.toFixed(5)}_${address}`;
     if (seen.has(key)) return null;
     seen.add(key);
     return { address, geom: { coordinates: [lonN, latN] as [number, number] }, type };
-  }).filter(
-    (item): item is { address: string; geom: { coordinates: [number, number] }; type?: string } => item != null
-  );
+  }).filter((item): item is NonNullable<typeof item> => item != null);
   return { value };
 }
 
