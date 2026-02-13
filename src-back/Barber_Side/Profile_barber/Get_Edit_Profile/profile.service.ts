@@ -22,41 +22,56 @@ function msToTime(ms: number): string {
  */
 export async function getBarberProfileService(barberId: number): Promise<GetBarberProfileResponse> {
   try {
-    const barbershopSelect = {
-      id: true,
-      name: true,
-      gender: true,
-      address: true,
-      description: true,
-      avatar: true,
-      publicMeta: true,
-      services: {
-        where: { parentServiceId: null },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          price: true,
-          estimatedTime: true,
-          files: true,
-          avatar: true,
-        },
-        orderBy: { created: 'asc' },
-      },
-      schedules: {
-        select: { weekday: true, openMs: true, closeMs: true, isClosed: true },
-        orderBy: { weekday: 'asc' },
-      },
-    };
-
     const barber = await prisma.barber.findUnique({
       where: { id: barberId },
-      select: {
-        id: true,
-        ownedBarbershops: { select: barbershopSelect, take: 1 },
+      include: {
+        ownedBarbershops: {
+          take: 1,
+          include: {
+            services: {
+              where: { parentServiceId: null },
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                price: true,
+                estimatedTime: true,
+                files: true,
+                avatar: true,
+              },
+              orderBy: { created: 'asc' },
+            },
+            schedules: {
+              select: { weekday: true, openMs: true, closeMs: true, isClosed: true },
+              orderBy: { weekday: 'asc' },
+            },
+          },
+        },
         barbershopMembers: {
           take: 1,
-          include: { barbershop: { select: barbershopSelect } },
+          include: {
+            barbershop: {
+              include: {
+                services: {
+                  where: { parentServiceId: null },
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    price: true,
+                    estimatedTime: true,
+                    files: true,
+                    avatar: true,
+                  },
+                  orderBy: { created: 'asc' },
+                },
+                schedules: {
+                  select: { weekday: true, openMs: true, closeMs: true, isClosed: true },
+                  orderBy: { weekday: 'asc' },
+                },
+              },
+            },
+          },
         },
       },
     });

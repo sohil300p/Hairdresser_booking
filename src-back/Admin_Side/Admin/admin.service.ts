@@ -8,7 +8,7 @@ export interface AdminUser {
   email: string | null;
   avatar: string | null;
   gender: string | null;
-  createdAt: Date;
+  createdAt: Date | null;
   lastLoginAt: Date | null;
   appointmentCount: number;
 }

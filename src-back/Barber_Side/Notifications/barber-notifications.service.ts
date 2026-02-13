@@ -88,7 +88,7 @@ export async function createBarberInAppNotification(
         type: input.type,
         title: input.title,
         body: input.body,
-        meta: input.meta ?? undefined,
+        meta: input.meta != null ? JSON.parse(JSON.stringify(input.meta)) : undefined,
         read: false,
         created: now,
       },

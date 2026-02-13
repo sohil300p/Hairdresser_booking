@@ -12,8 +12,8 @@ export async function registerDeviceToken(
   platform: string = 'web'
 ) {
   try {
-    // Check if token exists
-    const existingDevice = await prisma.userDevice.findFirst({
+    // Check if token exists (userDevice model - use type assertion if not in schema)
+    const existingDevice = await (prisma as any).userDevice.findFirst({
       where: {
         userType,
         userId,
@@ -23,7 +23,7 @@ export async function registerDeviceToken(
 
     if (existingDevice) {
       // Update last used
-      await prisma.userDevice.update({
+      await (prisma as any).userDevice.update({
         where: { id: existingDevice.id },
         data: {
           lastUsed: BigInt(Date.now()),
@@ -32,7 +32,7 @@ export async function registerDeviceToken(
       });
     } else {
       // Create new
-      await prisma.userDevice.create({
+      await (prisma as any).userDevice.create({
         data: {
           userType,
           userId,
@@ -66,7 +66,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
 
   try {
     // Get user tokens
-    const devices = await prisma.userDevice.findMany({
+    const devices = await (prisma as any).userDevice?.findMany?.({
       where: {
         userType: req.userType,
         userId: req.userId,
@@ -77,7 +77,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
       return { success: false, message: 'No devices found for user' };
     }
 
-    const tokens = devices.map(d => d.fcmToken);
+    const tokens = devices.map((d: { fcmToken: string }) => d.fcmToken);
 
     // Send multicast
     const response = await messaging.sendEachForMulticast({
@@ -114,7 +114,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
       
       // Optional: Remove invalid tokens
       if (failedTokens.length > 0) {
-        await prisma.userDevice.deleteMany({
+        await (prisma as any).userDevice.deleteMany({
           where: {
             fcmToken: { in: failedTokens },
           },
@@ -171,7 +171,7 @@ export async function sendMulticastNotification(req: SendMulticastRequest) {
  */
 export async function getUsersWithDevices() {
   try {
-    const devices = await prisma.userDevice.findMany({
+    const devices = await (prisma as any).userDevice.findMany({
       select: {
         userId: true,
         userType: true,

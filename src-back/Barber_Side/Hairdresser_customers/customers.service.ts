@@ -78,8 +78,8 @@ export async function getCustomersService(
           email: string | null;
           avatar: string | null;
           gender: 'male' | 'female' | 'other' | null;
-          created: Date;
-          last_login: Date | null;
+          created: bigint;
+          last_login: bigint | null;
           publicMeta: any;
           privateMeta: any;
         };

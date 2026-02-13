@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../../User_Side/auth/auth.middleware';
+import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
 import { getBarberProfileService, createBarberProfileService } from './profile.service';
 import { CreateBarberProfileRequest } from './profile.type';
 import { ensureBarberRecord } from '../utils/barber.utils';

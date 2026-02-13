@@ -4,11 +4,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export interface JwtPayload {
-  sub: number; // user id (customer id or barber id)
+  sub: number; // user id (customer id or barber id or admin id)
   phone: string;
   role: 'customer' | 'admin' | 'staff_admin';
-  userType: 'customer' | 'barber'; // customer or barber
+  userType: 'customer' | 'barber' | 'admin'; // customer, barber, or admin
   barberId?: number; // if userType is barber, this is the barber id
+  isAdmin?: boolean; // if userType is admin
 }
 
 /**

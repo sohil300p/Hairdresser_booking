@@ -22,7 +22,7 @@ async function getOrCreateWallet(
   ownerType: 'barber' | 'barbershop',
   ownerId: number,
   currency: string = 'IRR'
-): Promise<{ id: number; balance: Decimal }> {
+): Promise<{ id: number; balance: Decimal; currency: string }> {
   let wallet = await prisma.wallet.findFirst({
     where: {
       ownerType,
@@ -44,7 +44,7 @@ async function getOrCreateWallet(
     });
   }
 
-  return wallet;
+  return { id: wallet.id, balance: wallet.balance, currency: wallet.currency };
 }
 
 /**
@@ -338,6 +338,12 @@ export async function transferService(
       };
     }
 
+    if (toOwnerType !== 'barber' && toOwnerType !== 'barbershop') {
+      return {
+        success: false,
+        message: 'انتقال فقط به کیف پول آرایشگر یا سالن امکان‌پذیر است',
+      };
+    }
     const fromWallet = await getOrCreateWallet('barber', barberId);
     const toWallet = await getOrCreateWallet(toOwnerType, toOwnerId);
 

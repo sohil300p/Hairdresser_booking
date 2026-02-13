@@ -180,7 +180,7 @@ export async function createServiceService(
         isMedical: data.isMedical || false,
         parentServiceId: data.parentServiceId || null,
         avatar: avatarUrl,
-        files: files.length > 0 ? files : null,
+        files: files.length > 0 ? files : undefined,
         created: BigInt(Date.now()),
         updated: BigInt(Date.now()),
       },

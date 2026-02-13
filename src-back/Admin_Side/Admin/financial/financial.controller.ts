@@ -5,6 +5,7 @@ import {
   getFinancialMetricsService,
   getAdminTransactionsService,
 } from './financial.service';
+import type { AdminTransactionFilters } from './financial.type';
 
 export async function getWalletSummariesController(req: Request, res: Response) {
   try {
@@ -54,7 +55,14 @@ export async function getAdminTransactionsController(req: Request, res: Response
     const page = req.query.page ? Number(req.query.page) : undefined;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
 
-    const filters = { ownerType, type, from, to, page, limit };
+    const filters: AdminTransactionFilters = {
+      ownerType: ownerType as AdminTransactionFilters['ownerType'],
+      type,
+      from,
+      to,
+      page,
+      limit,
+    };
     const result = await getAdminTransactionsService(filters);
     return res.json({ success: true, data: result });
   } catch (error) {

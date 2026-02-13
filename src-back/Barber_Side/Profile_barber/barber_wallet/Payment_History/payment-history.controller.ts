@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../../../User_Side/auth/auth.middleware';
+import { AuthRequest } from '../../../../User_Side/auth/auth.middleware';
 import { getPaymentHistoryService } from './payment-history.service';
 import { ensureBarberRecord } from '../../utils/barber.utils';
 
