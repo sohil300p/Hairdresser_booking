@@ -4,7 +4,7 @@ WORKDIR /app
 COPY src-front/assets ./assets
 COPY src-front/barber/package.json src-front/barber/package-lock.json* ./barber/
 WORKDIR /app/barber
-RUN npm ci
+RUN npm install
 
 ARG VITE_API_BASE_URL
 ARG VITE_MAPIR_API_KEY

@@ -20,7 +20,7 @@ ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
 ENV VITE_FIREBASE_VAPID_KEY=$VITE_FIREBASE_VAPID_KEY
 
 COPY src-front/user/package.json src-front/user/package-lock.json* ./
-RUN npm ci
+RUN npm install
 COPY src-front/user ./
 RUN npm run build
 

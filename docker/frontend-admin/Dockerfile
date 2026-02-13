@@ -5,7 +5,7 @@ ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 COPY src-front/admin/package.json src-front/admin/package-lock.json* ./
-RUN npm ci
+RUN npm install
 COPY src-front/admin ./
 RUN npm run build
 
