@@ -21,7 +21,14 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004'],
+  origin: [
+    'http://localhost:8080', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004',
+    'https://backend.barber.rasti.world',
+    'https://admin.barber.rasti.world',
+    'https://user.barber.rasti.world',
+    'https://fast.barber.rasti.world',
+    'https://barber.rasti.world'
+  ],
   credentials: true,
 }));
 
