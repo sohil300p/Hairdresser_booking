@@ -35,10 +35,9 @@ model Customer {
   packagePurchases  PackagePurchase[]
   transactions      Transaction[]     @relation("CustomerTransactions")
   sessions          UserSession[]     @relation("CustomerSessions")
-
   @@index([phone])
   @@index([email])
-  @@map("customer")
+  @@map("customers")
 }
 
 model Admin {
@@ -63,7 +62,7 @@ model Admin {
 
 model Barber {
   id                 Int                 @id @default(autoincrement())
-  userRefId          Int                 @unique @map("customer_id")
+  userRefId          Int                 @unique @map("user_ref_id")
   fullName           String?             @map("full_name")
   specialization     String?
   experienceYears    Int?                @map("experience_years")
@@ -93,6 +92,7 @@ model Barber {
   transactions       Transaction[]       @relation("BarberTransactions")
   sessions           UserSession[]       @relation("BarberSessions")
   inAppNotifications BarberInAppNotification[]
+  reservationPolicy  ReservationPolicyBarber?
 
   @@index([userRefId])
   @@index([email])
@@ -151,6 +151,7 @@ model Barbershop {
   commentRates    CommentRate[]
   services        Service[]
   transactions    Transaction[]
+  reservationPolicy ReservationPolicyBarbershop?
 
   @@index([ownerId])
   @@map("barbershops")
@@ -213,6 +214,7 @@ model Service {
   barbershop      Barbershop     @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
   parent          Service?       @relation("ServiceHierarchy", fields: [parentServiceId], references: [id])
   children        Service[]      @relation("ServiceHierarchy")
+  reservationPolicy ReservationPolicyService?
 
   @@index([barbershopId])
   @@index([parentServiceId], map: "services_parent_service_id_fkey")
@@ -240,6 +242,7 @@ model Appointment {
   barberId                         Int?                    @map("barber_id")
   serviceId                        Int?                    @map("service_id")
   barbershopId                     Int?                    @map("barbershop_id")
+  publicRef                        String?                 @unique @map("public_ref") @db.VarChar(16)
   locationType                     AppointmentLocationType @map("location_type")
   startTime                        BigInt                  @map("start_time")
   endTime                          BigInt                  @map("end_time")
@@ -317,7 +320,7 @@ model Wallet {
   internalTransactionsTo   InternalTransaction[] @relation("WalletInternalTxsTo")
 
   @@index([ownerType, ownerId])
-  @@map("wallet")
+  @@map("wallets")
 }
 
 model ExternalTransaction {
@@ -483,6 +486,36 @@ model Notification {
 
   @@index([userType, userId])
   @@map("notifications")
+}
+
+model UserDevice {
+  id       Int    @id @default(autoincrement())
+  userType String @map("user_type")
+  userId   Int    @map("user_id")
+  fcmToken String @map("fcm_token")
+  platform String? @map("platform")
+  lastUsed BigInt @map("last_used")
+  created  BigInt @default(0) @map("created")
+
+  @@unique([userType, userId, fcmToken])
+  @@index([userType, userId])
+  @@index([fcmToken])
+  @@map("user_devices")
+}
+
+model CustomerInAppNotification {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @map("customer_id")
+  type       String   @map("type")
+  title      String   @map("title")
+  body       String   @db.Text
+  read       Boolean  @default(false)
+  meta       Json?    @map("meta")
+  created    BigInt   @default(0) @map("created")
+
+  @@index([customerId])
+  @@index([customerId, read])
+  @@map("customer_in_app_notifications")
 }
 
 model AppointmentReminder {
@@ -665,6 +698,83 @@ model AppSetting {
   value String? @db.Text
 
   @@map("app_settings")
+}
+
+model ReservationPolicyDefault {
+  id                     Int     @id @default(autoincrement())
+  slotGranularityMinutes Int?    @map("slot_granularity_minutes")
+  minAdvanceMinutes      Int?    @map("min_advance_minutes")
+  bufferBeforeMinutes    Int?    @map("buffer_before_minutes")
+  bufferAfterMinutes     Int?    @map("buffer_after_minutes")
+  maxBookingsPerSlot     Int?    @map("max_bookings_per_slot")
+  depositPercent         Int?    @map("deposit_percent")
+  cancellationPolicy     String? @map("cancellation_policy")
+  cancellationTiers      Json?   @map("cancellation_tiers")
+  reminderSchedule       Json?   @map("reminder_schedule")
+  created                BigInt  @default(0) @map("created")
+  updated                BigInt  @default(0) @map("updated")
+
+  @@map("reservation_policy_defaults")
+}
+
+model ReservationPolicyBarbershop {
+  id                     Int     @id @default(autoincrement())
+  barbershopId            Int     @unique @map("barbershop_id")
+  slotGranularityMinutes Int?    @map("slot_granularity_minutes")
+  minAdvanceMinutes      Int?    @map("min_advance_minutes")
+  bufferBeforeMinutes    Int?    @map("buffer_before_minutes")
+  bufferAfterMinutes     Int?    @map("buffer_after_minutes")
+  maxBookingsPerSlot     Int?    @map("max_bookings_per_slot")
+  depositPercent         Int?    @map("deposit_percent")
+  cancellationPolicy     String? @map("cancellation_policy")
+  cancellationTiers      Json?   @map("cancellation_tiers")
+  reminderSchedule       Json?   @map("reminder_schedule")
+  created                BigInt  @default(0) @map("created")
+  updated                BigInt  @default(0) @map("updated")
+  barbershop              Barbershop @relation(fields: [barbershopId], references: [id], onDelete: Cascade)
+
+  @@index([barbershopId])
+  @@map("reservation_policy_barbershops")
+}
+
+model ReservationPolicyService {
+  id                     Int     @id @default(autoincrement())
+  serviceId               Int     @unique @map("service_id")
+  slotGranularityMinutes Int?    @map("slot_granularity_minutes")
+  minAdvanceMinutes      Int?    @map("min_advance_minutes")
+  bufferBeforeMinutes    Int?    @map("buffer_before_minutes")
+  bufferAfterMinutes     Int?    @map("buffer_after_minutes")
+  maxBookingsPerSlot     Int?    @map("max_bookings_per_slot")
+  depositPercent         Int?    @map("deposit_percent")
+  cancellationPolicy     String? @map("cancellation_policy")
+  cancellationTiers      Json?   @map("cancellation_tiers")
+  reminderSchedule       Json?   @map("reminder_schedule")
+  created                BigInt  @default(0) @map("created")
+  updated                BigInt  @default(0) @map("updated")
+  service                 Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+  @@map("reservation_policy_services")
+}
+
+model ReservationPolicyBarber {
+  id                     Int     @id @default(autoincrement())
+  barberId                Int     @unique @map("barber_id")
+  slotGranularityMinutes Int?    @map("slot_granularity_minutes")
+  minAdvanceMinutes      Int?    @map("min_advance_minutes")
+  bufferBeforeMinutes    Int?    @map("buffer_before_minutes")
+  bufferAfterMinutes     Int?    @map("buffer_after_minutes")
+  maxBookingsPerSlot     Int?    @map("max_bookings_per_slot")
+  depositPercent         Int?    @map("deposit_percent")
+  cancellationPolicy     String? @map("cancellation_policy")
+  cancellationTiers      Json?   @map("cancellation_tiers")
+  reminderSchedule       Json?   @map("reminder_schedule")
+  created                BigInt  @default(0) @map("created")
+  updated                BigInt  @default(0) @map("updated")
+  barber                  Barber @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@map("reservation_policy_barbers")
 }
 
 enum Role {

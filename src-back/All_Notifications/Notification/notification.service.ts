@@ -12,37 +12,28 @@ export async function registerDeviceToken(
   platform: string = 'web'
 ) {
   try {
-    // Check if token exists (userDevice model - use type assertion if not in schema)
-    const existingDevice = await (prisma as any).userDevice.findFirst({
+    const now = BigInt(Date.now());
+    await prisma.userDevice.upsert({
       where: {
-        userType,
-        userId,
-        fcmToken: token,
-      },
-    });
-
-    if (existingDevice) {
-      // Update last used
-      await (prisma as any).userDevice.update({
-        where: { id: existingDevice.id },
-        data: {
-          lastUsed: BigInt(Date.now()),
-          platform,
-        },
-      });
-    } else {
-      // Create new
-      await (prisma as any).userDevice.create({
-        data: {
+        userType_userId_fcmToken: {
           userType,
           userId,
           fcmToken: token,
-          platform,
-          lastUsed: BigInt(Date.now()),
-          created: BigInt(Date.now()),
         },
-      });
-    }
+      },
+      create: {
+        userType,
+        userId,
+        fcmToken: token,
+        platform,
+        lastUsed: now,
+        created: now,
+      },
+      update: {
+        platform,
+        lastUsed: now,
+      },
+    });
 
     return { success: true };
   } catch (error) {
@@ -66,7 +57,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
 
   try {
     // Get user tokens
-    const devices = await (prisma as any).userDevice?.findMany?.({
+    const devices = await prisma.userDevice.findMany({
       where: {
         userType: req.userType,
         userId: req.userId,
@@ -77,7 +68,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
       return { success: false, message: 'No devices found for user' };
     }
 
-    const tokens = devices.map((d: { fcmToken: string }) => d.fcmToken);
+    const tokens = devices.map((d) => d.fcmToken);
 
     // Send multicast
     const response = await messaging.sendEachForMulticast({
@@ -114,7 +105,7 @@ export async function sendNotificationToUser(req: SendNotificationRequest) {
       
       // Optional: Remove invalid tokens
       if (failedTokens.length > 0) {
-        await (prisma as any).userDevice.deleteMany({
+        await prisma.userDevice.deleteMany({
           where: {
             fcmToken: { in: failedTokens },
           },
@@ -171,7 +162,7 @@ export async function sendMulticastNotification(req: SendMulticastRequest) {
  */
 export async function getUsersWithDevices() {
   try {
-    const devices = await (prisma as any).userDevice.findMany({
+    const devices = await prisma.userDevice.findMany({
       select: {
         userId: true,
         userType: true,
@@ -184,7 +175,7 @@ export async function getUsersWithDevices() {
     });
 
     // Get unique user combinations
-    const uniqueUsers = new Map<string, { userId: number; userType: string; platform: string; lastUsed: bigint }>();
+    const uniqueUsers = new Map<string, { userId: number; userType: string; platform: string | null; lastUsed: bigint }>();
     
     for (const device of devices) {
       const key = `${device.userType}-${device.userId}`;

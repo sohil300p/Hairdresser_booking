@@ -5,6 +5,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Save, RefreshCw, Bell, Server, Image, Upload, X } from 'lucide-react';
 import { getDefaultImages, updateDefaultImages, type DefaultImages, type UpdateDefaultImagesPayload } from '../../services/settings.service';
+import { getDefaultReservationPolicy, putDefaultReservationPolicy, type ReservationPolicyPayload } from '../../services/reservation-policies.service';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -17,6 +18,8 @@ export default function SettingsPage() {
     defaultBarberProfileImageUrl: '',
     defaultBarberHeaderImageUrl: '',
   });
+  const [reservationPolicy, setReservationPolicy] = useState<ReservationPolicyPayload | null>(null);
+  const [reservationPolicyDraft, setReservationPolicyDraft] = useState<Partial<ReservationPolicyPayload>>({});
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [headerFile, setHeaderFile] = useState<File | null>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
@@ -28,6 +31,22 @@ export default function SettingsPage() {
   useEffect(() => {
     getDefaultImages()
       .then(setDefaultImages)
+      .catch(() => {});
+
+    getDefaultReservationPolicy()
+      .then((p) => {
+        setReservationPolicy(p);
+        setReservationPolicyDraft({
+          depositPercent: p.depositPercent,
+          slotGranularityMinutes: p.slotGranularityMinutes,
+          minAdvanceMinutes: p.minAdvanceMinutes,
+          bufferBeforeMinutes: p.bufferBeforeMinutes,
+          bufferAfterMinutes: p.bufferAfterMinutes,
+          reminderScheduleMinutes: p.reminderScheduleMinutes,
+          cancellationPolicy: p.cancellationPolicy,
+          cancellationTiers: p.cancellationTiers,
+        });
+      })
       .catch(() => {});
   }, []);
 
@@ -87,6 +106,91 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              Reservation Policy Defaults
+            </CardTitle>
+            <CardDescription>
+              Global defaults for reservation system (can be overridden per shop/service/staff in barber panel)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!reservationPolicy ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Deposit percent</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={reservationPolicyDraft.depositPercent ?? reservationPolicy.depositPercent}
+                      onChange={(e) => setReservationPolicyDraft((d) => ({ ...d, depositPercent: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Min advance (minutes)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={reservationPolicyDraft.minAdvanceMinutes ?? reservationPolicy.minAdvanceMinutes}
+                      onChange={(e) => setReservationPolicyDraft((d) => ({ ...d, minAdvanceMinutes: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Slot granularity (minutes)</Label>
+                    <Input
+                      type="number"
+                      min={5}
+                      step={5}
+                      value={reservationPolicyDraft.slotGranularityMinutes ?? reservationPolicy.slotGranularityMinutes}
+                      onChange={(e) => setReservationPolicyDraft((d) => ({ ...d, slotGranularityMinutes: parseInt(e.target.value) || 30 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reminder schedule (minutes; comma separated)</Label>
+                    <Input
+                      type="text"
+                      value={(reservationPolicyDraft.reminderScheduleMinutes ?? reservationPolicy.reminderScheduleMinutes).join(',')}
+                      onChange={(e) =>
+                        setReservationPolicyDraft((d) => ({
+                          ...d,
+                          reminderScheduleMinutes: e.target.value
+                            .split(',')
+                            .map((s) => parseInt(s.trim(), 10))
+                            .filter((n) => Number.isFinite(n) && n > 0),
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const updated = await putDefaultReservationPolicy(reservationPolicyDraft);
+                        setReservationPolicy(updated);
+                        setStatus({ type: 'success', message: 'Reservation policy defaults saved.' });
+                      } catch {
+                        setStatus({ type: 'error', message: 'Failed to save reservation policy defaults.' });
+                      }
+                    }}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save reservation defaults
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

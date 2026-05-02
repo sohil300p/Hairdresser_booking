@@ -46,6 +46,12 @@ function formatTime(ts: number): string {
 }
 
 export const FastPathFollowUpPage: React.FC<{ context: AppContextType }> = ({ context }) => {
+  // Public ref tracking (no OTP)
+  const [publicRef, setPublicRef] = useState('');
+  const [refLookupLoading, setRefLookupLoading] = useState(false);
+  const [refResult, setRefResult] = useState<AppointmentItem | null>(null);
+  const [refError, setRefError] = useState<string | null>(null);
+
   // OTP flow state
   const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -122,6 +128,25 @@ export const FastPathFollowUpPage: React.FC<{ context: AppContextType }> = ({ co
     sendOtp();
   };
 
+  const lookupByRef = () => {
+    const ref = publicRef.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (ref.length < 6) {
+      context.showToast('کد پیگیری را درست وارد کنید', 'error');
+      return;
+    }
+    setRefLookupLoading(true);
+    setRefError(null);
+    setRefResult(null);
+    api
+      .get<{ success: boolean; message: string; appointment?: AppointmentItem }>(`/appointments/ref/${ref}`)
+      .then((res) => {
+        if (res.success && res.appointment) setRefResult(res.appointment);
+        else setRefError(res.message || 'رزرو یافت نشد');
+      })
+      .catch((e) => setRefError(e?.message ?? 'خطا در پیگیری رزرو'))
+      .finally(() => setRefLookupLoading(false));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
       {/* Header */}
@@ -142,6 +167,61 @@ export const FastPathFollowUpPage: React.FC<{ context: AppContextType }> = ({ co
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
+        {/* ───── Public ref tracking (no OTP) ───── */}
+        <div className="bg-white p-5 rounded-2xl border border-gray-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-11 h-11 rounded-full bg-blue-50 flex items-center justify-center">
+              <Icon name="search" className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+            </div>
+            <div>
+              <h2 className="font-bold text-[var(--md-sys-color-on-surface)]">پیگیری با کد رزرو</h2>
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">کد را وارد کنید (حروف و عدد، بدون حساسیت به بزرگی حروف)</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="مثال: A7K3M9Q1"
+              value={publicRef}
+              onChange={(e) => setPublicRef(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && lookupByRef()}
+              className="w-full rounded-xl border border-gray-200 p-3 text-center text-lg font-mono tracking-wider focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              dir="ltr"
+            />
+            <Button onClick={lookupByRef} disabled={refLookupLoading}>
+              {refLookupLoading ? 'در حال بررسی...' : 'پیگیری رزرو'}
+            </Button>
+            {refError && <p className="text-sm text-[var(--md-sys-color-error)] text-center">{refError}</p>}
+            {refResult && (
+              <div className="mt-2 border border-gray-100 rounded-xl p-4 text-right bg-gray-50">
+                <div className="flex justify-between gap-3 mb-2">
+                  <span className="text-sm text-gray-500">وضعیت</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${STATUS_MAP[refResult.status]?.color || 'bg-gray-100 text-gray-700'}`}>
+                    {STATUS_MAP[refResult.status]?.label || refResult.status}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 mb-2">
+                  <span className="text-sm text-gray-500">تاریخ و ساعت</span>
+                  <span className="text-sm font-semibold">{formatTimestamp(refResult.startTime)} — {formatTime(refResult.startTime)}</span>
+                </div>
+                <div className="flex justify-between gap-3 mb-2">
+                  <span className="text-sm text-gray-500">آرایشگاه</span>
+                  <span className="text-sm font-semibold">{refResult.barbershop?.name || '-'}</span>
+                </div>
+                <div className="flex justify-between gap-3 mb-2">
+                  <span className="text-sm text-gray-500">سرویس</span>
+                  <span className="text-sm font-semibold">{refResult.service?.name || '-'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-sm text-gray-500">مبلغ</span>
+                  <span className="text-sm font-semibold font-mono">
+                    {(refResult.priceTotal ?? refResult.paidAmount ?? 0).toLocaleString('fa-IR')} تومان
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* ───── OTP Login (not logged in yet) ───── */}
         {!isLoggedIn && (

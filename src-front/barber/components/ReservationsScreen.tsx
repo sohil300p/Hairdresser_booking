@@ -8,8 +8,9 @@ import type { GetAppointmentsResponse, AppointmentItem } from '../types/api';
 
 interface Reservation {
     id: number;
-    name: string;
-    service: string;
+    customerName: string;
+    customerPhone: string;
+    serviceName: string;
     time: string;
     avatar: string;
     status: 'confirmed' | 'pending' | 'cancelled';
@@ -31,8 +32,9 @@ function mapAppointmentToReservation(appt: AppointmentItem): Reservation {
     : 'confirmed' as const;
   return {
     id: appt.id,
-    name: appt.customerName || 'مشتری',
-    service: appt.serviceName || '-',
+    customerName: appt.customerName?.trim() || 'مشتری',
+    customerPhone: appt.customerPhone || '',
+    serviceName: appt.serviceName?.trim() || '-',
     time: timestampToTime(appt.startTime),
     avatar: appt.customerAvatar || 'https://picsum.photos/id/0/100/100',
     status,
@@ -160,88 +162,81 @@ const ListView: React.FC<{reservations: Reservation[], onAction: (id: number, ac
 )
 
 const CalendarView: React.FC<{reservations: Reservation[], onAction: (id: number, action: 'confirm' | 'reject') => void}> = ({ reservations, onAction }) => {
-    const today = new Date();
-    const todayFa = today.toLocaleDateString('fa-IR-u-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/(\d+)\/(\d+)\/(\d+)/, '$1/$2/$3');
-    
-    const [selectedDate, setSelectedDate] = useState<string | null>(todayFa);
+    // NOTE: The previous implementation used a hardcoded fake month ("1403/05") which was incorrect.
+    // We switch to a data-driven day selector based on real reservation dates (and include today).
+    const todayKey = timestampToDateFa(Date.now());
+    const [selectedDate, setSelectedDate] = useState<string>(todayKey);
 
-    const days = Array.from({ length: 31 }, (_, i) => i + 1);
-    const bookingsByDay = reservations.reduce((acc, curr) => {
-        const day = parseInt(curr.date.split('/')[2]);
-        if (!acc[day]) acc[day] = [];
-        acc[day].push(curr);
-        return acc;
-    }, {} as {[key: number]: Reservation[]});
+    const monthTitle = new Date().toLocaleDateString('fa-IR', { month: 'long', year: 'numeric' });
 
-    const selectedDayNumber = selectedDate ? parseInt(selectedDate.split('/')[2], 10) : null;
-    const reservationsForSelectedDay = selectedDayNumber ? bookingsByDay[selectedDayNumber] || [] : [];
+    const availableDates = Array.from(new Set([todayKey, ...reservations.map((r) => r.date)])).sort();
+    const reservationsForSelectedDay = reservations.filter((r) => r.date === selectedDate);
 
     return (
         <div className="space-y-4 pb-20">
             <div className="bg-white p-4 rounded-lg border shadow-xs">
-                <div className="text-center font-bold mb-4">مرداد ۱۴۰۳</div>
-                <div className="grid grid-cols-7 gap-1 text-center text-sm">
-                    {['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map(d => <div key={d} className="font-semibold text-gray-600 h-8 flex items-center justify-center">{d}</div>)}
-                    {/* Empty cells for start of month */}
-                    <div className="col-span-5"></div>
-                    {days.map(day => {
-                        const dayString = `1403/05/${String(day).padStart(2, '0')}`;
-                        const dayBookings = bookingsByDay[day] || [];
-                        const hasBookings = dayBookings.length > 0;
-                        const hasPending = hasBookings && dayBookings.some(r => r.status === 'pending');
-                        const isSelected = selectedDate === dayString;
-                        const dayNumber = new Date(dayString.replace(/(\d+)\/(\d+)\/(\d+)/, '2024-07-$3'));
-                        const ariaLabelDate = !isNaN(dayNumber.getTime()) ? dayNumber.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' }) : `روز ${day}`;
-                        const bookingStatus = hasBookings ? `, ${dayBookings.length} رزرو` : ', بدون رزرو';
-
-                        return (
-                            <button 
-                                key={day}
-                                type="button"
-                                onClick={() => setSelectedDate(dayString)}
-                                aria-label={`${ariaLabelDate}${bookingStatus}`}
-                                className={`relative w-9 h-9 rounded-full transition-colors duration-200 flex items-center justify-center mx-auto
-                                    ${isSelected ? 'bg-primary-600 text-white font-bold' : hasBookings ? 'bg-primary-100' : 'hover:bg-gray-100'}
-                                `}>
-                                <span>{day}</span>
-                                {hasPending && <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 bg-warning-500 rounded-full ring-2 ring-white`}></span>}
-                            </button>
-                        );
-                    })}
+                <div className="text-center font-bold mb-4">{monthTitle}</div>
+                <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                  {availableDates.map((d) => {
+                    const isSelected = d === selectedDate;
+                    const hasBookings = reservations.some((r) => r.date === d);
+                    const hasPending = reservations.some((r) => r.date === d && r.status === 'pending');
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSelectedDate(d)}
+                        className={`relative px-3 py-2 rounded-full text-sm font-semibold transition whitespace-nowrap border
+                          ${isSelected ? 'bg-primary-600 text-white border-primary-600 shadow-sm' : hasBookings ? 'bg-primary-50 text-primary-700 border-primary-100 hover:bg-primary-100' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}
+                        `}
+                        aria-label={`رزروهای ${d}`}
+                      >
+                        <span className="font-mono">{d}</span>
+                        {hasPending && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-warning-500 rounded-full ring-2 ring-white" />}
+                      </button>
+                    );
+                  })}
                 </div>
             </div>
-            {selectedDate && (
-                <div className="animate-slide-up">
-                    <h3 className="font-bold mb-2">
-                        رزروهای {new Date(selectedDate.replace(/(\d+)\/(\d+)\/(\d+)/, '2024-07-$3')).toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </h3>
-                    <div className="space-y-3">
-                        {reservationsForSelectedDay.length > 0 ? (
-                            reservationsForSelectedDay.map(res => <ReservationCard key={res.id} {...res} onAction={onAction} />)
-                        ) : (
-                            <p className="text-center text-gray-600 pt-4">هیچ رزروی برای این روز ثبت نشده است.</p>
-                        )}
-                    </div>
-                </div>
-            )}
+            <div className="animate-slide-up">
+              <h3 className="font-bold mb-2">رزروهای <span className="font-mono">{selectedDate}</span></h3>
+              <div className="space-y-3">
+                {reservationsForSelectedDay.length > 0 ? (
+                  reservationsForSelectedDay.map(res => <ReservationCard key={res.id} {...res} onAction={onAction} />)
+                ) : (
+                  <p className="text-center text-gray-600 pt-4">هیچ رزروی برای این روز ثبت نشده است.</p>
+                )}
+              </div>
+            </div>
         </div>
     )
 }
 
-const ReservationCard: React.FC<Reservation & { onAction: (id: number, action: 'confirm' | 'reject') => void }> = ({ id, name, service, time, avatar, status, date, onAction }) => {
+function statusBadge(status: Reservation['status']): { text: string; className: string } {
+  if (status === 'pending') return { text: 'در انتظار', className: 'bg-amber-50 text-amber-700 border-amber-100' };
+  if (status === 'confirmed') return { text: 'تأیید شده', className: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+  return { text: 'لغو شده', className: 'bg-rose-50 text-rose-700 border-rose-100' };
+}
+
+const ReservationCard: React.FC<Reservation & { onAction: (id: number, action: 'confirm' | 'reject') => void }> = ({ id, customerName, customerPhone, serviceName, time, avatar, status, date, onAction }) => {
+    const badge = statusBadge(status);
     return (
         <div className="bg-white p-4 rounded-lg border shadow-xs">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <img src={avatar} alt={name} className="w-12 h-12 rounded-full" />
-                    <div>
-                        <p className="font-bold">{name}</p>
-                        <p className="text-sm text-gray-700">{service}</p>
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                    <img src={avatar} alt={customerName} className="w-12 h-12 rounded-full flex-shrink-0 object-cover" />
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold truncate">{customerName}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${badge.className}`}>{badge.text}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 font-mono mt-1" dir="ltr">{customerPhone || '-'}</p>
+                        <p className="text-sm text-gray-700 mt-1 truncate">{serviceName}</p>
                     </div>
                 </div>
-                 <div className="text-left">
-                     <p className="font-semibold">{time}</p>
-                     <p className="text-xs text-gray-600">{date}</p>
+                <div className="text-left flex-shrink-0">
+                    <p className="font-semibold font-mono">{time}</p>
+                    <p className="text-xs text-gray-600">{date}</p>
                 </div>
             </div>
             {status === 'pending' && (

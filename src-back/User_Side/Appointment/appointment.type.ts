@@ -34,6 +34,7 @@ export interface CreateAppointmentResponse {
   success: boolean;
   message: string;
   appointmentId?: number;
+  publicRef?: string;
   paymentUrl?: string; // if paymentMethod is online
   authority?: string; // ZarrinPal authority if online payment
 }
@@ -43,6 +44,7 @@ export interface GetAppointmentResponse {
   message: string;
   appointment?: {
     id: number;
+    publicRef?: string | null;
     customerId: number;
     barberId: number | null;
     barbershopId: number | null;
@@ -62,6 +64,21 @@ export interface GetAppointmentResponse {
     barber?: any;
     service?: any;
     barbershop?: any;
+  };
+}
+
+export interface GetAppointmentByRefResponse {
+  success: boolean;
+  message: string;
+  appointment?: {
+    publicRef: string;
+    status: string;
+    startTime: number;
+    endTime: number;
+    priceTotal: number | null;
+    paidAmount: number | null;
+    service?: { name?: string | null };
+    barbershop?: { name?: string | null };
   };
 }
 

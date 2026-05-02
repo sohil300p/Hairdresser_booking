@@ -124,12 +124,12 @@ const ServicesSubPage: React.FC<ServicesSubPageProps> = ({ initialServices, onSa
 
 
 const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Service, photoFile?: File) => void | Promise<void>; onCancel: () => void }> = ({ service, onSave, onCancel }) => {
-    const [formData, setFormData] = useState<Service>(service || { id: 0, name: '', price: 0, duration: 0, description: '', sampleImage: '' });
+    const [formData, setFormData] = useState<Service>(service || { id: 0, name: '', price: 0, duration: 30, description: '', sampleImage: '' });
     const [photoFile, setPhotoFile] = useState<File | undefined>();
     const imageInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        setFormData(service || { id: 0, name: '', price: 0, duration: 0, description: '', sampleImage: '' });
+        setFormData(service || { id: 0, name: '', price: 0, duration: 30, description: '', sampleImage: '' });
         setPhotoFile(undefined);
     }, [service]);
 
@@ -148,7 +148,13 @@ const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Servic
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData, photoFile);
+        const normalized: Service = {
+          ...formData,
+          name: String(formData.name ?? '').trim(),
+          price: Number(formData.price) || 0,
+          duration: Math.max(1, Number(formData.duration) || 30),
+        };
+        onSave(normalized, photoFile);
     };
 
     return (
@@ -168,7 +174,7 @@ const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Servic
                             )}
                         </div>
                         <button type="button" onClick={() => imageInputRef.current?.click()} className="font-semibold text-primary-600">
-                            انتخاب تصویر نمونه (اختیاری)
+                            انتخاب تصویر نمونه
                         </button>
                         <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                     </div>
@@ -176,9 +182,9 @@ const AddEditServiceForm: React.FC<{ service: Service | null; onSave: (s: Servic
                     <MaterialInput id="name" name="name" label="نام خدمت" type="text" value={formData.name} onChange={handleChange} required />
                     <div className="grid grid-cols-2 gap-4">
                         <MaterialInput id="price" name="price" label="قیمت (تومان)" type="number" value={formData.price} onChange={handleChange} required />
-                        <MaterialInput id="duration" name="duration" label="مدت (دقیقه)" type="number" value={formData.duration} onChange={handleChange} required />
+                        <MaterialInput id="duration" name="duration" label="مدت (دقیقه)" type="number" value={formData.duration} onChange={handleChange} />
                     </div>
-                    <MaterialInput id="description" name="description" label="توضیحات (اختیاری)" value={formData.description || ''} onChange={handleChange} multiline />
+                    <MaterialInput id="description" name="description" label="توضیحات" value={formData.description || ''} onChange={handleChange} multiline />
                 </form>
             </main>
             <footer className="p-4 border-t border-gray-200 flex gap-2" style={{paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))'}}>

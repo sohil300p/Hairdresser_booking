@@ -34,6 +34,7 @@ import { Icon, IconName } from './components/Icon';
 import { Toast } from './components/Toast';
 import { Modal } from './components/Modal';
 import { requestForToken, onMessageListener } from './utils/firebase';
+import { getInAppNotifications, markInAppNotificationRead } from './services/inapp-notifications.service';
 
 // Constants
 import { BOOKINGS, NOTIFICATIONS, LOGGED_IN_USER, DISCOUNTS, BARBERS } from './constants';
@@ -153,6 +154,20 @@ const App: React.FC = () => {
     
     // Initialize Firebase Notifications
     if (user) {
+      // Load in-app notifications from backend (best-effort)
+      getInAppNotifications('all')
+        .then((data) => {
+          const mapped: Notification[] = data.notifications.map((n) => ({
+            id: String(n.id),
+            title: n.title,
+            message: n.body,
+            date: new Date(n.createdAt).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }),
+            isRead: n.read,
+          }));
+          setNotifications(mapped);
+        })
+        .catch(() => {});
+
       // Request notification permission and register token
       requestForToken().then((token) => {
         if (token) {
@@ -168,7 +183,19 @@ const App: React.FC = () => {
       onMessageListener().then((payload: any) => {
         console.log('📨 Foreground notification received:', payload);
         showToast(payload?.notification?.title || payload?.data?.title || 'New Message', 'info');
-        // Optionally refresh notifications list here
+        // Refresh notifications list (best-effort)
+        getInAppNotifications('all')
+          .then((data) => {
+            const mapped: Notification[] = data.notifications.map((n) => ({
+              id: String(n.id),
+              title: n.title,
+              message: n.body,
+              date: new Date(n.createdAt).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' }),
+              isRead: n.read,
+            }));
+            setNotifications(mapped);
+          })
+          .catch(() => {});
       }).catch(err => {
         console.log('ℹ️ Message listener not available (Firebase may not be configured):', err);
       });
@@ -231,6 +258,10 @@ const App: React.FC = () => {
   
   const markNotificationAsRead = (notificationId: string) => {
     setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
+    const idNum = parseInt(notificationId, 10);
+    if (!Number.isNaN(idNum)) {
+      markInAppNotificationRead(idNum).catch(() => {});
+    }
   };
   
   const toggleFavorite = (barberId: number) => {

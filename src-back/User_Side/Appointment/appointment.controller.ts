@@ -3,6 +3,7 @@ import { AuthRequest } from '../auth/auth.middleware';
 import {
   createAppointmentService,
   getAppointmentService,
+  getAppointmentByPublicRefService,
   listAppointmentsService,
   updateAppointmentStatusService,
   cancelAppointmentService,
@@ -17,6 +18,78 @@ import {
 } from './appointment.type';
 import { checkAvailabilityService } from './availability.service';
 import { CheckAvailabilityRequest } from './appointment.type';
+
+function toYmdLocal(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get earliest bookable date (no auth)
+ * GET /api/appointments/start-date?barberId&barbershopId&serviceId
+ */
+export async function getBookingStartDateController(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const barberId = req.query.barberId ? parseInt(req.query.barberId as string, 10) : undefined;
+    const barbershopId = req.query.barbershopId ? parseInt(req.query.barbershopId as string, 10) : undefined;
+    const serviceId = req.query.serviceId ? parseInt(req.query.serviceId as string, 10) : undefined;
+
+    if (!barberId && !barbershopId) {
+      res.status(400).json({ success: false, message: 'شناسه آرایشگر یا آرایشگاه الزامی است' });
+      return;
+    }
+    if (!serviceId) {
+      res.status(400).json({ success: false, message: 'شناسه سرویس الزامی است' });
+      return;
+    }
+
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 31; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const ymd = toYmdLocal(d);
+      const availability = await checkAvailabilityService({
+        barberId,
+        barbershopId,
+        serviceId,
+        date: ymd,
+      });
+      const hasAny = availability.success && (availability.availableSlots ?? []).some((s) => s.available);
+      if (hasAny) {
+        res.status(200).json({ success: true, message: 'OK', startDate: ymd });
+        return;
+      }
+    }
+
+    res.status(200).json({ success: true, message: 'OK', startDate: toYmdLocal(base) });
+  } catch (error) {
+    console.error('Error in getBookingStartDateController:', error);
+    res.status(500).json({ success: false, message: 'خطای داخلی سرور' });
+  }
+}
+
+/**
+ * Get Appointment by public reference (no auth)
+ * GET /api/appointments/ref/:ref
+ */
+export async function getAppointmentByPublicRefController(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const ref = (req.params.ref as string) || '';
+    const result = await getAppointmentByPublicRefService(ref);
+    if (result.success) res.status(200).json(result);
+    else res.status(404).json(result);
+  } catch (error) {
+    console.error('Error in getAppointmentByPublicRefController:', error);
+    res.status(500).json({
+      success: false,
+      message: 'خطای داخلی سرور',
+    });
+  }
+}
 
 /**
  * Check Availability Controller

@@ -74,8 +74,8 @@ export const Calendar: React.FC<CalendarProps> = ({ selectedDate, onDateSelect }
                         onClick={() => onDateSelect(date)}
                         disabled={isPast}
                         className={`w-9 h-9 rounded-full transition-all flex items-center justify-center transform active:scale-95
-                            ${isSelected ? 'bg-[var(--primary)] text-white font-bold' : 'text-[var(--text-primary)]'}
-                            ${!isSelected && isToday ? 'bg-blue-100 text-[var(--primary)]' : ''}
+                            ${isSelected ? 'bg-[var(--md-sys-color-primary)] text-white font-bold shadow-sm ring-2 ring-[var(--md-sys-color-primary)] ring-offset-2 ring-offset-white' : 'text-[var(--text-primary)]'}
+                            ${!isSelected && isToday ? 'ring-2 ring-blue-200 text-[var(--md-sys-color-primary)] font-semibold' : ''}
                             ${!isSelected && !isToday ? 'hover:bg-gray-100' : ''}
                             disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:active:scale-100
                         `}

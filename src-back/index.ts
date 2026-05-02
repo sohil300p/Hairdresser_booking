@@ -6,6 +6,7 @@ import prisma from './All_Utils/config/prisma';
 import { getRedisClient, isRedisConnected } from './All_Utils/config/redis';
 import { ensureMinioInitialized, testMinioConnection } from './All_Utils/config/minio';
 import { initializeFirebase } from './All_Notifications/Notification/firebase';
+import { startAppointmentReminderWorker } from './All_Notifications/Reminder/appointment-reminder.worker';
 import routes from './All_Utils/routes/routes';
 import { mapirProxyController, mapirSearchController, mapirReverseController } from './Mapir/mapir-proxy.controller';
 
@@ -141,6 +142,19 @@ async function startServer() {
     } catch (firebaseError) {
       console.warn('⚠️ Firebase initialization failed:', firebaseError);
       console.warn('⚠️ Push notifications will not work without Firebase configuration.');
+    }
+
+    // Start reminder worker (non-blocking, can be disabled via env)
+    try {
+      const enabled = String(process.env.REMINDER_WORKER_ENABLED ?? 'true').toLowerCase() !== 'false';
+      if (enabled) {
+        startAppointmentReminderWorker();
+        console.log('⏰ Appointment reminder worker started');
+      } else {
+        console.log('⏸️ Appointment reminder worker disabled (REMINDER_WORKER_ENABLED=false)');
+      }
+    } catch (workerError) {
+      console.warn('⚠️ Reminder worker failed to start:', workerError);
     }
 
     // Start listening

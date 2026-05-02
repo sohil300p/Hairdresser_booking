@@ -44,6 +44,8 @@ interface ProfileFormData {
     about: string;
     services: Service[];
     schedule: ScheduleDay[];
+    /** Minimum minutes before appointment start that booking is allowed */
+    minAdvanceMinutes: number;
     /**
      * Gender of the salon: male (مردانه), female (زنانه) or unisex (مختلط).
      * This determines whether the barber shop caters to men, women or both.
@@ -74,6 +76,7 @@ const initialFormData: ProfileFormData = {
     services: [],
     schedule: initialSchedule,
     gender: 'male',
+    minAdvanceMinutes: 60,
 };
 
 const TOTAL_STEPS = 6;
@@ -100,6 +103,7 @@ function formDataToStored(data: ProfileFormData): string {
         gender: data?.gender ?? 'male',
         latitude: data?.latitude,
         longitude: data?.longitude,
+        minAdvanceMinutes: typeof data?.minAdvanceMinutes === 'number' ? data.minAdvanceMinutes : 60,
         schedule: data?.schedule ?? initialSchedule,
         services: (data?.services ?? []).map(({ id, name, price, duration, description, photo }) => ({ id, name, price, duration, description, photo })),
     };
@@ -120,6 +124,7 @@ function getSavedFormData(): ProfileFormData {
             gender: parsed.gender ?? initialFormData.gender,
             latitude: parsed.latitude,
             longitude: parsed.longitude,
+            minAdvanceMinutes: typeof (parsed as any).minAdvanceMinutes === 'number' ? (parsed as any).minAdvanceMinutes : initialFormData.minAdvanceMinutes,
             schedule: Array.isArray(parsed.schedule) && parsed.schedule.length ? parsed.schedule : initialFormData.schedule,
             services: Array.isArray(parsed.services) ? parsed.services : initialFormData.services,
         };
@@ -257,6 +262,16 @@ const ProfileSetupScreen: React.FC<ProfileSetupProps> = ({ onSetupComplete }) =>
                 isClosed: !day.isActive,
             }));
             await api.post<{ success: boolean }>('/barber/working-hours', { schedules });
+
+            // Persist reservation policy (delay / min-advance) for this barbershop
+            try {
+                const minAdvance = Math.max(0, Math.round((fd as any).minAdvanceMinutes ?? 60));
+                await api.put<{ success: boolean }>('/barber/reservation-policies/barbershop', {
+                    minAdvanceMinutes: minAdvance,
+                });
+            } catch (e) {
+                console.warn('Failed to save reservation policy during onboarding:', e);
+            }
 
             for (const svc of fd.services ?? []) {
                 const svcForm = new FormData();
@@ -439,7 +454,7 @@ const Step1Name: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profile
                 >
                     انتخاب تصویر پروفایل
                 </button>
-                <p className="text-xs text-gray-500 mt-1 text-center">JPG، PNG، WebP - حداکثر ۵MB (اختیاری)</p>
+                <p className="text-xs text-gray-500 mt-1 text-center">JPG، PNG، WebP - حداکثر ۵MB</p>
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -594,7 +609,24 @@ const Step5Hours: React.FC<{ data: ProfileFormData, onUpdate: (d: Partial<Profil
     };
 
     return (
-         <div className="space-y-3">
+         <div className="space-y-4">
+            <div className="bg-white border rounded-lg p-4 shadow-xs">
+                <h3 className="font-semibold text-gray-800 mb-2">قانون رزرو (تاخیر قابل انتخاب)</h3>
+                <p className="text-xs text-gray-500 mb-3">
+                    مشخص کنید مشتری حداقل چند دقیقه قبل از زمان مراجعه بتواند رزرو انجام دهد (مثلاً ۶۰ یعنی امروز تا یک ساعت آینده قابل رزرو نیست).
+                </p>
+                <MaterialInput
+                    id="minAdvanceMinutes"
+                    label="حداقل زمان قبل از مراجعه (دقیقه)"
+                    type="number"
+                    value={String((data as any).minAdvanceMinutes ?? 60)}
+                    onChange={(e) => {
+                        const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                        onUpdate({ minAdvanceMinutes: v } as any);
+                    }}
+                    inputMode="numeric"
+                />
+            </div>
             <p className="text-gray-600 mt-1 text-center mb-4">روزها و ساعات کاری خود را تنظیم کنید. می‌توانید بعدا این تنظیمات را تغییر دهید.</p>
             {schedule.map(day => (
                 <div key={day.key} className={`p-4 rounded-lg transition ${day.isActive ? 'bg-white border shadow-xs' : 'bg-gray-100'}`}>
@@ -791,11 +823,11 @@ const ToggleSwitch: React.FC<{ enabled: boolean, setEnabled: (e: boolean) => voi
 );
 
 const AddEditServiceSheet: React.FC<{ isOpen: boolean, service: Service | null, onSave: (s: Service) => void, onClose: () => void }> = ({ isOpen, service, onSave, onClose }) => {
-    const [formData, setFormData] = useState<Service>(service || { id: 0, name: '', price: '0', duration: '0', description: '', photo: '' });
+    const [formData, setFormData] = useState<Service>(service || { id: 0, name: '', price: '0', duration: '30', description: '', photo: '' });
     const imageInputRef = useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
-        setFormData(service || { id: 0, name: '', price: '0', duration: '0', description: '', photo: '' });
+        setFormData(service || { id: 0, name: '', price: '0', duration: '30', description: '', photo: '' });
     }, [service]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -827,17 +859,17 @@ const AddEditServiceSheet: React.FC<{ isOpen: boolean, service: Service | null, 
                         )}
                     </div>
                     <button type="button" onClick={() => imageInputRef.current?.click()} className="font-semibold text-primary-600 text-sm">
-                        انتخاب تصویر نمونه (الزامی)
+                        انتخاب تصویر نمونه
                     </button>
-                    <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" required={!formData.photo} />
+                    <input type="file" ref={imageInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                 </div>
 
                 <MaterialInput id="name" name="name" label="نام خدمت" type="text" value={formData.name} onChange={handleChange} required />
-                <MaterialInput id="description" name="description" label="توضیحات کوتاه (الزامی)" value={formData.description || ''} onChange={handleChange} required />
+                <MaterialInput id="description" name="description" label="توضیحات کوتاه" value={formData.description || ''} onChange={handleChange} />
 
                 <div className="grid grid-cols-2 gap-4">
                     <MaterialInput id="price" name="price" label="قیمت (تومان)" type="number" value={formData.price} onChange={handleChange} required inputMode="numeric" />
-                    <MaterialInput id="duration" name="duration" label="مدت (دقیقه)" type="number" value={formData.duration} onChange={handleChange} required inputMode="numeric" />
+                    <MaterialInput id="duration" name="duration" label="مدت (دقیقه)" type="number" value={formData.duration} onChange={handleChange} inputMode="numeric" />
                 </div>
 
                 <div className="flex gap-2 pt-4">

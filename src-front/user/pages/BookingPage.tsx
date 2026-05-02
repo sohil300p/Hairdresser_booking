@@ -302,7 +302,7 @@ export const BookingPage: React.FC<{ context: AppContextType }> = ({ context }) 
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-gray-200">
-            <h2 className="font-bold text-lg text-right mb-2">یادداشت <span className="text-sm font-normal text-[var(--md-sys-color-on-surface-variant)]">(اختیاری)</span></h2>
+            <h2 className="font-bold text-lg text-right mb-2">یادداشت <span className="text-sm font-normal text-[var(--md-sys-color-on-surface-variant)]"></span></h2>
             <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

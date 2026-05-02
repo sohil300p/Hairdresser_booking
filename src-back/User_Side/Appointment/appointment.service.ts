@@ -18,6 +18,13 @@ import { lockFundsForAppointmentService } from '../Profile_User/Wallet/Transacti
 import { validateCouponService, applyCouponService } from '../Profile_User/Coupon/coupon.service';
 import { requestPayment } from '../PaymentGateway/zarrinpal.service';
 import { createBarberInAppNotification } from '../../Barber_Side/Notifications/barber-notifications.service';
+import { resolveReservationPolicy } from '../../All_Utils/ReservationPolicy/reservation-policy.resolver';
+import {
+  notifyAppointmentCancelled,
+  notifyAppointmentCreated,
+  notifyAppointmentRescheduled,
+} from '../../All_Notifications/Notification/reservation-notification.dispatcher';
+import { scheduleAppointmentReminders } from '../../All_Notifications/Reminder/appointment-reminder.service';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -28,6 +35,32 @@ const DEFAULT_CANCELLATION_TIERS = [
   { minHoursBefore: 1, feePercent: 50 },
   { minHoursBefore: 0, feePercent: 100 },
 ];
+
+function shouldBypassPaymentGateway(): boolean {
+  return process.env.PAYMENT_GATEWAY_BYPASS === 'true' || process.env.NODE_ENV === 'development';
+}
+
+const PUBLIC_REF_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I,O,0,1 for readability
+function generatePublicRef(length: number = 8): string {
+  let out = '';
+  for (let i = 0; i < length; i += 1) {
+    out += PUBLIC_REF_ALPHABET[Math.floor(Math.random() * PUBLIC_REF_ALPHABET.length)];
+  }
+  return out;
+}
+
+async function createUniquePublicRef(): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const ref = generatePublicRef(8);
+    const existing = await prisma.appointment.findFirst({
+      where: { publicRef: ref },
+      select: { id: true },
+    });
+    if (!existing) return ref;
+  }
+  // fallback: longer ref
+  return generatePublicRef(10);
+}
 
 /**
  * Create appointment service
@@ -53,6 +86,12 @@ export async function createAppointmentService(
         message: 'شناسه سرویس الزامی است',
       };
     }
+
+    const policy = await resolveReservationPolicy({
+      barbershopId: barbershopId ?? undefined,
+      serviceId,
+      barberId: barberId ?? undefined,
+    });
 
     // Check availability
     const availabilityCheck = await checkAvailabilityService({
@@ -127,22 +166,10 @@ export async function createAppointmentService(
 
     const priceTotal = basePrice + addonsTotal - discountAmount;
 
-    // Determine barbershop for reservation rules
-    let barbershopForRules: { reservationPaymentPercent: number | null } | null = null;
-    if (barbershopId) {
-      barbershopForRules = await prisma.barbershop.findUnique({
-        where: { id: barbershopId },
-        select: { reservationPaymentPercent: true },
-      });
-    } else if (barberId) {
-      const barber = await prisma.barber.findFirst({
-        where: { id: barberId },
-        include: { ownedBarbershops: { take: 1, select: { reservationPaymentPercent: true } } },
-      });
-      barbershopForRules = barber?.ownedBarbershops?.[0] ?? null;
-    }
-    const reservationPaymentPercent = barbershopForRules?.reservationPaymentPercent ?? 100;
-    const amountToPay = Math.round(priceTotal * (reservationPaymentPercent / 100));
+    // Reservation payment amount is policy-aware (supports barbershop/service/barber overrides)
+    const amountToPay = Math.round(priceTotal * (policy.depositPercent / 100));
+
+    const publicRef = await createUniquePublicRef();
 
     // Create appointment
     const appointment = await prisma.appointment.create({
@@ -151,6 +178,7 @@ export async function createAppointmentService(
         barberId: barberId || null,
         barbershopId: barbershopId || null,
         serviceId,
+        publicRef,
         locationType: locationType as any,
         startTime,
         endTime,
@@ -264,6 +292,37 @@ export async function createAppointmentService(
         },
       });
 
+      // In local/dev environments we bypass gateway to unblock end-to-end booking flows.
+      if (shouldBypassPaymentGateway()) {
+        await prisma.externalTransaction.update({
+          where: { id: externalTx.id },
+          data: {
+            status: 'success',
+            reference: 'DEV_BYPASS',
+            updated: BigInt(Date.now()),
+          },
+        });
+
+        await prisma.appointment.update({
+          where: { id: appointment.id },
+          data: {
+            paymentLockExternalTransactionId: externalTx.id,
+            status: 'paid',
+            paidAmount: new Decimal(amountToPay),
+            updated: BigInt(Date.now()),
+          },
+        });
+
+        await prisma.appointmentLog.create({
+          data: {
+            appointmentId: appointment.id,
+            status: 'paid',
+            changedByType: 'system',
+            note: 'DEV: payment gateway bypass',
+            changedAt: BigInt(Date.now()),
+          },
+        });
+      } else {
       // Request payment from ZarrinPal
       const callbackUrl = process.env.ZARRINPAL_CALLBACK_URL || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/api/payment/verify`;
       const customer = await prisma.customer.findUnique({
@@ -317,6 +376,7 @@ export async function createAppointmentService(
           message: paymentRequest.message || 'درخواست پرداخت با خطا مواجه شد',
         };
       }
+      }
     }
 
     let ownerBarberId: number | null = appointment.barberId;
@@ -343,10 +403,25 @@ export async function createAppointmentService(
       }).catch((err) => console.warn('Barber in-app notification create failed:', err));
     }
 
+    notifyAppointmentCreated({
+      appointmentId: appointment.id,
+      customerId: authenticatedUserId,
+      barberId: appointment.barberId,
+      barbershopId: appointment.barbershopId,
+      startTimeEpochMs: Number(appointment.startTime),
+    }).catch((err) => console.warn('Customer reservation notifications failed:', err));
+
+    scheduleAppointmentReminders({
+      appointmentId: appointment.id,
+      startTimeEpochMs: Number(appointment.startTime),
+      reminderScheduleMinutes: policy.reminderScheduleMinutes,
+    }).catch((err) => console.warn('Schedule reminders failed:', err));
+
     return {
       success: true,
       message: 'رزرو با موفقیت ایجاد شد',
       appointmentId: appointment.id,
+      publicRef: appointment.publicRef ?? publicRef,
       paymentUrl,
       authority,
     };
@@ -356,6 +431,51 @@ export async function createAppointmentService(
       success: false,
       message: 'ایجاد رزرو با خطا مواجه شد',
     };
+  }
+}
+
+export async function getAppointmentByPublicRefService(publicRefRaw: string) {
+  try {
+    const publicRef = (publicRefRaw || '').trim().toUpperCase();
+    if (publicRef.length < 6) {
+      return { success: false, message: 'کد پیگیری معتبر نیست' };
+    }
+
+    const appointment = await prisma.appointment.findFirst({
+      where: { publicRef },
+      select: {
+        publicRef: true,
+        status: true,
+        startTime: true,
+        endTime: true,
+        priceTotal: true,
+        paidAmount: true,
+        service: { select: { name: true } },
+        barbershop: { select: { name: true } },
+      },
+    });
+
+    if (!appointment || !appointment.publicRef) {
+      return { success: false, message: 'رزرو یافت نشد' };
+    }
+
+    return {
+      success: true,
+      message: 'رزرو با موفقیت دریافت شد',
+      appointment: {
+        publicRef: appointment.publicRef,
+        status: appointment.status,
+        startTime: Number(appointment.startTime),
+        endTime: Number(appointment.endTime),
+        priceTotal: appointment.priceTotal ? Number(appointment.priceTotal) : null,
+        paidAmount: appointment.paidAmount ? Number(appointment.paidAmount) : null,
+        service: appointment.service,
+        barbershop: appointment.barbershop,
+      },
+    };
+  } catch (error) {
+    console.error('Error getting appointment by publicRef:', error);
+    return { success: false, message: 'دریافت رزرو با خطا مواجه شد' };
   }
 }
 
@@ -437,6 +557,7 @@ export async function getAppointmentService(
       message: 'رزرو با موفقیت دریافت شد',
       appointment: {
         id: appointment.id,
+        publicRef: appointment.publicRef ?? null,
         customerId: appointment.customerId,
         barberId: appointment.barberId,
         barbershopId: appointment.barbershopId,
@@ -733,21 +854,17 @@ export async function cancelAppointmentService(
         refundPercentage = 100;
         refundAmount = paidAmount;
       } else {
-        let feePercent = 100;
-        const barbershop = appointment.barbershopId
-          ? await prisma.barbershop.findUnique({
-              where: { id: appointment.barbershopId },
-              select: { cancellationPolicy: true, cancellationTiers: true },
-            })
-          : null;
+        const policy = await resolveReservationPolicy({
+          barbershopId: appointment.barbershopId ?? undefined,
+          serviceId: appointment.serviceId ?? undefined,
+          barberId: appointment.barberId ?? undefined,
+        });
 
-        if (barbershop?.cancellationPolicy === 'not_accepted') {
+        let feePercent = 100;
+        if (policy.cancellationPolicy === 'not_accepted') {
           feePercent = 100;
         } else {
-          const tiers =
-            (barbershop?.cancellationTiers as { minHoursBefore: number; feePercent: number }[]) ??
-            DEFAULT_CANCELLATION_TIERS;
-          const sorted = [...tiers].sort((a, b) => b.minHoursBefore - a.minHoursBefore);
+          const sorted = [...policy.cancellationTiers].sort((a, b) => b.minHoursBefore - a.minHoursBefore);
           const matchingTier = sorted.find((t) => hoursUntilAppointment >= t.minHoursBefore);
           feePercent = matchingTier ? matchingTier.feePercent : 100;
         }
@@ -872,6 +989,13 @@ export async function cancelAppointmentService(
       }).catch((err) => console.warn('Barber in-app notification create failed:', err));
     }
 
+    notifyAppointmentCancelled({
+      appointmentId,
+      customerId: appointment.customerId,
+      barbershopId: appointment.barbershopId,
+      startTimeEpochMs: Number(appointment.startTime),
+    }).catch((err) => console.warn('Customer cancel notifications failed:', err));
+
     return {
       success: true,
       message: 'رزرو با موفقیت لغو شد',
@@ -982,6 +1106,13 @@ export async function rescheduleAppointmentService(
         changedAt: BigInt(Date.now()),
       },
     });
+
+    notifyAppointmentRescheduled({
+      appointmentId,
+      customerId: appointment.customerId,
+      barbershopId: appointment.barbershopId,
+      newStartTimeEpochMs: Number(startTime),
+    }).catch((err) => console.warn('Customer reschedule notifications failed:', err));
 
     return {
       success: true,

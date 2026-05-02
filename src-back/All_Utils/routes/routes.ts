@@ -43,8 +43,10 @@ import {
 } from '../../User_Side/PaymentGateway/payment-gateway.controller';
 import {
   checkAvailabilityController,
+  getBookingStartDateController,
   createAppointmentController,
   getAppointmentController,
+  getAppointmentByPublicRefController,
   listAppointmentsController,
   updateAppointmentStatusController,
   cancelAppointmentController,
@@ -68,6 +70,16 @@ import {
   getReservationRulesController,
   putReservationRulesController,
 } from '../../Barber_Side/Profile_barber/ReservationRules/reservation-rules.controller';
+import {
+  getEffectiveReservationPolicyController,
+  putBarberReservationPolicyController,
+  putBarbershopReservationPolicyController,
+  putServiceReservationPolicyController,
+} from '../../Barber_Side/Profile_barber/ReservationPolicies/reservation-policies.controller';
+import {
+  getDefaultReservationPolicyController,
+  putDefaultReservationPolicyController,
+} from '../../Admin_Side/Admin/reservation-policies.controller';
 import {
   getWalletBalanceController as getBarberWalletBalanceController,
   depositController as barberDepositController,
@@ -93,6 +105,11 @@ import {
   getUsersWithDevicesController, 
   adminSendNotificationController 
 } from '../../All_Notifications/Notification/notification.controller';
+import {
+  getCustomerInAppNotificationsController,
+  markAllCustomerInAppNotificationsReadController,
+  markCustomerInAppNotificationReadController,
+} from '../../All_Notifications/Notification/customer-inapp.controller';
 import {
   getAllUsersController,
   getAllBarbersController,
@@ -156,6 +173,9 @@ router.post('/otp/verify', verifyOtpController);
 
 // Notification Routes
 router.post('/notifications/register-token', authenticateToken, registerTokenController);
+router.get('/notifications/in-app', authenticateToken, getCustomerInAppNotificationsController);
+router.patch('/notifications/in-app/read-all', authenticateToken, markAllCustomerInAppNotificationsReadController);
+router.patch('/notifications/in-app/:id/read', authenticateToken, markCustomerInAppNotificationReadController);
 
 // Admin Notification Routes
 router.get('/admin/notifications/users', authenticateAdmin, getUsersWithDevicesController);
@@ -180,6 +200,10 @@ router.get('/admin/users/:phone/otp-status', authenticateAdmin, getUserOtpStatus
 router.get('/admin/financial/wallets', authenticateAdmin, getWalletSummariesController);
 router.get('/admin/financial/transactions', authenticateAdmin, getAdminTransactionsController);
 router.get('/admin/financial/metrics', authenticateAdmin, getFinancialMetricsController);
+
+// Admin Reservation Policy Defaults
+router.get('/admin/reservation-policies/default', authenticateAdmin, getDefaultReservationPolicyController);
+router.put('/admin/reservation-policies/default', authenticateAdmin, putDefaultReservationPolicyController);
 
 // Admin Default Images (barber profile + header) - accepts URL or file upload
 router.get('/admin/settings/default-images', authenticateAdmin, getDefaultImagesController);
@@ -261,6 +285,12 @@ router.post('/barber/invitations/:token/accept', authenticateToken, acceptInvita
 router.get('/barber/reservation-rules', authenticateToken, getReservationRulesController);
 router.put('/barber/reservation-rules', authenticateToken, putReservationRulesController);
 
+// Barber Reservation Policies (Overrides) (Protected - Barber only)
+router.get('/barber/reservation-policies/effective', authenticateToken, getEffectiveReservationPolicyController);
+router.put('/barber/reservation-policies/barbershop', authenticateToken, putBarbershopReservationPolicyController);
+router.put('/barber/reservation-policies/service/:serviceId', authenticateToken, putServiceReservationPolicyController);
+router.put('/barber/reservation-policies/barber/:barberId', authenticateToken, putBarberReservationPolicyController);
+
 // Barber Wallet Routes (Protected - Barber only)
 router.get('/barber/wallet/balance', authenticateToken, getBarberWalletBalanceController);
 router.post('/barber/wallet/deposit', authenticateToken, barberDepositController);
@@ -313,8 +343,10 @@ router.post('/payment/verify', verifyPaymentController); // Manual verification 
 
 // Appointment Routes (Protected)
 router.get('/appointments/availability', checkAvailabilityController); // Public - no auth needed
+router.get('/appointments/start-date', getBookingStartDateController); // Public - no auth needed
 router.post('/appointments', authenticateToken, createAppointmentController);
 router.get('/appointments', authenticateToken, listAppointmentsController);
+router.get('/appointments/ref/:ref', getAppointmentByPublicRefController); // Public - no auth needed
 router.get('/appointments/:id', authenticateToken, getAppointmentController);
 router.put('/appointments/:id/status', authenticateToken, updateAppointmentStatusController);
 router.post('/appointments/:id/cancel', authenticateToken, cancelAppointmentController);

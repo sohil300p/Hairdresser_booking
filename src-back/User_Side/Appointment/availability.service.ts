@@ -1,14 +1,8 @@
 import prisma from '../../All_Utils/config/prisma';
 import { CheckAvailabilityRequest, CheckAvailabilityResponse } from './appointment.type';
+import { resolveReservationPolicy } from '../../All_Utils/ReservationPolicy/reservation-policy.resolver';
 
-// Time slots for availability checking
-const TIME_SLOTS = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
-];
-
-const MIN_BOOKING_ADVANCE_HOURS = 1; // Minimum 1 hour advance booking
-const TIME_SLOT_DURATION_MINUTES = 30; // Each time slot is 30 minutes
+// Defaults are handled by ReservationPolicyResolver.
 
 /**
  * Convert time string (HH:MM) to milliseconds since midnight
@@ -53,6 +47,8 @@ export async function checkAvailabilityService(
       };
     }
 
+    const policy = await resolveReservationPolicy({ barbershopId: barbershopId ?? undefined, serviceId: serviceId ?? undefined, barberId: barberId ?? undefined });
+
     const targetDate = new Date(date);
     const now = new Date();
 
@@ -64,17 +60,18 @@ export async function checkAvailabilityService(
       };
     }
 
-    // Check minimum advance booking time
-    const hoursUntilBooking = (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (hoursUntilBooking < MIN_BOOKING_ADVANCE_HOURS) {
+    // Check minimum advance booking time (policy-aware)
+    const minAdvanceMs = policy.minAdvanceMinutes * 60 * 1000;
+    const msUntilDate = targetDate.getTime() - now.getTime();
+    if (msUntilDate < minAdvanceMs) {
       return {
         success: false,
-        message: `حداقل ${MIN_BOOKING_ADVANCE_HOURS} ساعت قبل از زمان رزرو باید اقدام کنید`,
+        message: `حداقل ${policy.minAdvanceMinutes} دقیقه قبل از زمان رزرو باید اقدام کنید`,
       };
     }
 
     // Get service duration if serviceId provided
-    let serviceDuration = 30; // default 30 minutes
+    let serviceDuration = 30; // minutes (fallback)
     if (serviceId) {
       const service = await prisma.service.findUnique({
         where: { id: serviceId },
@@ -84,6 +81,8 @@ export async function checkAvailabilityService(
         serviceDuration = service.estimatedTime;
       }
     }
+    // Apply buffers (policy-aware). We treat buffers as blocked time around the appointment.
+    const blockedDurationMinutes = serviceDuration + policy.bufferBeforeMinutes + policy.bufferAfterMinutes;
 
     const weekday = getWeekday(targetDate);
     const dateStart = new Date(targetDate);
@@ -186,42 +185,38 @@ export async function checkAvailabilityService(
     const availableSlots: Array<{ time: string; available: boolean }> = [];
     let currentTimeMs = workingStartMs;
 
-    while (currentTimeMs + serviceDuration * 60 * 1000 <= workingEndMs) {
+    const slotStepMinutes = policy.slotGranularityMinutes;
+    while (currentTimeMs + blockedDurationMinutes * 60 * 1000 <= workingEndMs) {
       const slotTime = msToTime(currentTimeMs);
-      const slotEndMs = currentTimeMs + serviceDuration * 60 * 1000;
+      // Note: schedules are stored as ms since midnight, but appointments/timeOff are stored as epoch ms.
+      // Convert slot start/end to epoch ms for conflict checks.
+      const slotStartEpochMs = dateStartMs + currentTimeMs;
+      const slotEndEpochMs = slotStartEpochMs + blockedDurationMinutes * 60 * 1000;
 
       // Check if slot conflicts with time off
       const conflictsWithTimeOff = timeOffs.some((timeOff) => {
-        const offStart = Number(timeOff.startAt);
-        const offEnd = Number(timeOff.endAt);
+        const offStart = Number(timeOff.startAt); // epoch ms
+        const offEnd = Number(timeOff.endAt); // epoch ms
         return (
-          (currentTimeMs >= offStart && currentTimeMs < offEnd) ||
-          (slotEndMs > offStart && slotEndMs <= offEnd) ||
-          (currentTimeMs <= offStart && slotEndMs >= offEnd)
+          (slotStartEpochMs >= offStart && slotStartEpochMs < offEnd) ||
+          (slotEndEpochMs > offStart && slotEndEpochMs <= offEnd) ||
+          (slotStartEpochMs <= offStart && slotEndEpochMs >= offEnd)
         );
       });
 
       // Check if slot conflicts with existing appointments
       const conflictsWithAppointment = existingAppointments.some((apt) => {
-        const aptStart = Number(apt.startTime);
-        const aptEnd = Number(apt.endTime);
+        const aptStart = Number(apt.startTime); // epoch ms
+        const aptEnd = Number(apt.endTime); // epoch ms
         return (
-          (currentTimeMs >= aptStart && currentTimeMs < aptEnd) ||
-          (slotEndMs > aptStart && slotEndMs <= aptEnd) ||
-          (currentTimeMs <= aptStart && slotEndMs >= aptEnd)
+          (slotStartEpochMs >= aptStart && slotStartEpochMs < aptEnd) ||
+          (slotEndEpochMs > aptStart && slotEndEpochMs <= aptEnd) ||
+          (slotStartEpochMs <= aptStart && slotEndEpochMs >= aptEnd)
         );
       });
 
       // Check if slot is too close to current time (minimum advance)
-      const slotDateTime = new Date(targetDate);
-      slotDateTime.setHours(
-        Math.floor(currentTimeMs / (60 * 60 * 1000)),
-        Math.floor((currentTimeMs % (60 * 60 * 1000)) / (60 * 1000)),
-        0,
-        0
-      );
-      const hoursUntilSlot = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-      const tooSoon = hoursUntilSlot < MIN_BOOKING_ADVANCE_HOURS;
+      const tooSoon = slotStartEpochMs - now.getTime() < minAdvanceMs;
 
       const available = !conflictsWithTimeOff && !conflictsWithAppointment && !tooSoon;
 
@@ -230,8 +225,8 @@ export async function checkAvailabilityService(
         available,
       });
 
-      // Move to next slot (30-minute intervals)
-      currentTimeMs += TIME_SLOT_DURATION_MINUTES * 60 * 1000;
+      // Move to next slot (policy-aware granularity)
+      currentTimeMs += slotStepMinutes * 60 * 1000;
     }
 
     return {

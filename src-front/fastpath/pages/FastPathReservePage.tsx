@@ -4,11 +4,19 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Calendar } from '../components/Calendar';
 import { StepIndicator } from '../components/StepIndicator';
+import { Modal } from '../components/Modal';
 import { api } from '../utils/api';
 import { CANCELLATION_POLICY_TEXT } from '../constants/policies';
 
 const STEP_LABELS = ['آرایشگاه', 'سرویس', 'تاریخ', 'هویت', 'خلاصه', 'پرداخت'];
 const TOTAL_STEPS = 6;
+
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ context }) => {
   const preselected = context.pageParams?.barbershopId != null;
@@ -22,6 +30,7 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
     d.setHours(0, 0, 0, 0);
     return d;
   });
+  const [minBookableDate, setMinBookableDate] = useState<Date | null>(null);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -32,6 +41,7 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
   const [couponApplied, setCouponApplied] = useState<{ discount: number; message: string } | null>(null);
   const [policyAcknowledged, setPolicyAcknowledged] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpSheetOpen, setOtpSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<BarbershopSearchResult[]>([]);
 
@@ -63,7 +73,8 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
 
   const fetchAvailability = useCallback(() => {
     if (!idToUse || !selectedService) return;
-    const dateStr = selectedDate.toISOString().slice(0, 10);
+    // Important: use LOCAL date (not UTC) to avoid off-by-one day issues.
+    const dateStr = toLocalDateString(selectedDate);
     setLoading(true);
     api
       .get<{ success: boolean; availableSlots?: AvailabilitySlot[] }>(
@@ -80,6 +91,38 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
   useEffect(() => {
     if (step === 3 && selectedService) fetchAvailability();
   }, [step, selectedDate, selectedService, fetchAvailability]);
+
+  // When entering Step 3, ask backend for the earliest bookable date (policy-aware).
+  useEffect(() => {
+    if (step !== 3 || !selectedService || !idToUse) return;
+    setLoading(true);
+    api
+      .get<{ success: boolean; startDate?: string; message?: string }>(
+        `/appointments/start-date?barbershopId=${idToUse}&serviceId=${selectedService.id}`
+      )
+      .then((res) => {
+        if (res.success && res.startDate) {
+          const d = new Date(res.startDate);
+          d.setHours(0, 0, 0, 0);
+          setMinBookableDate(d);
+          // If current selected date is before backend start date, jump forward.
+          if (selectedDate.getTime() < d.getTime()) {
+            setSelectedDate(d);
+            setSelectedTime(null);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, selectedService?.id, idToUse]);
+
+  // If date/service changes, previously selected time may become invalid.
+  useEffect(() => {
+    if (!selectedTime) return;
+    const isStillAvailable = slots.some((s) => s.available && s.time === selectedTime);
+    if (!isStillAvailable) setSelectedTime(null);
+  }, [slots, selectedTime]);
 
   const handleSearch = () => {
     if (!searchQuery.trim()) return;
@@ -133,7 +176,7 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
       .then((res) => {
         if (res.success && res.token && res.user) {
           context.login(res.user as any, res.token);
-          context.hideModal();
+          setOtpSheetOpen(false);
           setStep(5);
           context.showToast('ورود با موفقیت انجام شد', 'success');
         }
@@ -143,62 +186,7 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
   };
 
   const openOtpSheet = () => {
-    context.showModal(
-      <div className="p-5" dir="rtl">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-            <Icon name="phone" className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg text-[var(--md-sys-color-on-surface)]">تأیید هویت</h3>
-            <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">نام و شماره تلفن خود را وارد کنید</p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">نام</label>
-            <input
-              type="text"
-              placeholder="نام و نام خانوادگی"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">شماره تلفن</label>
-            <input
-              type="tel"
-              placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-              dir="ltr"
-            />
-          </div>
-          {!otpSent ? (
-            <Button onClick={sendOtp} disabled={loading}>دریافت کد تأیید</Button>
-          ) : (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">کد تأیید</label>
-                <input
-                  type="text"
-                  placeholder="- - - -"
-                  maxLength={4}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  className="w-full rounded-xl border border-gray-200 p-3 text-center text-lg font-mono tracking-[0.5em] focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                  dir="ltr"
-                />
-              </div>
-              <Button onClick={verifyOtp} disabled={loading}>تأیید و ادامه</Button>
-            </>
-          )}
-        </div>
-      </div>,
-      'bottom'
-    );
+    setOtpSheetOpen(true);
   };
 
   const validateCoupon = () => {
@@ -228,7 +216,7 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
 
   const createAndPay = () => {
     if (!context.user || !selectedService || !selectedTime) return;
-    const dateStr = selectedDate.toISOString().slice(0, 10);
+    const dateStr = toLocalDateString(selectedDate);
     setLoading(true);
     api
       .post<{ success: boolean; paymentUrl?: string; appointmentId?: number }>('/appointments', {
@@ -261,12 +249,67 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
   const canAdvance = () => {
     if (step === 1) return preselected ? !!selectedService : !!idToUse;
     if (step === 2) return !!selectedService;
-    if (step === 3) return !!selectedTime;
+    if (step === 3) return !!selectedTime && slots.some((s) => s.available && s.time === selectedTime);
     return false;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
+      <Modal isOpen={otpSheetOpen} onClose={() => setOtpSheetOpen(false)} position="bottom">
+        <div className="p-5" dir="rtl">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+              <Icon name="phone" className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-[var(--md-sys-color-on-surface)]">تأیید هویت</h3>
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">نام و شماره تلفن خود را وارد کنید</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">نام</label>
+              <input
+                type="text"
+                placeholder="نام و نام خانوادگی"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">شماره تلفن</label>
+              <input
+                type="tel"
+                placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                dir="ltr"
+              />
+            </div>
+            {!otpSent ? (
+              <Button onClick={sendOtp} disabled={loading}>دریافت کد تأیید</Button>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--md-sys-color-on-surface)] mb-1.5">کد تأیید</label>
+                  <input
+                    type="text"
+                    placeholder="- - - -"
+                    maxLength={4}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full rounded-xl border border-gray-200 p-3 text-center text-lg font-mono tracking-[0.5em] focus:border-[var(--md-sys-color-primary)] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    dir="ltr"
+                  />
+                </div>
+                <Button onClick={verifyOtp} disabled={loading}>تأیید و ادامه</Button>
+              </>
+            )}
+          </div>
+        </div>
+      </Modal>
       {/* Header */}
       <header className="sticky top-0 bg-white z-10 border-b border-gray-100 shadow-sm">
         <div className="flex items-center p-4">
@@ -420,7 +463,15 @@ export const FastPathReservePage: React.FC<{ context: AppContextType }> = ({ con
           <>
             <div className="bg-white p-4 rounded-2xl border border-gray-200">
               <h2 className="font-bold text-lg text-[var(--md-sys-color-on-surface)] mb-4">انتخاب تاریخ</h2>
-              <Calendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+              <Calendar
+                selectedDate={selectedDate}
+                minDate={minBookableDate ?? undefined}
+                onDateSelect={(d) => {
+                  // changing date invalidates selected time
+                  setSelectedDate(d);
+                  setSelectedTime(null);
+                }}
+              />
             </div>
             <div className="bg-white p-4 rounded-2xl border border-gray-200">
               <h2 className="font-bold text-lg text-[var(--md-sys-color-on-surface)] mb-4">انتخاب ساعت</h2>

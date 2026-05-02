@@ -28,11 +28,22 @@ if (fs.existsSync(sqlPath)) {
   }
 }
 
-const migrations = [
-  '20251123222102_init',
-  '20251213_add_admin_table',
-  '20251214000000_add_reservation_rules_to_barbershop',
-];
+function listMigrationFolders() {
+  const migrationsDir = path.join(root, 'prisma', 'migrations');
+  if (!fs.existsSync(migrationsDir)) return [];
+  return fs
+    .readdirSync(migrationsDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .filter((name) => fs.existsSync(path.join(migrationsDir, name, 'migration.sql')))
+    .sort();
+}
+
+const migrations = listMigrationFolders();
+if (migrations.length === 0) {
+  console.warn('No migrations found in prisma/migrations. Nothing to baseline.');
+  process.exit(0);
+}
 
 for (const name of migrations) {
   try {

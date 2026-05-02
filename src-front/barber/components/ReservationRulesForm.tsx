@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { getEffectivePolicy, putBarbershopPolicy } from '../services/reservation-policies.service';
 
 interface CancellationTier {
   minHoursBefore: number;
@@ -37,6 +38,11 @@ export default function ReservationRulesForm({ isVisible, onSaved }: Reservation
   const [reservationPaymentPercent, setReservationPaymentPercent] = useState(100);
   const [cancellationPolicy, setCancellationPolicy] = useState<'not_accepted' | 'tiered'>('tiered');
   const [cancellationTiers, setCancellationTiers] = useState<CancellationTier[]>(DEFAULT_TIERS);
+  const [slotGranularityMinutes, setSlotGranularityMinutes] = useState(30);
+  const [minAdvanceMinutes, setMinAdvanceMinutes] = useState(60);
+  const [bufferBeforeMinutes, setBufferBeforeMinutes] = useState(0);
+  const [bufferAfterMinutes, setBufferAfterMinutes] = useState(0);
+  const [reminderScheduleMinutes, setReminderScheduleMinutes] = useState<string>('1440,120');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,6 +51,21 @@ export default function ReservationRulesForm({ isVisible, onSaved }: Reservation
       setIsLoading(true);
       setError(null);
       try {
+        // Prefer new fully-customizable policies
+        const p = await getEffectivePolicy();
+        if (p.success && p.data) {
+          setReservationPaymentPercent(p.data.depositPercent ?? 100);
+          setCancellationPolicy((p.data.cancellationPolicy as any) ?? 'tiered');
+          setCancellationTiers(p.data.cancellationTiers?.length ? (p.data.cancellationTiers as any) : DEFAULT_TIERS);
+          setSlotGranularityMinutes(p.data.slotGranularityMinutes ?? 30);
+          setMinAdvanceMinutes(p.data.minAdvanceMinutes ?? 60);
+          setBufferBeforeMinutes(p.data.bufferBeforeMinutes ?? 0);
+          setBufferAfterMinutes(p.data.bufferAfterMinutes ?? 0);
+          setReminderScheduleMinutes((p.data.reminderScheduleMinutes ?? [1440, 120]).join(','));
+          return;
+        }
+
+        // Fallback: legacy reservation rules
         const res = await api.get<{ success: boolean; data?: ReservationRules }>('/barber/reservation-rules');
         if (res.success && res.data) {
           setReservationPaymentPercent(res.data.reservationPaymentPercent ?? 100);
@@ -70,11 +91,23 @@ export default function ReservationRulesForm({ isVisible, onSaved }: Reservation
     setIsSaving(true);
     setError(null);
     try {
-      await api.put('/barber/reservation-rules', {
-        reservationPaymentPercent,
+      const schedule = reminderScheduleMinutes
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => Number.isFinite(n) && n > 0);
+
+      // Save via new policy system (barbershop override)
+      await putBarbershopPolicy({
+        depositPercent: reservationPaymentPercent,
         cancellationPolicy,
         cancellationTiers,
+        slotGranularityMinutes,
+        minAdvanceMinutes,
+        bufferBeforeMinutes,
+        bufferAfterMinutes,
+        reminderScheduleMinutes: schedule.length ? schedule : [1440, 120],
       });
+
       window.showToast?.('تنظیمات با موفقیت ذخیره شد.', 'success');
       onSaved?.();
     } catch {
@@ -92,6 +125,65 @@ export default function ReservationRulesForm({ isVisible, onSaved }: Reservation
         <div className="py-8 text-center text-gray-600">در حال بارگذاری...</div>
       ) : (
         <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block font-semibold text-gray-800 mb-2">گام زمانی (دقیقه)</label>
+              <input
+                type="number"
+                min={5}
+                step={5}
+                value={slotGranularityMinutes}
+                onChange={(e) => setSlotGranularityMinutes(Math.max(5, Number(e.target.value) || 30))}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-800 mb-2">حداقل زمان رزرو قبل از موعد (دقیقه)</label>
+              <input
+                type="number"
+                min={0}
+                step={5}
+                value={minAdvanceMinutes}
+                onChange={(e) => setMinAdvanceMinutes(Math.max(0, Number(e.target.value) || 60))}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-800 mb-2">بافر قبل (دقیقه)</label>
+              <input
+                type="number"
+                min={0}
+                step={5}
+                value={bufferBeforeMinutes}
+                onChange={(e) => setBufferBeforeMinutes(Math.max(0, Number(e.target.value) || 0))}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-800 mb-2">بافر بعد (دقیقه)</label>
+              <input
+                type="number"
+                min={0}
+                step={5}
+                value={bufferAfterMinutes}
+                onChange={(e) => setBufferAfterMinutes(Math.max(0, Number(e.target.value) || 0))}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-800 mb-2">یادآوری‌ها (دقیقه قبل از شروع)</label>
+            <input
+              type="text"
+              value={reminderScheduleMinutes}
+              onChange={(e) => setReminderScheduleMinutes(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+              placeholder="مثلاً: 1440,120"
+            />
+            <p className="text-sm text-gray-600 mt-1">با کاما جدا کنید. مثال: 1440=24 ساعت، 120=2 ساعت</p>
+          </div>
+
           <div>
             <label className="block font-semibold text-gray-800 mb-2">
               درصد مبلغ قابل پرداخت در زمان رزرو

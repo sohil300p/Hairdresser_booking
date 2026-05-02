@@ -10,10 +10,9 @@ interface ModalProps {
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, position = 'center' }) => {
   if (!isOpen) return null;
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  const handleBackdropPointer = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    // Only close when interacting directly with backdrop (not modal content)
+    if (e.target === e.currentTarget) onClose();
   };
 
   const isBottom = position === 'bottom';
@@ -25,13 +24,17 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, positio
         justifyContent: isBottom ? 'center' : 'center',
         alignItems: isBottom ? 'flex-end' : 'center'
       }}
-      onClick={handleBackdropClick}
+      onClick={handleBackdropPointer as any}
+      onMouseDown={handleBackdropPointer as any}
+      onTouchStart={handleBackdropPointer as any}
       aria-modal="true"
       role="dialog"
     >
       <div 
         className={`bg-white shadow-xl m-4 w-full max-w-md ${isBottom ? 'rounded-t-2xl p-6 animate-slide-in-up' : 'rounded-lg p-6 text-center relative animate-fade-in-down'}`}
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         {isBottom ? (
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4"></div>
